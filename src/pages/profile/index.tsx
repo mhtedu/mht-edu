@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   User, Crown, Users, Building2, MapPin, 
   ChevronRight, Star, Wallet, Gift, Settings,
-  FileText, Award, TrendingUp
+  FileText, Award, TrendingUp, Shield
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -178,6 +178,16 @@ const ProfilePage = () => {
         {/* 其他功能 */}
         <Card>
           <CardContent className="p-0">
+            <View
+              className="flex flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
+              onClick={() => navigateTo('/pages/admin/index')}
+            >
+              <View className="flex flex-row items-center">
+                <Shield size={20} color="#2563EB" className="mr-3" />
+                <Text className="text-gray-800">管理后台</Text>
+              </View>
+              <ChevronRight size={16} color="#9CA3AF" />
+            </View>
             <View
               className="flex flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
               onClick={() => navigateTo('/pages/about/index')}

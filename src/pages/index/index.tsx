@@ -1,11 +1,11 @@
-import { View, Text, Image } from '@tarojs/components';
+import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components';
 import Taro, { useLoad } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, SlidersHorizontal } from 'lucide-react-taro';
+import { MapPin, SlidersHorizontal, Lock } from 'lucide-react-taro';
 import './index.css';
 
 // 订单类型
@@ -39,17 +39,26 @@ interface Teacher {
   distance_text: string;
 }
 
-// 用户角色: 0-家长, 1-教师, 2-机构, 3-代理商
-type UserRole = 0 | 1 | 2 | 3;
+// 轮播图类型
+interface Banner {
+  id: number;
+  image_url: string;
+  title: string;
+  link_url: string;
+}
 
 /**
- * 首页 - 根据角色显示不同内容
- * 家长：看到教师列表
- * 教师：看到需求订单
+ * 首页 - 根据Tab显示不同内容
+ * 找老师：显示教师列表（家长端视角）
+ * 找学生：显示需求订单（教师端视角）
  */
 const IndexPage = () => {
+  // Tab状态：0-找老师，1-找学生
+  const [activeTab, setActiveTab] = useState(0);
+  
   // 用户状态
-  const [userRole, setUserRole] = useState<UserRole>(0); // 默认家长
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   
   // 位置状态
   const [latitude, setLatitude] = useState<number>(0);
@@ -59,26 +68,54 @@ const IndexPage = () => {
   // 数据状态
   const [orders, setOrders] = useState<Order[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState('全部');
 
   const subjects = ['全部', '语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理'];
+
+  // 模拟轮播图数据
+  const mockBanners: Banner[] = [
+    { id: 1, image_url: 'https://placehold.co/750x300/2563EB/white?text=棉花糖教育', title: '欢迎来到棉花糖教育', link_url: '' },
+    { id: 2, image_url: 'https://placehold.co/750x300/F59E0B/white?text=会员特权', title: '开通会员享更多权益', link_url: '/pages/membership/index' },
+    { id: 3, image_url: 'https://placehold.co/750x300/10B981/white?text=邀请好友', title: '邀请好友赚佣金', link_url: '/pages/distribution/index' },
+  ];
 
   useLoad(() => {
     console.log('Page loaded.');
   });
 
   useEffect(() => {
-    // 获取位置
-    getLocation();
+    // 初始化
+    initPage();
   }, []);
 
   useEffect(() => {
-    // 位置变化后加载数据
+    // Tab或筛选变化后加载数据
     if (latitude !== 0 || longitude !== 0) {
       loadData();
     }
-  }, [latitude, longitude, userRole, selectedSubject]);
+  }, [latitude, longitude, activeTab, selectedSubject]);
+
+  // 初始化页面
+  const initPage = async () => {
+    // 设置模拟轮播图
+    setBanners(mockBanners);
+    
+    // 检查登录状态
+    const token = Taro.getStorageSync('token');
+    if (token) {
+      setIsLoggedIn(true);
+      // 检查会员状态
+      const memberExpire = Taro.getStorageSync('member_expire');
+      if (memberExpire && new Date(memberExpire) > new Date()) {
+        setIsMember(true);
+      }
+    }
+    
+    // 获取位置
+    await getLocation();
+  };
 
   // 获取位置
   const getLocation = async () => {
@@ -107,16 +144,16 @@ const IndexPage = () => {
 
   // 加载数据
   const loadData = async () => {
-    if (userRole === 0) {
-      // 家长：加载教师列表
+    if (activeTab === 0) {
+      // 找老师：加载教师列表
       await loadTeachers();
-    } else if (userRole === 1) {
-      // 教师：加载订单列表
+    } else {
+      // 找学生：加载订单列表
       await loadOrders();
     }
   };
 
-  // 加载教师列表（家长端）
+  // 加载教师列表
   const loadTeachers = async () => {
     try {
       setLoading(true);
@@ -138,18 +175,19 @@ const IndexPage = () => {
       }
     } catch (error) {
       console.error('加载教师列表失败:', error);
+      // 使用模拟数据
+      setTeachers(getMockTeachers());
     } finally {
       setLoading(false);
     }
   };
 
-  // 加载订单列表（教师端）
+  // 加载订单列表
   const loadOrders = async () => {
     try {
       setLoading(true);
-      console.log('加载订单，位置:', latitude, longitude);
       const res = await Network.request({
-        url: '/api/orders/teacher',
+        url: '/api/orders/list',
         method: 'GET',
         data: {
           latitude: latitude.toString(),
@@ -166,18 +204,88 @@ const IndexPage = () => {
       }
     } catch (error) {
       console.error('加载订单失败:', error);
+      // 使用模拟数据
+      setOrders(getMockOrders());
     } finally {
       setLoading(false);
     }
   };
 
-  // 切换角色（测试用）
-  const toggleRole = () => {
-    const newRole = userRole === 0 ? 1 : 0;
-    setUserRole(newRole as UserRole);
-    setOrders([]);
-    setTeachers([]);
-  };
+  // 模拟教师数据
+  const getMockTeachers = (): Teacher[] => [
+    {
+      id: 1,
+      nickname: '张老师',
+      avatar: 'https://placehold.co/100/2563EB/white?text=张',
+      real_name: '张明',
+      gender: 1,
+      education: '北京大学·硕士',
+      subjects: ['数学', '物理'],
+      hourly_rate_min: 150,
+      hourly_rate_max: 200,
+      intro: '8年教学经验，擅长中考数学提分',
+      distance: 1200,
+      distance_text: '1.2km',
+    },
+    {
+      id: 2,
+      nickname: '李老师',
+      avatar: 'https://placehold.co/100/EC4899/white?text=李',
+      real_name: '李芳',
+      gender: 2,
+      education: '清华大学·本科',
+      subjects: ['英语', '语文'],
+      hourly_rate_min: 120,
+      hourly_rate_max: 180,
+      intro: '英语专八，口语流利',
+      distance: 2500,
+      distance_text: '2.5km',
+    },
+    {
+      id: 3,
+      nickname: '王老师',
+      avatar: 'https://placehold.co/100/10B981/white?text=王',
+      real_name: '王强',
+      gender: 1,
+      education: '北京师范大学·博士',
+      subjects: ['化学', '生物'],
+      hourly_rate_min: 200,
+      hourly_rate_max: 300,
+      intro: '重点中学在职教师',
+      distance: 3800,
+      distance_text: '3.8km',
+    },
+  ];
+
+  // 模拟订单数据
+  const getMockOrders = (): Order[] => [
+    {
+      id: 1,
+      subject: '数学',
+      hourly_rate: 180,
+      student_grade: '初三',
+      student_gender: 1,
+      address: '朝阳区望京西园',
+      description: '需要数学辅导，目标中考110分以上',
+      status: 0,
+      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      distance: 800,
+      distance_text: '0.8km',
+    },
+    {
+      id: 2,
+      subject: '英语',
+      hourly_rate: 150,
+      student_grade: '高二',
+      student_gender: 2,
+      address: '海淀区中关村',
+      description: '英语口语提升，准备出国',
+      status: 0,
+      created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      distance: 1500,
+      distance_text: '1.5km',
+    },
+  ];
 
   // 格式化时间
   const formatTime = (timeStr: string) => {
@@ -210,29 +318,109 @@ const IndexPage = () => {
     return gender === 1 ? '男' : '女';
   };
 
+  // 处理轮播图点击
+  const handleBannerClick = (banner: Banner) => {
+    if (banner.link_url) {
+      Taro.navigateTo({ url: banner.link_url });
+    }
+  };
+
+  // 查看教师详情
+  const handleViewTeacher = (teacherId: number) => {
+    if (!isLoggedIn || !isMember) {
+      Taro.showModal({
+        title: '提示',
+        content: '开通会员后可查看教师详情和联系方式',
+        confirmText: '开通会员',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/membership/index' });
+          }
+        },
+      });
+      return;
+    }
+    Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${teacherId}` });
+  };
+
+  // 查看订单详情
+  const handleViewOrder = (orderId: number) => {
+    if (!isLoggedIn || !isMember) {
+      Taro.showModal({
+        title: '提示',
+        content: '开通会员后可查看订单详情和联系方式',
+        confirmText: '开通会员',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/membership/index' });
+          }
+        },
+      });
+      return;
+    }
+    Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderId}` });
+  };
+
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 头部定位与角色切换 */}
+      {/* 头部定位 */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center">
             <MapPin size={16} color="#2563EB" className="mr-1" />
             <Text className="text-sm text-gray-700">{currentCity}</Text>
           </View>
-          <View className="flex flex-row items-center gap-2">
-            {/* 测试用：角色切换按钮 */}
-            <View 
-              className="px-3 py-1 rounded-full bg-blue-100"
-              onClick={toggleRole}
-            >
-              <Text className="text-xs text-blue-600">
-                {userRole === 0 ? '家长端' : '教师端'}
-              </Text>
-            </View>
-            <View className="flex flex-row items-center">
-              <SlidersHorizontal size={16} color="#6B7280" className="mr-1" />
-              <Text className="text-sm text-gray-600">筛选</Text>
-            </View>
+          <View className="flex flex-row items-center">
+            <SlidersHorizontal size={16} color="#6B7280" className="mr-1" />
+            <Text className="text-sm text-gray-600">筛选</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 轮播图广告位 */}
+      <View className="bg-white px-4 py-3">
+        <Swiper
+          className="w-full h-32 rounded-xl overflow-hidden"
+          indicatorDots
+          autoplay
+          circular
+          indicatorColor="rgba(255,255,255,0.5)"
+          indicatorActiveColor="#2563EB"
+        >
+          {banners.map((banner) => (
+            <SwiperItem key={banner.id} onClick={() => handleBannerClick(banner)}>
+              <Image
+                src={banner.image_url}
+                className="w-full h-full"
+                mode="aspectFill"
+              />
+            </SwiperItem>
+          ))}
+        </Swiper>
+      </View>
+
+      {/* Tab切换 */}
+      <View className="bg-white px-4 border-b border-gray-200">
+        <View className="flex flex-row">
+          <View
+            className={`flex-1 py-3 flex items-center justify-center border-b-2 ${
+              activeTab === 0 ? 'border-blue-500' : 'border-transparent'
+            }`}
+            onClick={() => setActiveTab(0)}
+          >
+            <Text className={activeTab === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}>
+              找老师
+            </Text>
+          </View>
+          <View
+            className={`flex-1 py-3 flex items-center justify-center border-b-2 ${
+              activeTab === 1 ? 'border-blue-500' : 'border-transparent'
+            }`}
+            onClick={() => setActiveTab(1)}
+          >
+            <Text className={activeTab === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}>
+              找学生
+            </Text>
           </View>
         </View>
       </View>
@@ -258,14 +446,32 @@ const IndexPage = () => {
         </View>
       </View>
 
+      {/* 非会员提示 */}
+      {(!isLoggedIn || !isMember) && (
+        <View className="bg-yellow-50 px-4 py-2 flex flex-row items-center justify-between">
+          <View className="flex flex-row items-center">
+            <Lock size={14} color="#F59E0B" className="mr-2" />
+            <Text className="text-xs text-yellow-700">
+              开通会员可查看完整信息与联系方式
+            </Text>
+          </View>
+          <View 
+            className="px-2 py-1 bg-yellow-500 rounded"
+            onClick={() => Taro.navigateTo({ url: '/pages/membership/index' })}
+          >
+            <Text className="text-xs text-white">立即开通</Text>
+          </View>
+        </View>
+      )}
+
       {/* 内容区域 */}
-      <View className="p-4">
+      <View className="p-4 pb-24">
         {loading ? (
           <View className="flex items-center justify-center py-8">
             <Text className="text-gray-500">加载中...</Text>
           </View>
-        ) : userRole === 0 ? (
-          // ========== 家长端：教师列表 ==========
+        ) : activeTab === 0 ? (
+          // ========== 找老师：教师列表 ==========
           teachers.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
               <Text className="text-gray-500 mb-2">暂无教师</Text>
@@ -287,7 +493,9 @@ const IndexPage = () => {
                       <View className="flex-1 flex flex-col gap-1">
                         <View className="flex flex-row items-center justify-between">
                           <View className="flex flex-row items-center gap-2">
-                            <Text className="text-base font-semibold">{teacher.real_name || teacher.nickname}</Text>
+                            <Text className="text-base font-semibold">
+                              {isMember ? (teacher.real_name || teacher.nickname) : teacher.nickname}
+                            </Text>
                             <Text className="text-xs text-gray-500">{getGenderText(teacher.gender)}</Text>
                           </View>
                           <Text className="text-xs text-gray-400">{teacher.distance_text}</Text>
@@ -322,7 +530,7 @@ const IndexPage = () => {
                           <Button size="sm" className="flex-1" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
                             <Text className="text-sm">预约试课</Text>
                           </Button>
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${teacher.id}` })}>
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleViewTeacher(teacher.id)}>
                             <Text className="text-sm">查看详情</Text>
                           </Button>
                         </View>
@@ -334,11 +542,11 @@ const IndexPage = () => {
             </View>
           )
         ) : (
-          // ========== 教师端：订单列表 ==========
+          // ========== 找学生：订单列表 ==========
           orders.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
               <Text className="text-gray-500 mb-2">暂无订单</Text>
-              <Text className="text-sm text-gray-400">发布需求后，教师可以在这里抢单</Text>
+              <Text className="text-sm text-gray-400">附近暂无新的需求</Text>
             </View>
           ) : (
             <View className="flex flex-col gap-3">
@@ -366,7 +574,9 @@ const IndexPage = () => {
                         </View>
                         <View className="flex flex-row items-center">
                           <MapPin size={12} color="#6B7280" className="mr-1" />
-                          <Text className="text-sm text-gray-600">{order.address}</Text>
+                          <Text className="text-sm text-gray-600">
+                            {isMember ? order.address : '开通会员查看详细地址'}
+                          </Text>
                         </View>
                         <View className="flex flex-row items-center gap-2">
                           <Text className="text-sm text-gray-500">
@@ -382,10 +592,10 @@ const IndexPage = () => {
                           </Text>
                         )}
                         <View className="flex flex-row gap-2 mt-2">
-                          <Button size="sm" className="flex-1" variant="default" onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}>
+                          <Button size="sm" className="flex-1" variant="default" onClick={() => handleViewOrder(order.id)}>
                             <Text className="text-sm">抢单</Text>
                           </Button>
-                          <Button size="sm" className="flex-1" variant="outline" onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}>
+                          <Button size="sm" className="flex-1" variant="outline" onClick={() => handleViewOrder(order.id)}>
                             <Text className="text-sm">详情</Text>
                           </Button>
                         </View>

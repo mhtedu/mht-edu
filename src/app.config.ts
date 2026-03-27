@@ -18,6 +18,8 @@ export default defineAppConfig({
     'pages/org-dashboard/index',
     // 代理端
     'pages/agent-dashboard/index',
+    // PC管理后台
+    'pages/admin/index',
   ],
   window: {
     backgroundTextStyle: 'light',

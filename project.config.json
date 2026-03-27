@@ -2,7 +2,7 @@
   "miniprogramRoot": "./dist-weapp",
   "projectname": "mianhuatang-edu",
   "description": "棉花糖教育成长平台",
-  "appid": "touristappid",
+  "appid": "wx46c4d031889bdb3e",
   "setting": {
     "urlCheck": false,
     "es6": false,
