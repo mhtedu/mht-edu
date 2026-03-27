@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, SlidersHorizontal, Lock } from 'lucide-react-taro';
+import { MapPin, Lock } from 'lucide-react-taro';
 import './index.css';
 
 // 订单类型
@@ -48,17 +48,14 @@ interface Banner {
 }
 
 /**
- * 首页 - 根据Tab显示不同内容
- * 找老师：显示教师列表（家长端视角）
- * 找学生：显示需求订单（教师端视角）
+ * 首页 - 根据用户角色显示不同内容
+ * 家长角色：显示教师列表
+ * 教师角色：显示需求订单
  */
 const IndexPage = () => {
-  // Tab状态：0-找老师，1-找学生
-  const [activeTab, setActiveTab] = useState(0);
-  
   // 用户状态
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMember, setIsMember] = useState(false);
+  const [userRole, setUserRole] = useState(0); // 0-家长, 1-教师
   
   // 位置状态
   const [latitude, setLatitude] = useState<number>(0);
@@ -91,11 +88,11 @@ const IndexPage = () => {
   }, []);
 
   useEffect(() => {
-    // Tab或筛选变化后加载数据
+    // 角色或筛选变化后加载数据
     if (latitude !== 0 || longitude !== 0) {
       loadData();
     }
-  }, [latitude, longitude, activeTab, selectedSubject]);
+  }, [latitude, longitude, userRole, selectedSubject]);
 
   // 初始化页面
   const initPage = async () => {
@@ -105,12 +102,20 @@ const IndexPage = () => {
     // 检查登录状态
     const token = Taro.getStorageSync('token');
     if (token) {
-      setIsLoggedIn(true);
+      // 获取用户角色
+      const role = Taro.getStorageSync('userRole') || 0;
+      setUserRole(role);
+      
       // 检查会员状态
       const memberExpire = Taro.getStorageSync('member_expire');
       if (memberExpire && new Date(memberExpire) > new Date()) {
         setIsMember(true);
       }
+    } else {
+      // 未登录，跳转到登录页
+      setTimeout(() => {
+        Taro.redirectTo({ url: '/pages/login/index' });
+      }, 500);
     }
     
     // 获取位置
@@ -144,11 +149,11 @@ const IndexPage = () => {
 
   // 加载数据
   const loadData = async () => {
-    if (activeTab === 0) {
-      // 找老师：加载教师列表
+    if (userRole === 0) {
+      // 家长：加载教师列表
       await loadTeachers();
     } else {
-      // 找学生：加载订单列表
+      // 教师：加载订单列表
       await loadOrders();
     }
   };
@@ -327,7 +332,7 @@ const IndexPage = () => {
 
   // 查看教师详情
   const handleViewTeacher = (teacherId: number) => {
-    if (!isLoggedIn || !isMember) {
+    if (!isMember) {
       Taro.showModal({
         title: '提示',
         content: '开通会员后可查看教师详情和联系方式',
@@ -345,7 +350,7 @@ const IndexPage = () => {
 
   // 查看订单详情
   const handleViewOrder = (orderId: number) => {
-    if (!isLoggedIn || !isMember) {
+    if (!isMember) {
       Taro.showModal({
         title: '提示',
         content: '开通会员后可查看订单详情和联系方式',
@@ -363,7 +368,7 @@ const IndexPage = () => {
 
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 头部定位 */}
+      {/* 头部定位和角色显示 */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center">
@@ -371,8 +376,11 @@ const IndexPage = () => {
             <Text className="text-sm text-gray-700">{currentCity}</Text>
           </View>
           <View className="flex flex-row items-center">
-            <SlidersHorizontal size={16} color="#6B7280" className="mr-1" />
-            <Text className="text-sm text-gray-600">筛选</Text>
+            <View className="px-3 py-1 rounded-full bg-blue-100">
+              <Text className="text-xs text-blue-600">
+                {userRole === 0 ? '家长端' : '教师端'}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -399,30 +407,11 @@ const IndexPage = () => {
         </Swiper>
       </View>
 
-      {/* Tab切换 */}
-      <View className="bg-white px-4 border-b border-gray-200">
-        <View className="flex flex-row">
-          <View
-            className={`flex-1 py-3 flex items-center justify-center border-b-2 ${
-              activeTab === 0 ? 'border-blue-500' : 'border-transparent'
-            }`}
-            onClick={() => setActiveTab(0)}
-          >
-            <Text className={activeTab === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}>
-              找老师
-            </Text>
-          </View>
-          <View
-            className={`flex-1 py-3 flex items-center justify-center border-b-2 ${
-              activeTab === 1 ? 'border-blue-500' : 'border-transparent'
-            }`}
-            onClick={() => setActiveTab(1)}
-          >
-            <Text className={activeTab === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}>
-              找学生
-            </Text>
-          </View>
-        </View>
+      {/* 标题区域 */}
+      <View className="bg-white px-4 py-3 border-b border-gray-200">
+        <Text className="text-lg font-semibold text-gray-800">
+          {userRole === 0 ? '附近教师' : '附近需求'}
+        </Text>
       </View>
 
       {/* 学科筛选 */}
@@ -447,7 +436,7 @@ const IndexPage = () => {
       </View>
 
       {/* 非会员提示 */}
-      {(!isLoggedIn || !isMember) && (
+      {!isMember && (
         <View className="bg-yellow-50 px-4 py-2 flex flex-row items-center justify-between">
           <View className="flex flex-row items-center">
             <Lock size={14} color="#F59E0B" className="mr-2" />
@@ -470,8 +459,8 @@ const IndexPage = () => {
           <View className="flex items-center justify-center py-8">
             <Text className="text-gray-500">加载中...</Text>
           </View>
-        ) : activeTab === 0 ? (
-          // ========== 找老师：教师列表 ==========
+        ) : userRole === 0 ? (
+          // ========== 家长端：教师列表 ==========
           teachers.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
               <Text className="text-gray-500 mb-2">暂无教师</Text>
@@ -542,7 +531,7 @@ const IndexPage = () => {
             </View>
           )
         ) : (
-          // ========== 找学生：订单列表 ==========
+          // ========== 教师端：订单列表 ==========
           orders.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
               <Text className="text-gray-500 mb-2">暂无订单</Text>
@@ -609,16 +598,18 @@ const IndexPage = () => {
         )}
       </View>
 
-      {/* 底部发布按钮 */}
-      <View className="fixed bottom-20 right-4 z-50">
-        <Button 
-          className="w-12 h-12 rounded-full shadow-lg" 
-          size="lg"
-          onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}
-        >
-          <Text className="text-2xl text-white">+</Text>
-        </Button>
-      </View>
+      {/* 底部发布按钮 - 仅家长端显示 */}
+      {userRole === 0 && (
+        <View className="fixed bottom-20 right-4 z-50">
+          <Button 
+            className="w-12 h-12 rounded-full shadow-lg" 
+            size="lg"
+            onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}
+          >
+            <Text className="text-2xl text-white">+</Text>
+          </Button>
+        </View>
+      )}
     </View>
   );
 };

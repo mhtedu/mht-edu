@@ -1,13 +1,15 @@
 export default defineAppConfig({
   pages: [
     'pages/index/index',
+    'pages/mall/index',
     'pages/message/index',
-    'pages/orders/index',
     'pages/profile/index',
     // 发布需求
     'pages/publish/index',
     // 教师详情
     'pages/teacher-detail/index',
+    // 订单列表
+    'pages/orders/index',
     // 订单详情
     'pages/order-detail/index',
     // 会员中心
@@ -20,6 +22,10 @@ export default defineAppConfig({
     'pages/agent-dashboard/index',
     // PC管理后台
     'pages/admin/index',
+    // 登录注册
+    'pages/login/index',
+    // 商品详情
+    'pages/product-detail/index',
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -40,16 +46,16 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/home-active.png',
       },
       {
+        pagePath: 'pages/mall/index',
+        text: '商城',
+        iconPath: './assets/tabbar/shopping-cart.png',
+        selectedIconPath: './assets/tabbar/shopping-cart-active.png',
+      },
+      {
         pagePath: 'pages/message/index',
         text: '消息',
         iconPath: './assets/tabbar/message-square.png',
         selectedIconPath: './assets/tabbar/message-square-active.png',
-      },
-      {
-        pagePath: 'pages/orders/index',
-        text: '订单',
-        iconPath: './assets/tabbar/clipboard-list.png',
-        selectedIconPath: './assets/tabbar/clipboard-list-active.png',
       },
       {
         pagePath: 'pages/profile/index',
