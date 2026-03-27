@@ -5,7 +5,7 @@ import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Lock } from 'lucide-react-taro';
+import { MapPin, Lock, Building2 } from 'lucide-react-taro';
 import './index.css';
 
 // 订单类型
@@ -152,9 +152,12 @@ const IndexPage = () => {
     if (userRole === 0) {
       // 家长：加载教师列表
       await loadTeachers();
-    } else {
+    } else if (userRole === 1) {
       // 教师：加载订单列表
       await loadOrders();
+    } else {
+      // 机构：加载待审核教师/订单
+      setLoading(false);
     }
   };
 
@@ -378,7 +381,7 @@ const IndexPage = () => {
           <View className="flex flex-row items-center">
             <View className="px-3 py-1 rounded-full bg-blue-100">
               <Text className="text-xs text-blue-600">
-                {userRole === 0 ? '家长端' : '教师端'}
+                {userRole === 0 ? '家长端' : userRole === 1 ? '教师端' : '机构端'}
               </Text>
             </View>
           </View>
@@ -410,30 +413,32 @@ const IndexPage = () => {
       {/* 标题区域 */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <Text className="text-lg font-semibold text-gray-800">
-          {userRole === 0 ? '附近教师' : '附近需求'}
+          {userRole === 0 ? '附近教师' : userRole === 1 ? '附近需求' : '机构工作台'}
         </Text>
       </View>
 
-      {/* 学科筛选 */}
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
-        <View className="flex flex-row gap-2 overflow-x-auto">
-          {subjects.map((subject) => (
-            <View
-              key={subject}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
-                selectedSubject === subject 
-                  ? 'bg-blue-500' 
-                  : 'bg-gray-100'
-              }`}
-              onClick={() => setSelectedSubject(subject)}
-            >
-              <Text className={selectedSubject === subject ? 'text-white' : 'text-gray-700'}>
-                {subject}
-              </Text>
-            </View>
-          ))}
+      {/* 学科筛选 - 仅家长和教师端显示 */}
+      {userRole !== 2 && (
+        <View className="bg-white px-4 py-3 border-b border-gray-200">
+          <View className="flex flex-row gap-2 overflow-x-auto">
+            {subjects.map((subject) => (
+              <View
+                key={subject}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+                  selectedSubject === subject 
+                    ? 'bg-blue-500' 
+                    : 'bg-gray-100'
+                }`}
+                onClick={() => setSelectedSubject(subject)}
+              >
+                <Text className={selectedSubject === subject ? 'text-white' : 'text-gray-700'}>
+                  {subject}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* 非会员提示 */}
       {!isMember && (
@@ -530,7 +535,7 @@ const IndexPage = () => {
               ))}
             </View>
           )
-        ) : (
+        ) : userRole === 1 ? (
           // ========== 教师端：订单列表 ==========
           orders.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
@@ -595,6 +600,74 @@ const IndexPage = () => {
               })}
             </View>
           )
+        ) : (
+          // ========== 机构端：工作台入口 ==========
+          <View className="flex flex-col gap-4">
+            <Card className="bg-white">
+              <CardContent className="p-4">
+                <View className="flex flex-row items-center gap-3">
+                  <View className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Building2 size={24} color="#9333EA" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-semibold">机构管理</Text>
+                    <Text className="text-gray-500 text-xs mt-1">管理机构信息、教师和课程</Text>
+                  </View>
+                  <Button size="sm" onClick={() => Taro.navigateTo({ url: '/pages/org-dashboard/index' })}>
+                    <Text className="text-white text-sm">进入</Text>
+                  </Button>
+                </View>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white">
+              <CardContent className="p-4">
+                <View className="flex flex-row items-center justify-between mb-3">
+                  <Text className="font-semibold">今日数据</Text>
+                  <Text className="text-gray-400 text-xs">更新于刚刚</Text>
+                </View>
+                <View className="flex flex-row justify-around">
+                  <View className="flex flex-col items-center">
+                    <Text className="text-2xl font-bold text-blue-500">12</Text>
+                    <Text className="text-gray-500 text-xs mt-1">在册教师</Text>
+                  </View>
+                  <View className="flex flex-col items-center">
+                    <Text className="text-2xl font-bold text-green-500">28</Text>
+                    <Text className="text-gray-500 text-xs mt-1">在教课程</Text>
+                  </View>
+                  <View className="flex flex-col items-center">
+                    <Text className="text-2xl font-bold text-orange-500">156</Text>
+                    <Text className="text-gray-500 text-xs mt-1">学员数量</Text>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white">
+              <CardContent className="p-4">
+                <View className="flex flex-row items-center justify-between mb-3">
+                  <Text className="font-semibold">待处理事项</Text>
+                  <Badge variant="destructive">
+                    <Text className="text-xs">3项</Text>
+                  </Badge>
+                </View>
+                <View className="flex flex-col gap-3">
+                  <View className="flex flex-row items-center justify-between">
+                    <Text className="text-gray-600 text-sm">待审核教师申请</Text>
+                    <Text className="text-blue-500 font-semibold">2</Text>
+                  </View>
+                  <View className="flex flex-row items-center justify-between">
+                    <Text className="text-gray-600 text-sm">待确认课程预约</Text>
+                    <Text className="text-blue-500 font-semibold">1</Text>
+                  </View>
+                  <View className="flex flex-row items-center justify-between">
+                    <Text className="text-gray-600 text-sm">待处理家长咨询</Text>
+                    <Text className="text-blue-500 font-semibold">0</Text>
+                  </View>
+                </View>
+              </CardContent>
+            </Card>
+          </View>
         )}
       </View>
 

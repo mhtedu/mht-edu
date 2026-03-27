@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { 
   User, Crown, Users, 
   ChevronRight, Star, Wallet, Gift, Settings,
-  FileText, Award, Shield, BookOpen, GraduationCap
+  FileText, Award, Shield, BookOpen, GraduationCap, Building2
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -15,7 +15,7 @@ interface UserInfo {
   id: number;
   nickname: string;
   avatar: string;
-  role: number; // 0-家长, 1-教师
+  role: number; // 0-家长, 1-教师, 2-机构
   mobile: string;
   membership_type: number;
   membership_expire_at: string | null;
@@ -25,6 +25,7 @@ interface UserInfo {
 const roleConfig: Record<number, { name: string; icon: typeof User; color: string }> = {
   0: { name: '家长', icon: GraduationCap, color: 'bg-blue-500' },
   1: { name: '教师', icon: BookOpen, color: 'bg-green-500' },
+  2: { name: '机构', icon: Building2, color: 'bg-purple-500' },
 };
 
 /**
@@ -137,7 +138,16 @@ const ProfilePage = () => {
     { icon: Gift, title: '邀请有礼', desc: '赚佣金', url: '/pages/distribution/index', badge: '' },
   ];
 
-  const menus = currentRole === 0 ? parentMenus : teacherMenus;
+  // 机构端菜单
+  const orgMenus = [
+    { icon: Building2, title: '机构管理', desc: '机构信息设置', url: '/pages/org-dashboard/index', badge: '' },
+    { icon: Users, title: '教师管理', desc: '管理机构教师', url: '/pages/org-teachers/index', badge: '' },
+    { icon: FileText, title: '课程管理', desc: '课程发布与统计', url: '/pages/org-courses/index', badge: '' },
+    { icon: Crown, title: '会员中心', desc: isMember ? '已开通' : '未开通', url: '/pages/membership/index', badge: isMember ? '' : '开通' },
+    { icon: Gift, title: '邀请有礼', desc: '赚佣金', url: '/pages/distribution/index', badge: '' },
+  ];
+
+  const menus = currentRole === 0 ? parentMenus : currentRole === 1 ? teacherMenus : orgMenus;
 
   // 未登录状态
   if (!isLoggedIn) {
@@ -189,18 +199,18 @@ const ProfilePage = () => {
         <View className="bg-white bg-opacity-20 rounded-lg p-3">
           <Text className="text-white text-xs mb-2">当前身份：{roleInfo.name}</Text>
           <View className="flex flex-row gap-2">
-            {[0, 1].map((role) => {
+            {[0, 1, 2].map((role) => {
               const RoleIcon = roleConfig[role].icon;
               const isActive = currentRole === role;
               return (
                 <View
                   key={role}
                   className={`flex-1 px-3 py-2 rounded-lg flex flex-row items-center justify-center ${
-                    isActive ? 'bg-white' : 'bg-white bg-opacity-30'
+                    isActive ? 'bg-white' : 'bg-blue-400'
                   }`}
                   onClick={() => switchRole(role)}
                 >
-                  <RoleIcon size={16} color={isActive ? '#2563EB' : 'white'} />
+                  <RoleIcon size={16} color={isActive ? '#2563EB' : '#ffffff'} />
                   <Text className={`ml-1 text-sm ${isActive ? 'text-blue-500 font-semibold' : 'text-white'}`}>
                     {roleConfig[role].name}
                   </Text>
