@@ -54,7 +54,9 @@ const ProfilePage = () => {
       return;
     }
     setIsLoggedIn(true);
-    const role = Taro.getStorageSync('userRole') || 0;
+    // 确保角色值转换为数字
+    const savedRole = Taro.getStorageSync('userRole');
+    const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
     setCurrentRole(role);
     
     // 检查会员状态（每端独立）

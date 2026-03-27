@@ -29,7 +29,8 @@ const MembershipPage = () => {
 
   useEffect(() => {
     // 获取当前角色
-    const role = Taro.getStorageSync('userRole') || 0;
+    const savedRole = Taro.getStorageSync('userRole');
+    const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
     setCurrentRole(role);
     
     // 检查当前角色的会员状态

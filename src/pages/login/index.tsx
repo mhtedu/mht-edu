@@ -26,7 +26,9 @@ const LoginPage = () => {
   useEffect(() => {
     const savedRole = Taro.getStorageSync('userRole');
     if (savedRole !== '' && savedRole !== undefined && savedRole !== null) {
-      setSelectedRole(savedRole as UserRole);
+      // 确保转换为数字
+      const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : savedRole;
+      setSelectedRole(role as UserRole);
     }
   }, []);
 
@@ -73,12 +75,17 @@ const LoginPage = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // 保存用户信息
+      console.log('登录提交 - selectedRole:', selectedRole, '类型:', typeof selectedRole);
       Taro.setStorageSync('token', 'mock_token_' + Date.now());
       Taro.setStorageSync('userRole', selectedRole);
       Taro.setStorageSync('userPhone', phone);
       if (nickname) {
         Taro.setStorageSync('userNickname', nickname);
       }
+
+      // 验证保存结果
+      const savedRole = Taro.getStorageSync('userRole');
+      console.log('验证保存结果 - userRole:', savedRole, '类型:', typeof savedRole);
 
       Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
 
@@ -151,14 +158,17 @@ const LoginPage = () => {
             {/* 角色选择 - 登录和注册都显示 */}
             <View className="mb-6">
               <Text className="text-gray-600 text-sm mb-3">
-                选择您的身份
+                请选择您的身份（必选）
               </Text>
               <View className="flex flex-row gap-2">
                 <View
                   className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
                     selectedRole === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   }`}
-                  onClick={() => setSelectedRole(0)}
+                  onClick={() => {
+                    console.log('点击选择家长，当前 selectedRole:', selectedRole);
+                    setSelectedRole(0);
+                  }}
                 >
                   <GraduationCap size={28} color={selectedRole === 0 ? '#2563EB' : '#9CA3AF'} />
                   <Text className={`mt-1 text-sm ${selectedRole === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
@@ -169,7 +179,10 @@ const LoginPage = () => {
                   className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
                     selectedRole === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   }`}
-                  onClick={() => setSelectedRole(1)}
+                  onClick={() => {
+                    console.log('点击选择教师，当前 selectedRole:', selectedRole);
+                    setSelectedRole(1);
+                  }}
                 >
                   <BookOpen size={28} color={selectedRole === 1 ? '#2563EB' : '#9CA3AF'} />
                   <Text className={`mt-1 text-sm ${selectedRole === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
@@ -180,7 +193,10 @@ const LoginPage = () => {
                   className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
                     selectedRole === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   }`}
-                  onClick={() => setSelectedRole(2)}
+                  onClick={() => {
+                    console.log('点击选择机构，当前 selectedRole:', selectedRole);
+                    setSelectedRole(2);
+                  }}
                 >
                   <Building2 size={28} color={selectedRole === 2 ? '#2563EB' : '#9CA3AF'} />
                   <Text className={`mt-1 text-sm ${selectedRole === 2 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>

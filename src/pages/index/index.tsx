@@ -1,5 +1,5 @@
 import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components';
-import Taro, { useLoad } from '@tarojs/taro';
+import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,6 +82,24 @@ const IndexPage = () => {
     console.log('Page loaded.');
   });
 
+  // 每次页面显示时重新读取角色
+  useDidShow(() => {
+    const token = Taro.getStorageSync('token');
+    if (!token) {
+      Taro.redirectTo({ url: '/pages/login/index' });
+      return;
+    }
+    
+    // 重新读取角色
+    const savedRole = Taro.getStorageSync('userRole');
+    const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
+    console.log('useDidShow - 读取到的角色值:', savedRole, '转换后:', role);
+    
+    if (role !== userRole) {
+      setUserRole(role);
+    }
+  });
+
   useEffect(() => {
     // 初始化
     initPage();
@@ -102,8 +120,10 @@ const IndexPage = () => {
     // 检查登录状态
     const token = Taro.getStorageSync('token');
     if (token) {
-      // 获取用户角色
-      const role = Taro.getStorageSync('userRole') || 0;
+      // 获取用户角色 - 确保转换为数字
+      const savedRole = Taro.getStorageSync('userRole');
+      const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
+      console.log('读取到的角色值:', savedRole, '转换后:', role);
       setUserRole(role);
       
       // 检查会员状态
@@ -460,6 +480,10 @@ const IndexPage = () => {
 
       {/* 内容区域 */}
       <View className="p-4 pb-24">
+        {(() => {
+          console.log('渲染内容区域 - userRole:', userRole, '类型:', typeof userRole);
+          return null;
+        })()}
         {loading ? (
           <View className="flex items-center justify-center py-8">
             <Text className="text-gray-500">加载中...</Text>
