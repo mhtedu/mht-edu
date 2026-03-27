@@ -1,12 +1,11 @@
 import { View, Text, Image } from '@tarojs/components';
-import { useLoad } from '@tarojs/taro';
+import Taro, { useLoad } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, SlidersHorizontal, Star, BookOpen } from 'lucide-react-taro';
+import { MapPin, SlidersHorizontal } from 'lucide-react-taro';
 import './index.css';
 
 // 订单类型
@@ -51,7 +50,6 @@ type UserRole = 0 | 1 | 2 | 3;
 const IndexPage = () => {
   // 用户状态
   const [userRole, setUserRole] = useState<UserRole>(0); // 默认家长
-  const [userId, setUserId] = useState<number>(1); // 测试用用户ID
   
   // 位置状态
   const [latitude, setLatitude] = useState<number>(0);
@@ -321,10 +319,10 @@ const IndexPage = () => {
                         
                         {/* 操作按钮 */}
                         <View className="flex flex-row gap-2 mt-3">
-                          <Button size="sm" className="flex-1">
+                          <Button size="sm" className="flex-1" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
                             <Text className="text-sm">预约试课</Text>
                           </Button>
-                          <Button size="sm" variant="outline" className="flex-1">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${teacher.id}` })}>
                             <Text className="text-sm">查看详情</Text>
                           </Button>
                         </View>
@@ -384,10 +382,10 @@ const IndexPage = () => {
                           </Text>
                         )}
                         <View className="flex flex-row gap-2 mt-2">
-                          <Button size="sm" className="flex-1" variant="default">
+                          <Button size="sm" className="flex-1" variant="default" onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}>
                             <Text className="text-sm">抢单</Text>
                           </Button>
-                          <Button size="sm" className="flex-1" variant="outline">
+                          <Button size="sm" className="flex-1" variant="outline" onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}>
                             <Text className="text-sm">详情</Text>
                           </Button>
                         </View>
@@ -403,8 +401,12 @@ const IndexPage = () => {
 
       {/* 底部发布按钮 */}
       <View className="fixed bottom-20 right-4 z-50">
-        <Button className="w-12 h-12 rounded-full shadow-lg" size="lg">
-          <Text className="text-2xl">+</Text>
+        <Button 
+          className="w-12 h-12 rounded-full shadow-lg" 
+          size="lg"
+          onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}
+        >
+          <Text className="text-2xl text-white">+</Text>
         </Button>
       </View>
     </View>

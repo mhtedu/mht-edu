@@ -4,6 +4,20 @@ export default defineAppConfig({
     'pages/message/index',
     'pages/orders/index',
     'pages/profile/index',
+    // 发布需求
+    'pages/publish/index',
+    // 教师详情
+    'pages/teacher-detail/index',
+    // 订单详情
+    'pages/order-detail/index',
+    // 会员中心
+    'pages/membership/index',
+    // 分销中心
+    'pages/distribution/index',
+    // 机构端
+    'pages/org-dashboard/index',
+    // 代理端
+    'pages/agent-dashboard/index',
   ],
   window: {
     backgroundTextStyle: 'light',
