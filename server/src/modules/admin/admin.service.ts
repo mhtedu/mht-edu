@@ -1,73 +1,82 @@
-import { Injectable } from '@nestjs/common';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { 
+  query, 
+  queryOne, 
+  insert, 
+  update, 
+  closePool 
+} from '@/storage/database/mysql-client';
+import { RowDataPacket } from 'mysql2/promise';
 
 @Injectable()
-export class AdminService {
-  private supabase = getSupabaseClient();
+export class AdminService implements OnModuleInit, OnModuleDestroy {
+  onModuleInit() {
+    console.log('AdminService initialized with MySQL connection');
+  }
+
+  async onModuleDestroy() {
+    await closePool();
+  }
 
   /**
    * 获取统计数据
    */
   async getStats() {
     // 获取用户统计
-    const { count: totalUsers } = await this.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: totalTeachers } = await this.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 1);
-
-    const { count: totalParents } = await this.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 0);
-
-    const { count: totalOrgs } = await this.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 2);
-
-    const { count: totalAgents } = await this.supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 3);
+    const [totalUsersRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM users WHERE deleted_at IS NULL'
+    );
+    
+    const [totalTeachersRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM users WHERE role = 1 AND deleted_at IS NULL'
+    );
+    
+    const [totalParentsRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM users WHERE role = 0 AND deleted_at IS NULL'
+    );
+    
+    const [totalOrgsRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM users WHERE role = 2 AND deleted_at IS NULL'
+    );
+    
+    const [totalAgentsRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM users WHERE role = 3 AND deleted_at IS NULL'
+    );
 
     // 获取订单统计
-    const { count: totalOrders } = await this.supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: pendingOrders } = await this.supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 0);
-
-    const { count: completedOrders } = await this.supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 4);
+    const [totalOrdersRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM orders WHERE deleted_at IS NULL'
+    );
+    
+    const [pendingOrdersRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM orders WHERE status = 0 AND deleted_at IS NULL'
+    );
+    
+    const [completedOrdersRows] = await query<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM orders WHERE status = 4 AND deleted_at IS NULL'
+    );
 
     // 获取营收统计
-    const { data: revenueData } = await this.supabase
-      .from('transactions')
-      .select('amount')
-      .eq('status', 1);
+    const [revenueRows] = await query<RowDataPacket[]>(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE status = 1'
+    );
 
-    const totalRevenue = revenueData?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+    const [monthRevenueRows] = await query<RowDataPacket[]>(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM transactions 
+       WHERE status = 1 AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')`
+    );
 
     return {
-      totalUsers: totalUsers || 0,
-      totalTeachers: totalTeachers || 0,
-      totalParents: totalParents || 0,
-      totalOrgs: totalOrgs || 0,
-      totalAgents: totalAgents || 0,
-      totalOrders: totalOrders || 0,
-      pendingOrders: pendingOrders || 0,
-      completedOrders: completedOrders || 0,
-      totalRevenue,
-      monthRevenue: Math.floor(totalRevenue * 0.3), // 模拟本月营收
+      totalUsers: totalUsersRows?.[0]?.count || 0,
+      totalTeachers: totalTeachersRows?.[0]?.count || 0,
+      totalParents: totalParentsRows?.[0]?.count || 0,
+      totalOrgs: totalOrgsRows?.[0]?.count || 0,
+      totalAgents: totalAgentsRows?.[0]?.count || 0,
+      totalOrders: totalOrdersRows?.[0]?.count || 0,
+      pendingOrders: pendingOrdersRows?.[0]?.count || 0,
+      completedOrders: completedOrdersRows?.[0]?.count || 0,
+      totalRevenue: Number(revenueRows?.[0]?.total || 0),
+      monthRevenue: Number(monthRevenueRows?.[0]?.total || 0),
     };
   }
 
@@ -75,45 +84,42 @@ export class AdminService {
    * 获取订单列表
    */
   async getOrders(page: number, pageSize: number, status?: number) {
-    let query = this.supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+    const offset = (page - 1) * pageSize;
+    let sql = 'SELECT * FROM orders WHERE deleted_at IS NULL';
+    const params: any[] = [];
 
     if (status !== undefined) {
-      query = query.eq('status', status);
+      sql += ' AND status = ?';
+      params.push(status);
     }
 
-    const { data, error } = await query;
-    if (error) {
-      console.error('获取订单失败:', error);
-      return [];
-    }
-    return data || [];
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(pageSize, offset);
+
+    const [rows] = await query<RowDataPacket[]>(sql, params);
+    return rows;
   }
 
   /**
    * 获取用户列表
    */
   async getUsers(page: number, pageSize: number, role?: number) {
-    let query = this.supabase
-      .from('users')
-      .select('id, nickname, avatar, role, mobile, membership_expire_at, created_at')
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+    const offset = (page - 1) * pageSize;
+    let sql = `SELECT id, nickname, avatar, role, mobile, membership_expire_at, created_at 
+               FROM users WHERE deleted_at IS NULL`;
+    const params: any[] = [];
 
     if (role !== undefined) {
-      query = query.eq('role', role);
+      sql += ' AND role = ?';
+      params.push(role);
     }
 
-    const { data, error } = await query;
-    if (error) {
-      console.error('获取用户失败:', error);
-      return [];
-    }
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(pageSize, offset);
 
-    return (data || []).map(user => ({
+    const [rows] = await query<RowDataPacket[]>(sql, params);
+
+    return rows.map((user: any) => ({
       id: user.id,
       nickname: user.nickname,
       avatar: user.avatar,
@@ -121,7 +127,7 @@ export class AdminService {
       phone: user.mobile ? `${user.mobile.slice(0, 3)}****${user.mobile.slice(-4)}` : '',
       isMember: user.membership_expire_at ? new Date(user.membership_expire_at) > new Date() : false,
       memberExpire: user.membership_expire_at || '',
-      createdAt: user.created_at?.split('T')[0] || '',
+      createdAt: user.created_at?.toISOString?.()?.split('T')[0] || '',
     }));
   }
 
@@ -150,11 +156,17 @@ export class AdminService {
    * 获取广告位列表
    */
   async getBanners() {
-    // TODO: 从数据库获取广告位
-    return [
-      { id: 1, title: '欢迎来到棉花糖教育', imageUrl: '', linkUrl: '', sort: 1, isActive: true },
-      { id: 2, title: '开通会员享更多权益', imageUrl: '', linkUrl: '/pages/membership/index', sort: 2, isActive: true },
-      { id: 3, title: '邀请好友赚佣金', imageUrl: '', linkUrl: '/pages/distribution/index', sort: 3, isActive: true },
-    ];
+    const [rows] = await query<RowDataPacket[]>(
+      'SELECT * FROM banners WHERE is_active = 1 ORDER BY sort ASC'
+    );
+    
+    return rows.map((banner: any) => ({
+      id: banner.id,
+      title: banner.title,
+      imageUrl: banner.image_url,
+      linkUrl: banner.link_url,
+      sort: banner.sort,
+      isActive: banner.is_active,
+    }));
   }
 }
