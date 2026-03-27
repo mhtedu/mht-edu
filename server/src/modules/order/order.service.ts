@@ -3,6 +3,33 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 @Injectable()
 export class OrderService {
+  /**
+   * 计算两点之间的距离（米）
+   * 使用 Haversine 公式
+   */
+  private calculateDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number {
+    const R = 6371000; // 地球半径（米）
+    const dLat = this.toRad(lat2 - lat1);
+    const dLng = this.toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) *
+        Math.cos(this.toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
   async createOrder(orderData: {
     parent_id: number;
     subject: string;
@@ -55,22 +82,46 @@ export class OrderService {
     pageSize?: number;
   }) {
     const client = getSupabaseClient();
-    const { page = 1, pageSize = 20 } = params;
+    const { page = 1, pageSize = 20, maxDistance = 50000 } = params;
+    const teacherLat = parseFloat(params.latitude);
+    const teacherLng = parseFloat(params.longitude);
 
-    // TODO: 实现基于距离的计算和筛选
-    // 目前先返回所有待抢单的订单
+    // 获取所有待抢单的订单
     const { data, error } = await client
       .from('orders')
-      .select(`
-        *,
-        users!orders_parent_id_fkey (id, nickname, avatar)
-      `)
+      .select('*')
       .eq('status', 0) // 待抢单
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+      .order('created_at', { ascending: false });
 
     if (error) throw new Error(`查询可抢订单失败: ${error.message}`);
-    return data;
+
+    // 计算距离并过滤
+    const ordersWithDistance = (data || [])
+      .map(order => {
+        const orderLat = parseFloat(order.latitude);
+        const orderLng = parseFloat(order.longitude);
+        const distance = this.calculateDistance(teacherLat, teacherLng, orderLat, orderLng);
+        return {
+          ...order,
+          distance,
+          distance_text: this.formatDistance(distance),
+        };
+      })
+      .filter(order => order.distance <= maxDistance)
+      .sort((a, b) => a.distance - b.distance)
+      .slice((page - 1) * pageSize, page * pageSize);
+
+    return ordersWithDistance;
+  }
+
+  /**
+   * 格式化距离显示
+   */
+  private formatDistance(meters: number): string {
+    if (meters < 1000) {
+      return `${Math.round(meters)}米`;
+    }
+    return `${(meters / 1000).toFixed(1)}公里`;
   }
 
   async getOrderById(id: number) {
