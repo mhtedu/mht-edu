@@ -18,6 +18,10 @@ export default defineAppConfig({
     'pages/distribution/index',
     // 机构端
     'pages/org-dashboard/index',
+    'pages/org-teachers/index',
+    'pages/org-courses/index',
+    'pages/org-invite/index',
+    'pages/org-settings/index',
     // 代理端
     'pages/agent-dashboard/index',
     // PC管理后台

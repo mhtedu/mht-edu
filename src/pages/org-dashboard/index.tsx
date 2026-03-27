@@ -36,8 +36,8 @@ const OrgDashboardPage = () => {
 
   const quickActions = [
     { icon: Plus, title: '邀请教师', desc: '邀请教师入驻', url: '/pages/org-invite/index' },
-    { icon: FileText, title: '派单管理', desc: '自动派单设置', url: '/pages/org-dispatch/index' },
-    { icon: DollarSign, title: '抽成设置', desc: '设置抽成比例', url: '/pages/org-commission/index' },
+    { icon: FileText, title: '课程管理', desc: '管理课程列表', url: '/pages/org-courses/index' },
+    { icon: DollarSign, title: '教师管理', desc: '管理旗下教师', url: '/pages/org-teachers/index' },
     { icon: Settings, title: '机构设置', desc: '编辑机构信息', url: '/pages/org-settings/index' },
   ];
 

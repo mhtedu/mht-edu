@@ -10,6 +10,7 @@ import { RobotModule } from './modules/robot/robot.module';
 import { TeacherProfileModule } from './modules/teacher-profile/teacher-profile.module';
 import { OrderCloseModule } from './modules/order-close/order-close.module';
 import { CityModule } from './modules/city/city.module';
+import { OrgModule } from './modules/org/org.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CityModule } from './modules/city/city.module';
     TeacherProfileModule,
     OrderCloseModule,
     CityModule,
+    OrgModule,
   ],
 })
 export class AppModule {}
