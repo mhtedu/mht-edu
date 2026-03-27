@@ -5,7 +5,8 @@ import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Lock, Building2 } from 'lucide-react-taro';
+import { MapPin, Lock, Building2, ChevronDown } from 'lucide-react-taro';
+import CitySelector from '@/components/city-selector';
 import './index.css';
 
 // 订单类型
@@ -57,6 +58,15 @@ interface FeedAd {
   ad_type: number;
 }
 
+// 城市类型
+interface City {
+  id: number;
+  name: string;
+  pinyin: string;
+  first_letter: string;
+  is_hot: number;
+}
+
 /**
  * 首页 - 根据用户角色显示不同内容
  * 家长角色：显示教师列表
@@ -71,6 +81,7 @@ const IndexPage = () => {
   const [latitude, setLatitude] = useState<number>(0);
   const [longitude, setLongitude] = useState<number>(0);
   const [currentCity, setCurrentCity] = useState('定位中...');
+  const [showCitySelector, setShowCitySelector] = useState(false);
   
   // 数据状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -127,7 +138,7 @@ const IndexPage = () => {
     if (latitude !== 0 || longitude !== 0) {
       loadData();
     }
-  }, [latitude, longitude, userRole, selectedSubject]);
+  }, [latitude, longitude, userRole, selectedSubject, currentCity]);
 
   // 初始化页面
   const initPage = async () => {
@@ -150,6 +161,12 @@ const IndexPage = () => {
       if (memberExpire && new Date(memberExpire) > new Date()) {
         setIsMember(true);
       }
+      
+      // 读取用户选择的城市
+      const savedCity = Taro.getStorageSync('selectedCity');
+      if (savedCity) {
+        setCurrentCity(savedCity);
+      }
     } else {
       // 未登录，跳转到登录页
       setTimeout(() => {
@@ -169,20 +186,44 @@ const IndexPage = () => {
         // 模拟北京望京位置
         setLatitude(39.995);
         setLongitude(116.473);
-        setCurrentCity('北京·望京');
+        if (currentCity === '定位中...') {
+          setCurrentCity('北京·望京');
+        }
         return;
       }
       
       const res = await Taro.getLocation({ type: 'gcj02' });
       setLatitude(res.latitude);
       setLongitude(res.longitude);
-      setCurrentCity('已定位');
+      if (currentCity === '定位中...') {
+        setCurrentCity('已定位');
+      }
     } catch (error) {
       console.error('获取位置失败:', error);
       // 使用默认位置（北京）
       setLatitude(39.995);
       setLongitude(116.473);
-      setCurrentCity('北京');
+      if (currentCity === '定位中...') {
+        setCurrentCity('北京');
+      }
+    }
+  };
+
+  // 选择城市
+  const handleSelectCity = async (city: City) => {
+    setCurrentCity(city.name);
+    Taro.setStorageSync('selectedCity', city.name);
+    setShowCitySelector(false);
+    
+    // 更新用户城市到后端
+    try {
+      await Network.request({
+        url: '/api/city/select',
+        method: 'POST',
+        data: { cityId: city.id },
+      });
+    } catch (error) {
+      console.error('更新城市失败:', error);
     }
   };
 
@@ -211,6 +252,7 @@ const IndexPage = () => {
           latitude: latitude.toString(),
           longitude: longitude.toString(),
           subject: selectedSubject,
+          city: currentCity !== '定位中...' ? currentCity : undefined,
           page: 1,
           pageSize: 20,
         },
@@ -240,6 +282,7 @@ const IndexPage = () => {
           latitude: latitude.toString(),
           longitude: longitude.toString(),
           subject: selectedSubject !== '全部' ? selectedSubject : undefined,
+          city: currentCity !== '定位中...' ? currentCity : undefined,
           page: 1,
           pageSize: 20,
         },
@@ -413,9 +456,13 @@ const IndexPage = () => {
       {/* 头部定位和角色显示 */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <View className="flex flex-row items-center justify-between">
-          <View className="flex flex-row items-center">
+          <View 
+            className="flex flex-row items-center"
+            onClick={() => setShowCitySelector(true)}
+          >
             <MapPin size={16} color="#2563EB" className="mr-1" />
             <Text className="text-sm text-gray-700">{currentCity}</Text>
+            <ChevronDown size={14} color="#9CA3AF" />
           </View>
           <View className="flex flex-row items-center">
             <View className="px-3 py-1 rounded-full bg-blue-100">
@@ -752,6 +799,14 @@ const IndexPage = () => {
           </Button>
         </View>
       )}
+
+      {/* 城市选择器 */}
+      <CitySelector
+        visible={showCitySelector}
+        currentCity={currentCity}
+        onClose={() => setShowCitySelector(false)}
+        onSelect={handleSelectCity}
+      />
     </View>
   );
 };

@@ -18,9 +18,13 @@ CREATE TABLE IF NOT EXISTS users (
     status SMALLINT DEFAULT 1 COMMENT '状态: 1正常 0封禁',
     membership_type SMALLINT DEFAULT 0 COMMENT '会员类型: 0免费 1付费',
     membership_expire_at DATETIME COMMENT '会员过期时间',
+    membership_terminated SMALLINT DEFAULT 0 COMMENT '会员权益是否被终止(关闭订单导致)',
+    wechat_id VARCHAR(50) COMMENT '微信号',
+    wechat_qrcode VARCHAR(255) COMMENT '微信二维码',
     latitude DECIMAL(10,7) COMMENT '纬度',
     longitude DECIMAL(10,7) COMMENT '经度',
     city_code VARCHAR(10) COMMENT '城市编码',
+    city_name VARCHAR(50) COMMENT '城市名称',
     inviter_id INT COMMENT '一级邀请人ID',
     inviter_2nd_id INT COMMENT '二级邀请人ID',
     city_agent_id INT COMMENT '所属城市代理ID',
@@ -30,7 +34,8 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_openid (openid),
     INDEX idx_mobile (mobile),
     INDEX idx_inviter (inviter_id),
-    INDEX idx_location (latitude, longitude)
+    INDEX idx_location (latitude, longitude),
+    INDEX idx_city (city_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 教师扩展表
@@ -46,10 +51,18 @@ CREATE TABLE IF NOT EXISTS teacher_profiles (
     hourly_rate_min DECIMAL(10,2) COMMENT '最低时薪',
     hourly_rate_max DECIMAL(10,2) COMMENT '最高时薪',
     intro TEXT COMMENT '个人简介',
+    one_line_intro VARCHAR(100) COMMENT '一句话介绍',
     photos JSON COMMENT '照片列表',
+    videos JSON COMMENT '视频列表',
+    cover_photo VARCHAR(255) COMMENT '封面照片',
     schedule_settings JSON COMMENT '排课设置',
     verify_status SMALLINT DEFAULT 0 COMMENT '认证状态: 0未认证 1待审核 2已认证 3驳回',
     verify_reject_reason VARCHAR(255) COMMENT '驳回原因',
+    rating DECIMAL(3,2) DEFAULT 5.00 COMMENT '评分',
+    review_count INT DEFAULT 0 COMMENT '评价数',
+    view_count INT DEFAULT 0 COMMENT '主页浏览量',
+    teaching_years INT DEFAULT 0 COMMENT '教学年限',
+    success_count INT DEFAULT 0 COMMENT '成功签约数',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -645,3 +658,113 @@ INSERT INTO grades (name, stage, sort_order, is_active) VALUES
 INSERT INTO feed_ads (title, content, image_url, ad_type, link_url, position, target_roles, sort_order, is_active) VALUES
 ('优秀教师推荐', '精选优质教师，教学质量有保障', 'https://placehold.co/750x300/10B981/white?text=优秀教师推荐', 1, '/pages/index/index?tab=teachers', 'home_middle', '[0]', 1, 1),
 ('成为签约教师', '加入棉花糖教育，开启您的教学生涯', 'https://placehold.co/750x300/2563EB/white?text=教师入驻', 1, '/pages/login/index', 'home_middle', '[1]', 2, 1);
+
+-- ==================== 教师主页相关表 ====================
+
+-- 教师动态表
+CREATE TABLE IF NOT EXISTS teacher_moments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    content TEXT NOT NULL COMMENT '动态内容',
+    images JSON COMMENT '图片列表',
+    video_url VARCHAR(255) COMMENT '视频URL',
+    video_cover VARCHAR(255) COMMENT '视频封面',
+    like_count INT DEFAULT 0 COMMENT '点赞数',
+    comment_count INT DEFAULT 0 COMMENT '评论数',
+    is_visible SMALLINT DEFAULT 1 COMMENT '是否可见',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_teacher (teacher_id),
+    INDEX idx_created (created_at DESC),
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教师动态表';
+
+-- 动态点赞表
+CREATE TABLE IF NOT EXISTS moment_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    moment_id INT NOT NULL COMMENT '动态ID',
+    user_id INT NOT NULL COMMENT '点赞用户ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_moment_user (moment_id, user_id),
+    INDEX idx_moment (moment_id),
+    FOREIGN KEY (moment_id) REFERENCES teacher_moments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='动态点赞表';
+
+-- 动态评论表
+CREATE TABLE IF NOT EXISTS moment_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    moment_id INT NOT NULL COMMENT '动态ID',
+    user_id INT NOT NULL COMMENT '评论用户ID',
+    content TEXT NOT NULL COMMENT '评论内容',
+    reply_to_id INT COMMENT '回复评论ID',
+    is_visible SMALLINT DEFAULT 1 COMMENT '是否可见',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_moment (moment_id),
+    FOREIGN KEY (moment_id) REFERENCES teacher_moments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='动态评论表';
+
+-- 联系方式解锁记录表
+CREATE TABLE IF NOT EXISTS contact_unlocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT COMMENT '关联订单ID',
+    user_id INT NOT NULL COMMENT '解锁用户ID',
+    target_user_id INT NOT NULL COMMENT '被解锁用户ID',
+    unlock_type SMALLINT NOT NULL COMMENT '类型: 1查看手机 2查看微信 3全部解锁',
+    cost_amount DECIMAL(10,2) DEFAULT 0 COMMENT '花费金额',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_target (target_user_id),
+    INDEX idx_order (order_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (target_user_id) REFERENCES users(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='联系方式解锁记录表';
+
+-- 订单关闭原因表
+CREATE TABLE IF NOT EXISTS order_close_reasons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '订单ID',
+    user_id INT NOT NULL COMMENT '操作用户ID',
+    close_type SMALLINT NOT NULL COMMENT '类型: 1未达成合作 2家长取消 3系统关闭',
+    reason VARCHAR(255) COMMENT '关闭原因',
+    feedback TEXT COMMENT '详细反馈',
+    to_pool SMALLINT DEFAULT 0 COMMENT '是否进入公海池',
+    membership_terminated SMALLINT DEFAULT 0 COMMENT '是否导致会员权益终止',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_user (user_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单关闭原因表';
+
+-- 城市表
+CREATE TABLE IF NOT EXISTS cities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    city_code VARCHAR(10) NOT NULL UNIQUE COMMENT '城市编码',
+    city_name VARCHAR(50) NOT NULL COMMENT '城市名称',
+    province VARCHAR(50) COMMENT '省份',
+    latitude DECIMAL(10,7) COMMENT '纬度',
+    longitude DECIMAL(10,7) COMMENT '经度',
+    is_hot SMALLINT DEFAULT 0 COMMENT '是否热门城市',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_province (province),
+    INDEX idx_hot (is_hot)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='城市表';
+
+-- 初始化热门城市
+INSERT INTO cities (city_code, city_name, province, is_hot, sort_order) VALUES
+('110000', '北京', '北京', 1, 1),
+('310000', '上海', '上海', 1, 2),
+('440100', '广州', '广东', 1, 3),
+('440300', '深圳', '广东', 1, 4),
+('330100', '杭州', '浙江', 1, 5),
+('320100', '南京', '江苏', 1, 6),
+('420100', '武汉', '湖北', 1, 7),
+('510100', '成都', '四川', 1, 8),
+('500100', '重庆', '重庆', 0, 9),
+('120000', '天津', '天津', 0, 10),
+('610100', '西安', '陕西', 0, 11),
+('430100', '长沙', '湖南', 0, 12);

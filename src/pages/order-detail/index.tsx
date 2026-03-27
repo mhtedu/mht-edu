@@ -4,7 +4,9 @@ import Taro from '@tarojs/taro';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Phone, MessageCircle, Check, Lock } from 'lucide-react-taro';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MapPin, Phone, MessageCircle, Check, Lock, TriangleAlert } from 'lucide-react-taro';
 import './index.css';
 
 interface Order {
@@ -18,6 +20,12 @@ interface Order {
   status: number;
   created_at: string;
   parent_id: number;
+  matched_teacher_id?: number;
+}
+
+interface CloseReason {
+  value: string;
+  label: string;
 }
 
 const statusConfig: Record<number, { text: string; color: string; desc: string }> = {
@@ -36,12 +44,27 @@ const OrderDetailPage = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [contactUnlocked, setContactUnlocked] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [closeReason, setCloseReason] = useState('');
+  const [closeFeedback, setCloseFeedback] = useState('');
+  const [closeReasons, setCloseReasons] = useState<CloseReason[]>([]);
+  const [isParent, setIsParent] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
 
   useEffect(() => {
     const id = Taro.getCurrentInstance().router?.params?.id;
     if (id) {
       loadOrder(parseInt(id));
     }
+    
+    // 获取用户角色
+    const userRole = Taro.getStorageSync('userRole');
+    setIsParent(userRole === 0);
+    
+    // 获取关闭原因选项
+    loadCloseReasons();
   }, []);
 
   const loadOrder = async (id: number) => {
@@ -51,13 +74,30 @@ const OrderDetailPage = () => {
         method: 'GET',
       });
       
-      if (res.data) {
-        setOrder(res.data);
+      console.log('订单详情:', res.data);
+      if (res.data?.data) {
+        setOrder(res.data.data);
       }
     } catch (error) {
       console.error('加载订单失败:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCloseReasons = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/order-close/reasons',
+        method: 'GET',
+      });
+      
+      console.log('关闭原因选项:', res.data);
+      if (res.data?.data) {
+        setCloseReasons(res.data.data);
+      }
+    } catch (error) {
+      console.error('获取关闭原因失败:', error);
     }
   };
 
@@ -85,12 +125,17 @@ const OrderDetailPage = () => {
     
     try {
       const res = await Network.request({
-        url: `/api/orders/${order.id}/contact`,
-        method: 'GET',
-        data: { userId: 2 }, // TODO: 从登录状态获取
+        url: '/api/teacher-profile/unlock-contact',
+        method: 'POST',
+        data: {
+          targetUserId: order.parent_id,
+          orderId: order.id,
+          unlockType: 3, // 全部解锁
+        },
       });
       
-      if (res.data) {
+      console.log('解锁结果:', res.data);
+      if (res.data?.data) {
         setContactUnlocked(true);
         Taro.showToast({ title: '解锁成功', icon: 'success' });
       }
@@ -115,6 +160,76 @@ const OrderDetailPage = () => {
       }
     } catch (error) {
       Taro.showToast({ title: '操作失败', icon: 'none' });
+    }
+  };
+
+  // 关闭订单（仅家长可操作）
+  const handleCloseOrder = async () => {
+    if (!order || !closeReason) {
+      Taro.showToast({ title: '请选择关闭原因', icon: 'none' });
+      return;
+    }
+
+    try {
+      const res = await Network.request({
+        url: '/api/order-close/close',
+        method: 'POST',
+        data: {
+          orderId: order.id,
+          closeType: 1, // 未达成合作
+          reason: closeReason,
+          feedback: closeFeedback,
+        },
+      });
+
+      console.log('关闭订单结果:', res.data);
+      if (res.data?.data) {
+        setShowCloseDialog(false);
+        
+        // 提示会员权益终止
+        Taro.showModal({
+          title: '订单已关闭',
+          content: res.data.data.message || '订单已关闭，会员权益已终止。订单已进入公海池供其他教师抢单。',
+          showCancel: false,
+          success: () => {
+            Taro.navigateBack();
+          },
+        });
+      }
+    } catch (error) {
+      console.error('关闭订单失败:', error);
+      Taro.showToast({ title: '关闭失败', icon: 'none' });
+    }
+  };
+
+  // 完成评价
+  const handleCompleteReview = async () => {
+    if (!order || !reviewContent) {
+      Taro.showToast({ title: '请填写评价内容', icon: 'none' });
+      return;
+    }
+
+    try {
+      const res = await Network.request({
+        url: '/api/order-close/complete-review',
+        method: 'POST',
+        data: {
+          orderId: order.id,
+          rating: reviewRating,
+          content: reviewContent,
+          isAnonymous: false,
+        },
+      });
+
+      console.log('评价结果:', res.data);
+      if (res.data?.data) {
+        setShowReviewDialog(false);
+        Taro.showToast({ title: '评价成功', icon: 'success' });
+        loadOrder(order.id);
+      }
+    } catch (error) {
+      console.error('评价失败:', error);
+      Taro.showToast({ title: '评价失败', icon: 'none' });
     }
   };
 
@@ -220,6 +335,23 @@ const OrderDetailPage = () => {
           </Card>
         )}
 
+        {/* 会员权益提示（订单已解除时显示） */}
+        {order.status === 5 && (
+          <Card className="mb-4 border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <View className="flex flex-row items-start gap-2">
+                <TriangleAlert size={20} color="#DC2626" />
+                <View className="flex-1">
+                  <Text className="text-red-600 font-semibold">订单已关闭</Text>
+                  <Text className="text-red-500 text-sm mt-1">
+                    会员权益已终止。订单已进入公海池供其他教师抢单。
+                  </Text>
+                </View>
+              </View>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 时间线 */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
@@ -234,7 +366,7 @@ const OrderDetailPage = () => {
                 </View>
                 <View>
                   <Text className="font-semibold">发布需求</Text>
-                  <Text className="text-gray-400 text-xs">2026-03-27 22:42</Text>
+                  <Text className="text-gray-400 text-xs">{order.created_at}</Text>
                 </View>
               </View>
               {order.status >= 1 && (
@@ -245,7 +377,7 @@ const OrderDetailPage = () => {
                   </View>
                   <View>
                     <Text className="font-semibold">教师接单</Text>
-                    <Text className="text-gray-400 text-xs">张老师已接单</Text>
+                    <Text className="text-gray-400 text-xs">教师已接单</Text>
                   </View>
                 </View>
               )}
@@ -275,9 +407,22 @@ const OrderDetailPage = () => {
         )}
         {order.status === 1 && (
           <View className="flex flex-row gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
-              <Text>解除绑定</Text>
-            </Button>
+            {/* 家长可以关闭订单 */}
+            {isParent && (
+              <Button 
+                variant="outline" 
+                className="flex-1 border-red-500 text-red-500" 
+                onClick={() => setShowCloseDialog(true)}
+              >
+                <Text className="text-red-500">关闭订单</Text>
+              </Button>
+            )}
+            {/* 教师可以解除绑定 */}
+            {!isParent && (
+              <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
+                <Text>解除绑定</Text>
+              </Button>
+            )}
             <Button className="flex-1 bg-green-500" onClick={() => handleStatusChange(2)}>
               <Text className="text-white">开始试课</Text>
             </Button>
@@ -285,15 +430,172 @@ const OrderDetailPage = () => {
         )}
         {order.status === 2 && (
           <View className="flex flex-row gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
-              <Text>试课不合适</Text>
-            </Button>
+            {/* 家长可以关闭订单 */}
+            {isParent && (
+              <Button 
+                variant="outline" 
+                className="flex-1 border-red-500 text-red-500" 
+                onClick={() => setShowCloseDialog(true)}
+              >
+                <Text className="text-red-500">关闭订单</Text>
+              </Button>
+            )}
+            {/* 教师可以试课不合适 */}
+            {!isParent && (
+              <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
+                <Text>试课不合适</Text>
+              </Button>
+            )}
             <Button className="flex-1 bg-purple-500" onClick={() => handleStatusChange(3)}>
               <Text className="text-white">确认签约</Text>
             </Button>
           </View>
         )}
+        {order.status === 3 && (
+          <Button className="w-full bg-green-500" onClick={() => setShowReviewDialog(true)}>
+            <Text className="text-white">完成并评价</Text>
+          </Button>
+        )}
       </View>
+
+      {/* 关闭订单弹窗 */}
+      {showCloseDialog && (
+        <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+          <DialogContent className="w-80">
+            <DialogHeader>
+              <DialogTitle>关闭订单</DialogTitle>
+            </DialogHeader>
+            <View className="flex flex-col gap-4">
+              {/* 警告提示 */}
+              <View className="bg-red-50 p-3 rounded-lg">
+                <View className="flex flex-row items-start gap-2">
+                  <TriangleAlert size={16} color="#DC2626" />
+                  <View className="flex-1">
+                    <Text className="text-red-600 text-sm font-semibold">重要提示</Text>
+                    <Text className="text-red-500 text-xs mt-1">
+                      关闭订单将终止您的会员权益，订单将进入公海池供其他教师抢单。
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* 关闭原因 */}
+              <View>
+                <Text className="text-sm font-semibold mb-2">关闭原因</Text>
+                <View className="flex flex-col gap-2">
+                  {closeReasons.map((reason) => (
+                    <View
+                      key={reason.value}
+                      className={`p-3 rounded-lg border ${
+                        closeReason === reason.value
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200'
+                      }`}
+                      onClick={() => setCloseReason(reason.value)}
+                    >
+                      <Text className={closeReason === reason.value ? 'text-blue-600' : 'text-gray-700'}>
+                        {reason.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* 补充说明 */}
+              <View>
+                <Text className="text-sm font-semibold mb-2">补充说明（选填）</Text>
+                <View className="bg-gray-50 rounded-lg p-3">
+                  <Textarea
+                    style={{ width: '100%', minHeight: '80px', backgroundColor: 'transparent' }}
+                    placeholder="请输入补充说明..."
+                    value={closeFeedback}
+                    onInput={(e) => setCloseFeedback(e.detail.value)}
+                  />
+                </View>
+              </View>
+
+              {/* 按钮 */}
+              <View className="flex flex-row gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowCloseDialog(false)}
+                >
+                  <Text>取消</Text>
+                </Button>
+                <Button 
+                  className="flex-1 bg-red-500"
+                  onClick={handleCloseOrder}
+                  disabled={!closeReason}
+                >
+                  <Text className="text-white">确认关闭</Text>
+                </Button>
+              </View>
+            </View>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 评价弹窗 */}
+      {showReviewDialog && (
+        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+          <DialogContent className="w-80">
+            <DialogHeader>
+              <DialogTitle>评价教师</DialogTitle>
+            </DialogHeader>
+            <View className="flex flex-col gap-4">
+              {/* 评分 */}
+              <View>
+                <Text className="text-sm font-semibold mb-2">评分</Text>
+                <View className="flex flex-row gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <View
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className="p-1"
+                    >
+                      <Text className={`text-2xl ${star <= reviewRating ? 'text-yellow-500' : 'text-gray-300'}`}>
+                        ★
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* 评价内容 */}
+              <View>
+                <Text className="text-sm font-semibold mb-2">评价内容</Text>
+                <View className="bg-gray-50 rounded-lg p-3">
+                  <Textarea
+                    style={{ width: '100%', minHeight: '100px', backgroundColor: 'transparent' }}
+                    placeholder="请输入您的评价..."
+                    value={reviewContent}
+                    onInput={(e) => setReviewContent(e.detail.value)}
+                  />
+                </View>
+              </View>
+
+              {/* 按钮 */}
+              <View className="flex flex-row gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowReviewDialog(false)}
+                >
+                  <Text>取消</Text>
+                </Button>
+                <Button 
+                  className="flex-1 bg-blue-500"
+                  onClick={handleCompleteReview}
+                  disabled={!reviewContent}
+                >
+                  <Text className="text-white">提交评价</Text>
+                </Button>
+              </View>
+            </View>
+          </DialogContent>
+        </Dialog>
+      )}
     </View>
   );
 };

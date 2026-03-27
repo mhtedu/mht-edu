@@ -1,3 +1,7 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ navigationBarTitleText: '教师详情' })
-  : { navigationBarTitleText: '教师详情' }
+  ? definePageConfig({
+      navigationBarTitleText: '教师主页',
+    })
+  : {
+      navigationBarTitleText: '教师主页',
+    }
