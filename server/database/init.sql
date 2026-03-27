@@ -323,3 +323,325 @@ INSERT INTO users (id, mobile, nickname, avatar, role, status) VALUES
 (1, 'system', '系统助手', 'https://placehold.co/100/2563EB/white?text=助手', 1, 1),
 (2, 'robot_teacher', '智能教师助手', 'https://placehold.co/100/10B981/white?text=AI', 1, 1),
 (3, 'robot_parent', '智能家长助手', 'https://placehold.co/100/EC4899/white?text=AI', 0, 1);
+
+-- ==================== 新增功能表 ====================
+
+-- 系统配置表（网站名称、logo、分销比例等）
+CREATE TABLE IF NOT EXISTS system_configs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    config_key VARCHAR(50) NOT NULL UNIQUE COMMENT '配置键',
+    config_value TEXT COMMENT '配置值',
+    config_type VARCHAR(20) DEFAULT 'string' COMMENT '类型: string, number, json, boolean',
+    description VARCHAR(255) COMMENT '配置说明',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_key (config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
+
+-- 科目表
+CREATE TABLE IF NOT EXISTS subjects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL COMMENT '科目名称',
+    category VARCHAR(50) COMMENT '分类: 文科、理科、艺术、语言',
+    icon VARCHAR(255) COMMENT '图标',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    is_active SMALLINT DEFAULT 1 COMMENT '是否启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='科目表';
+
+-- 年级表
+CREATE TABLE IF NOT EXISTS grades (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL COMMENT '年级名称',
+    stage VARCHAR(20) COMMENT '学段: 幼儿园、小学、初中、高中、大学',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    is_active SMALLINT DEFAULT 1 COMMENT '是否启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='年级表';
+
+-- 课时记录表（教师端课时管理）
+CREATE TABLE IF NOT EXISTS lesson_records (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '订单ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    parent_id INT NOT NULL COMMENT '家长ID',
+    lesson_date DATE NOT NULL COMMENT '上课日期',
+    lesson_start_time TIME NOT NULL COMMENT '开始时间',
+    lesson_end_time TIME NOT NULL COMMENT '结束时间',
+    lesson_hours DECIMAL(4,1) NOT NULL COMMENT '课时数(小时)',
+    lesson_content TEXT COMMENT '教学内容',
+    homework TEXT COMMENT '课后作业',
+    student_performance TEXT COMMENT '学生表现',
+    next_lesson_plan TEXT COMMENT '下节课计划',
+    status SMALLINT DEFAULT 0 COMMENT '状态: 0待确认 1已确认 2有异议',
+    parent_confirm_at DATETIME COMMENT '家长确认时间',
+    parent_comment TEXT COMMENT '家长备注',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_teacher (teacher_id),
+    INDEX idx_parent (parent_id),
+    INDEX idx_date (lesson_date),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id),
+    FOREIGN KEY (parent_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课时记录表';
+
+-- 教师排课日历表
+CREATE TABLE IF NOT EXISTS teacher_schedules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    day_of_week SMALLINT NOT NULL COMMENT '星期几: 0-6 (周日-周六)',
+    start_time TIME NOT NULL COMMENT '开始时间',
+    end_time TIME NOT NULL COMMENT '结束时间',
+    is_available SMALLINT DEFAULT 1 COMMENT '是否可预约',
+    note VARCHAR(100) COMMENT '备注',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_teacher (teacher_id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教师排课日历表';
+
+-- 试课反馈表
+CREATE TABLE IF NOT EXISTS trial_feedbacks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '订单ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    parent_id INT NOT NULL COMMENT '家长ID',
+    feedback_type SMALLINT NOT NULL COMMENT '类型: 1教师填写 2家长填写',
+    -- 教师填写字段
+    student_level VARCHAR(50) COMMENT '学生基础水平',
+    teaching_suggestion TEXT COMMENT '教学建议',
+    expected_goals TEXT COMMENT '预期目标',
+    -- 家长填写字段
+    satisfaction SMALLINT COMMENT '满意度: 1-5分',
+    teacher_attitude SMALLINT COMMENT '教师态度: 1-5分',
+    teaching_quality SMALLINT COMMENT '教学质量: 1-5分',
+    willingness SMALLINT COMMENT '签约意愿: 0不考虑 1考虑中 2确定签约',
+    parent_comment TEXT COMMENT '家长评价',
+    -- 系统字段
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_teacher (teacher_id),
+    INDEX idx_parent (parent_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id),
+    FOREIGN KEY (parent_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='试课反馈表';
+
+-- 教学计划表
+CREATE TABLE IF NOT EXISTS teaching_plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '订单ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    subject VARCHAR(50) NOT NULL COMMENT '科目',
+    total_lessons INT COMMENT '总课时',
+    completed_lessons INT DEFAULT 0 COMMENT '已完成课时',
+    start_date DATE COMMENT '开始日期',
+    end_date DATE COMMENT '结束日期',
+    teaching_goals TEXT COMMENT '教学目标',
+    teaching_methods TEXT COMMENT '教学方法',
+    materials TEXT COMMENT '教材资料',
+    notes TEXT COMMENT '备注',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_teacher (teacher_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教学计划表';
+
+-- 订单公海池表（解约回流）
+CREATE TABLE IF NOT EXISTS order_pool (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '原始订单ID',
+    original_parent_id INT NOT NULL COMMENT '原家长ID',
+    original_teacher_id INT COMMENT '原教师ID',
+    release_reason VARCHAR(255) COMMENT '释放原因',
+    release_type SMALLINT NOT NULL COMMENT '释放类型: 1家长取消 2教师解约 3系统回收',
+    pool_status SMALLINT DEFAULT 0 COMMENT '池状态: 0待分配 1已分配 2已过期',
+    assigned_teacher_id INT COMMENT '新分配教师ID',
+    assigned_at DATETIME COMMENT '分配时间',
+    expire_at DATETIME COMMENT '过期时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_status (pool_status),
+    INDEX idx_expire (expire_at),
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单公海池表';
+
+-- 机构教师关联表
+CREATE TABLE IF NOT EXISTS org_teachers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    org_id INT NOT NULL COMMENT '机构ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    status SMALLINT DEFAULT 1 COMMENT '状态: 0待审核 1已绑定 2已解绑',
+    commission_rate DECIMAL(5,2) DEFAULT 10.00 COMMENT '机构分佣比例(%)',
+    bind_at DATETIME COMMENT '绑定时间',
+    unbind_at DATETIME COMMENT '解绑时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_org_teacher (org_id, teacher_id),
+    INDEX idx_org (org_id),
+    INDEX idx_teacher (teacher_id),
+    FOREIGN KEY (org_id) REFERENCES users(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='机构教师关联表';
+
+-- 机构派单记录表
+CREATE TABLE IF NOT EXISTS org_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    org_id INT NOT NULL COMMENT '机构ID',
+    order_id INT NOT NULL COMMENT '订单ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    assign_type SMALLINT DEFAULT 1 COMMENT '类型: 1推荐 2指派',
+    status SMALLINT DEFAULT 0 COMMENT '状态: 0待处理 1已接受 2已拒绝',
+    assign_note TEXT COMMENT '派单备注',
+    teacher_note TEXT COMMENT '教师备注',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_org (org_id),
+    INDEX idx_order (order_id),
+    INDEX idx_teacher (teacher_id),
+    FOREIGN KEY (org_id) REFERENCES users(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='机构派单记录表';
+
+-- 评价表
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL COMMENT '订单ID',
+    parent_id INT NOT NULL COMMENT '家长ID',
+    teacher_id INT NOT NULL COMMENT '教师ID',
+    rating SMALLINT NOT NULL COMMENT '评分: 1-5',
+    content TEXT COMMENT '评价内容',
+    tags JSON COMMENT '标签',
+    is_anonymous SMALLINT DEFAULT 0 COMMENT '是否匿名',
+    reply TEXT COMMENT '教师回复',
+    reply_at DATETIME COMMENT '回复时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_order (order_id),
+    INDEX idx_teacher (teacher_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (parent_id) REFERENCES users(id),
+    FOREIGN KEY (teacher_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价表';
+
+-- 分销配置表
+CREATE TABLE IF NOT EXISTS distribution_configs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    level SMALLINT NOT NULL COMMENT '层级: 1一级 2二级 3城市代理 4机构',
+    rate DECIMAL(5,2) NOT NULL COMMENT '分佣比例(%)',
+    description VARCHAR(100) COMMENT '说明',
+    is_active SMALLINT DEFAULT 1 COMMENT '是否启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_level (level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分销配置表';
+
+-- 区域合伙人统计表
+CREATE TABLE IF NOT EXISTS agent_stats (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    agent_id INT NOT NULL COMMENT '代理ID',
+    stat_date DATE NOT NULL COMMENT '统计日期',
+    new_users INT DEFAULT 0 COMMENT '新增用户',
+    new_orders INT DEFAULT 0 COMMENT '新增订单',
+    total_amount DECIMAL(12,2) DEFAULT 0.00 COMMENT '交易总额',
+    commission_amount DECIMAL(12,2) DEFAULT 0.00 COMMENT '分佣金额',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_agent_date (agent_id, stat_date),
+    FOREIGN KEY (agent_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='区域合伙人统计表';
+
+-- 信息流广告表（首页中部）
+CREATE TABLE IF NOT EXISTS feed_ads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL COMMENT '标题',
+    content TEXT COMMENT '内容描述',
+    image_url VARCHAR(255) COMMENT '图片',
+    ad_type SMALLINT DEFAULT 1 COMMENT '类型: 1图片 2图文 3视频',
+    link_url VARCHAR(255) COMMENT '跳转链接',
+    position VARCHAR(50) DEFAULT 'home_middle' COMMENT '位置',
+    target_roles JSON COMMENT '目标角色: [0,1,2]',
+    view_count INT DEFAULT 0 COMMENT '曝光次数',
+    click_count INT DEFAULT 0 COMMENT '点击次数',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    is_active SMALLINT DEFAULT 1 COMMENT '是否启用',
+    start_date DATE COMMENT '开始日期',
+    end_date DATE COMMENT '结束日期',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_position (position),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='信息流广告表';
+
+-- ==================== 初始化数据 ====================
+
+-- 初始化系统配置
+INSERT INTO system_configs (config_key, config_value, config_type, description) VALUES
+('site_name', '棉花糖教育成长平台', 'string', '网站名称'),
+('site_logo', 'https://placehold.co/200x60/2563EB/white?text=棉花糖教育', 'string', '网站Logo'),
+('site_description', '专业的家教信息撮合平台', 'string', '网站描述'),
+('contact_phone', '400-888-8888', 'string', '客服电话'),
+('contact_wechat', 'mht_edu', 'string', '客服微信'),
+('user_agreement', 'https://example.com/agreement', 'string', '用户协议链接'),
+('privacy_policy', 'https://example.com/privacy', 'string', '隐私政策链接'),
+('order_expire_days', '7', 'number', '订单过期天数'),
+('trial_lesson_hours', '2', 'number', '试课时长(小时)');
+
+-- 初始化分销配置
+INSERT INTO distribution_configs (level, rate, description, is_active) VALUES
+(1, 20.00, '一级推荐人分佣', 1),
+(2, 10.00, '二级推荐人分佣', 1),
+(3, 5.00, '城市代理分佣', 1),
+(4, 10.00, '机构分佣', 1);
+
+-- 初始化科目
+INSERT INTO subjects (name, category, sort_order, is_active) VALUES
+('语文', '文科', 1, 1),
+('数学', '理科', 2, 1),
+('英语', '语言', 3, 1),
+('物理', '理科', 4, 1),
+('化学', '理科', 5, 1),
+('生物', '理科', 6, 1),
+('政治', '文科', 7, 1),
+('历史', '文科', 8, 1),
+('地理', '文科', 9, 1),
+('钢琴', '艺术', 10, 1),
+('吉他', '艺术', 11, 1),
+('小提琴', '艺术', 12, 1),
+('美术', '艺术', 13, 1),
+('书法', '艺术', 14, 1),
+('舞蹈', '艺术', 15, 1),
+('围棋', '艺术', 16, 1),
+('编程', '技能', 17, 1),
+('游泳', '体育', 18, 1),
+('篮球', '体育', 19, 1);
+
+-- 初始化年级
+INSERT INTO grades (name, stage, sort_order, is_active) VALUES
+('幼儿园小班', '幼儿园', 1, 1),
+('幼儿园中班', '幼儿园', 2, 1),
+('幼儿园大班', '幼儿园', 3, 1),
+('一年级', '小学', 4, 1),
+('二年级', '小学', 5, 1),
+('三年级', '小学', 6, 1),
+('四年级', '小学', 7, 1),
+('五年级', '小学', 8, 1),
+('六年级', '小学', 9, 1),
+('初一', '初中', 10, 1),
+('初二', '初中', 11, 1),
+('初三', '初中', 12, 1),
+('高一', '高中', 13, 1),
+('高二', '高中', 14, 1),
+('高三', '高中', 15, 1);
+
+-- 初始化信息流广告
+INSERT INTO feed_ads (title, content, image_url, ad_type, link_url, position, target_roles, sort_order, is_active) VALUES
+('优秀教师推荐', '精选优质教师，教学质量有保障', 'https://placehold.co/750x300/10B981/white?text=优秀教师推荐', 1, '/pages/index/index?tab=teachers', 'home_middle', '[0]', 1, 1),
+('成为签约教师', '加入棉花糖教育，开启您的教学生涯', 'https://placehold.co/750x300/2563EB/white?text=教师入驻', 1, '/pages/login/index', 'home_middle', '[1]', 2, 1);

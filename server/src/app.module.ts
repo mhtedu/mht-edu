@@ -10,6 +10,11 @@ import { AdminModule } from '@/modules/admin/admin.module';
 import { MessageModule } from '@/modules/message/message.module';
 import { PaymentModule } from '@/modules/payment/payment.module';
 import { TeacherModule } from '@/modules/teacher/teacher.module';
+import { ConfigModule } from '@/modules/config/config.module';
+import { LessonModule } from '@/modules/lesson/lesson.module';
+import { TeachingModule } from '@/modules/teaching/teaching.module';
+import { PoolModule } from '@/modules/pool/pool.module';
+import { OrgAssignModule } from '@/modules/org-assign/org-assign.module';
 import { DatabaseInitService } from '@/common/database-init.service';
 
 @Module({
@@ -23,6 +28,11 @@ import { DatabaseInitService } from '@/common/database-init.service';
     MessageModule,
     PaymentModule,
     TeacherModule,
+    ConfigModule,
+    LessonModule,
+    TeachingModule,
+    PoolModule,
+    OrgAssignModule,
   ],
   controllers: [AppController],
   providers: [AppService, DatabaseInitService],

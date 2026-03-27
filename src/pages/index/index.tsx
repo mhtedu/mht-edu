@@ -47,6 +47,16 @@ interface Banner {
   link_url: string;
 }
 
+// 信息流广告类型
+interface FeedAd {
+  id: number;
+  title: string;
+  content: string;
+  image_url: string;
+  link_url: string;
+  ad_type: number;
+}
+
 /**
  * 首页 - 根据用户角色显示不同内容
  * 家长角色：显示教师列表
@@ -66,6 +76,7 @@ const IndexPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [feedAds, setFeedAds] = useState<FeedAd[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState('全部');
 
@@ -76,6 +87,12 @@ const IndexPage = () => {
     { id: 1, image_url: 'https://placehold.co/750x300/2563EB/white?text=棉花糖教育', title: '欢迎来到棉花糖教育', link_url: '' },
     { id: 2, image_url: 'https://placehold.co/750x300/F59E0B/white?text=会员特权', title: '开通会员享更多权益', link_url: '/pages/membership/index' },
     { id: 3, image_url: 'https://placehold.co/750x300/10B981/white?text=邀请好友', title: '邀请好友赚佣金', link_url: '/pages/distribution/index' },
+  ];
+
+  // 模拟信息流广告数据
+  const mockFeedAds: FeedAd[] = [
+    { id: 1, title: '优秀教师推荐', content: '精选优质教师，教学质量有保障', image_url: 'https://placehold.co/750x200/10B981/white?text=优秀教师', link_url: '', ad_type: 1 },
+    { id: 2, title: '新用户福利', content: '首次开通会员享5折优惠', image_url: 'https://placehold.co/750x200/EC4899/white?text=新人福利', link_url: '/pages/membership/index', ad_type: 1 },
   ];
 
   useLoad(() => {
@@ -116,6 +133,8 @@ const IndexPage = () => {
   const initPage = async () => {
     // 设置模拟轮播图
     setBanners(mockBanners);
+    // 设置模拟信息流广告
+    setFeedAds(mockFeedAds);
     
     // 检查登录状态
     const token = Taro.getStorageSync('token');
@@ -497,65 +516,91 @@ const IndexPage = () => {
             </View>
           ) : (
             <View className="flex flex-col gap-3">
-              {teachers.map((teacher) => (
-                <Card key={teacher.id} className="bg-white">
-                  <CardContent className="p-4">
-                    <View className="flex flex-row gap-3">
-                      {/* 头像 */}
-                      <Image 
-                        src={teacher.avatar} 
-                        className="w-16 h-16 rounded-full"
-                        mode="aspectFill"
-                      />
-                      {/* 信息 */}
-                      <View className="flex-1 flex flex-col gap-1">
-                        <View className="flex flex-row items-center justify-between">
-                          <View className="flex flex-row items-center gap-2">
-                            <Text className="text-base font-semibold">
-                              {isMember ? (teacher.real_name || teacher.nickname) : teacher.nickname}
-                            </Text>
-                            <Text className="text-xs text-gray-500">{getGenderText(teacher.gender)}</Text>
+              {teachers.map((teacher, index) => (
+                <View key={teacher.id}>
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <View className="flex flex-row gap-3">
+                        {/* 头像 */}
+                        <Image 
+                          src={teacher.avatar} 
+                          className="w-16 h-16 rounded-full"
+                          mode="aspectFill"
+                        />
+                        {/* 信息 */}
+                        <View className="flex-1 flex flex-col gap-1">
+                          <View className="flex flex-row items-center justify-between">
+                            <View className="flex flex-row items-center gap-2">
+                              <Text className="text-base font-semibold">
+                                {isMember ? (teacher.real_name || teacher.nickname) : teacher.nickname}
+                              </Text>
+                              <Text className="text-xs text-gray-500">{getGenderText(teacher.gender)}</Text>
+                            </View>
+                            <Text className="text-xs text-gray-400">{teacher.distance_text}</Text>
                           </View>
-                          <Text className="text-xs text-gray-400">{teacher.distance_text}</Text>
+                          
+                          <Text className="text-xs text-gray-500">{teacher.education}</Text>
+                          
+                          {/* 学科标签 */}
+                          <View className="flex flex-row gap-1 mt-1">
+                            {teacher.subjects?.map((subj) => (
+                              <Badge key={subj} variant="secondary">
+                                <Text className="text-xs">{subj}</Text>
+                              </Badge>
+                            ))}
+                          </View>
+                          
+                          {/* 价格和简介 */}
+                          <View className="flex flex-row items-center justify-between mt-2">
+                            <Text className="text-orange-500 font-semibold">
+                              ¥{teacher.hourly_rate_min}-{teacher.hourly_rate_max}/小时
+                            </Text>
+                          </View>
+                          
+                          {teacher.intro && (
+                            <Text className="text-xs text-gray-500 mt-1 line-clamp-2">
+                              {teacher.intro}
+                            </Text>
+                          )}
+                          
+                          {/* 操作按钮 */}
+                          <View className="flex flex-row gap-2 mt-3">
+                            <Button size="sm" className="flex-1" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
+                              <Text className="text-sm">预约试课</Text>
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleViewTeacher(teacher.id)}>
+                              <Text className="text-sm">查看详情</Text>
+                            </Button>
+                          </View>
                         </View>
-                        
-                        <Text className="text-xs text-gray-500">{teacher.education}</Text>
-                        
-                        {/* 学科标签 */}
-                        <View className="flex flex-row gap-1 mt-1">
-                          {teacher.subjects?.map((subj) => (
-                            <Badge key={subj} variant="secondary">
-                              <Text className="text-xs">{subj}</Text>
-                            </Badge>
-                          ))}
-                        </View>
-                        
-                        {/* 价格和简介 */}
+                      </View>
+                    </CardContent>
+                  </Card>
+                  {/* 在第2个教师后插入信息流广告 */}
+                  {index === 1 && feedAds.length > 0 && (
+                    <View 
+                      key={`ad-${feedAds[0].id}`}
+                      className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl overflow-hidden mt-3"
+                      onClick={() => feedAds[0].link_url && Taro.navigateTo({ url: feedAds[0].link_url })}
+                    >
+                      {feedAds[0].image_url && (
+                        <Image 
+                          src={feedAds[0].image_url} 
+                          className="w-full h-24"
+                          mode="aspectFill"
+                        />
+                      )}
+                      <View className="p-3">
+                        <Text className="font-semibold text-gray-800">{feedAds[0].title}</Text>
+                        <Text className="text-xs text-gray-500 mt-1">{feedAds[0].content}</Text>
                         <View className="flex flex-row items-center justify-between mt-2">
-                          <Text className="text-orange-500 font-semibold">
-                            ¥{teacher.hourly_rate_min}-{teacher.hourly_rate_max}/小时
-                          </Text>
-                        </View>
-                        
-                        {teacher.intro && (
-                          <Text className="text-xs text-gray-500 mt-1 line-clamp-2">
-                            {teacher.intro}
-                          </Text>
-                        )}
-                        
-                        {/* 操作按钮 */}
-                        <View className="flex flex-row gap-2 mt-3">
-                          <Button size="sm" className="flex-1" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
-                            <Text className="text-sm">预约试课</Text>
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleViewTeacher(teacher.id)}>
-                            <Text className="text-sm">查看详情</Text>
-                          </Button>
+                          <Text className="text-xs text-blue-500">了解更多 →</Text>
+                          <Text className="text-xs text-gray-400">广告</Text>
                         </View>
                       </View>
                     </View>
-                  </CardContent>
-                </Card>
+                  )}
+                </View>
               ))}
             </View>
           )

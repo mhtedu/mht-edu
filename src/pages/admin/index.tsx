@@ -4,51 +4,84 @@ import { useState, useEffect } from 'react';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
-  Settings, LogOut, DollarSign, 
-  UserPlus, Bell
+  Settings, LogOut, DollarSign, UserPlus, Bell, BookOpen, Gift, Percent,
+  ShoppingBag
 } from 'lucide-react-taro';
 import './index.css';
 
 // 统计数据类型
 interface DashboardStats {
-  totalUsers: number;
-  totalTeachers: number;
-  totalParents: number;
-  totalOrgs: number;
-  totalAgents: number;
-  totalOrders: number;
-  pendingOrders: number;
-  completedOrders: number;
-  totalRevenue: number;
-  monthRevenue: number;
+  users: { total_users: number; parent_count: number; teacher_count: number; org_count: number; member_count: number; today_new: number };
+  orders: { total_orders: number; pending_count: number; matched_count: number; ongoing_count: number; completed_count: number; today_new: number };
+  payments: { total_count: number; total_amount: number; today_amount: number; week_amount: number; month_amount: number };
+  commissions: { pending_amount: number; settled_amount: number; withdrawn_amount: number };
 }
 
-// 订单类型
-interface Order {
-  id: number;
-  subject: string;
-  hourly_rate: number;
-  student_grade: string;
-  address: string;
-  status: number;
-  created_at: string;
-  parent_name: string;
-  teacher_name: string;
+// 系统配置类型
+interface SystemConfig {
+  site_name: string;
+  site_logo: string;
+  site_description: string;
+  contact_phone: string;
+  contact_wechat: string;
+  order_expire_days: number;
+  trial_lesson_hours: number;
 }
 
-// 用户类型
-interface User {
+// 分销配置类型
+interface DistributionConfig {
+  level: number;
+  rate: number;
+  description: string;
+}
+
+// 科目类型
+interface Subject {
   id: number;
-  nickname: string;
-  avatar: string;
+  name: string;
+  category: string;
+  sort_order: number;
+  is_active: number;
+}
+
+// 会员套餐类型
+interface MembershipPlan {
+  id: number;
+  name: string;
   role: number;
-  phone: string;
-  is_member: boolean;
-  member_expire: string;
-  created_at: string;
+  price: number;
+  original_price: number;
+  duration_days: number;
+  features: string[];
+  is_active: number;
+}
+
+// 商品类型
+interface Product {
+  id: number;
+  name: string;
+  cover: string;
+  price: number;
+  original_price: number;
+  stock: number;
+  sales: number;
+  category: string;
+  is_active: number;
+}
+
+// 广告类型
+interface Banner {
+  id: number;
+  position: string;
+  title: string;
+  image_url: string;
+  link_url: string;
+  sort_order: number;
+  is_active: number;
 }
 
 // 菜单项
@@ -60,24 +93,52 @@ interface MenuItem {
 }
 
 /**
- * PC管理后台
+ * PC管理后台 - 完整版
  */
 const AdminPage = () => {
   const [currentMenu, setCurrentMenu] = useState('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 系统配置
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({
+    site_name: '棉花糖教育成长平台',
+    site_logo: '',
+    site_description: '专业的家教信息撮合平台',
+    contact_phone: '400-888-8888',
+    contact_wechat: 'mht_edu',
+    order_expire_days: 7,
+    trial_lesson_hours: 2,
+  });
+  
+  // 分销配置
+  const [distributionConfigs, setDistributionConfigs] = useState<DistributionConfig[]>([]);
+  
+  // 科目列表
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  
+  // 会员套餐
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  
+  // 商品列表
+  const [products, setProducts] = useState<Product[]>([]);
+  
+  // 广告列表
+  const [banners, setBanners] = useState<Banner[]>([]);
 
   // 菜单配置
   const menus: MenuItem[] = [
     { id: 'dashboard', label: '数据概览', icon: LayoutDashboard },
-    { id: 'orders', label: '订单管理', icon: FileText, badge: 5 },
+    { id: 'orders', label: '订单管理', icon: FileText },
     { id: 'users', label: '用户管理', icon: Users },
     { id: 'teachers', label: '教师管理', icon: UserPlus },
     { id: 'orgs', label: '机构管理', icon: Building },
     { id: 'agents', label: '代理商管理', icon: MapPin },
+    { id: 'products', label: '商品管理', icon: ShoppingBag },
     { id: 'banners', label: '广告位管理', icon: ImageIcon },
+    { id: 'subjects', label: '科目管理', icon: BookOpen },
+    { id: 'membership', label: '会员套餐', icon: Gift },
+    { id: 'distribution', label: '分销设置', icon: Percent },
     { id: 'settings', label: '系统设置', icon: Settings },
   ];
 
@@ -88,12 +149,28 @@ const AdminPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (currentMenu === 'dashboard') {
-        await loadStats();
-      } else if (currentMenu === 'orders') {
-        await loadOrders();
-      } else if (currentMenu === 'users') {
-        await loadUsers();
+      switch (currentMenu) {
+        case 'dashboard':
+          await loadStats();
+          break;
+        case 'settings':
+          await loadSystemConfig();
+          break;
+        case 'distribution':
+          await loadDistributionConfigs();
+          break;
+        case 'subjects':
+          await loadSubjects();
+          break;
+        case 'membership':
+          await loadMembershipPlans();
+          break;
+        case 'products':
+          await loadProducts();
+          break;
+        case 'banners':
+          await loadBanners();
+          break;
       }
     } finally {
       setLoading(false);
@@ -113,80 +190,169 @@ const AdminPage = () => {
       console.error('加载统计数据失败:', error);
       // 模拟数据
       setStats({
-        totalUsers: 2586,
-        totalTeachers: 328,
-        totalParents: 2158,
-        totalOrgs: 45,
-        totalAgents: 12,
-        totalOrders: 1856,
-        pendingOrders: 23,
-        completedOrders: 1680,
-        totalRevenue: 568900,
-        monthRevenue: 128600,
+        users: { total_users: 2586, parent_count: 2158, teacher_count: 328, org_count: 45, member_count: 856, today_new: 23 },
+        orders: { total_orders: 1856, pending_count: 23, matched_count: 156, ongoing_count: 89, completed_count: 1580, today_new: 15 },
+        payments: { total_count: 1234, total_amount: 568900, today_amount: 12800, week_amount: 85600, month_amount: 128600 },
+        commissions: { pending_amount: 12500, settled_amount: 85600, withdrawn_amount: 72000 },
       });
     }
   };
 
-  const loadOrders = async () => {
+  const loadSystemConfig = async () => {
     try {
       const res = await Network.request({
-        url: '/api/admin/orders',
+        url: '/api/config/system',
         method: 'GET',
       });
-      if (res.data && Array.isArray(res.data)) {
-        setOrders(res.data);
+      if (res.data) {
+        setSystemConfig(res.data);
       }
     } catch (error) {
-      console.error('加载订单失败:', error);
+      console.error('加载系统配置失败:', error);
+    }
+  };
+
+  const loadDistributionConfigs = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/config/distribution',
+        method: 'GET',
+      });
+      if (res.data) {
+        setDistributionConfigs(res.data);
+      }
+    } catch (error) {
+      console.error('加载分销配置失败:', error);
       // 模拟数据
-      setOrders([
-        { id: 1, subject: '数学', hourly_rate: 180, student_grade: '初三', address: '朝阳区望京', status: 0, created_at: '2024-01-15 10:30', parent_name: '张女士', teacher_name: '' },
-        { id: 2, subject: '英语', hourly_rate: 150, student_grade: '高二', address: '海淀区中关村', status: 1, created_at: '2024-01-15 09:20', parent_name: '李先生', teacher_name: '王老师' },
-        { id: 3, subject: '物理', hourly_rate: 200, student_grade: '高一', address: '西城区金融街', status: 2, created_at: '2024-01-14 16:45', parent_name: '赵女士', teacher_name: '刘老师' },
+      setDistributionConfigs([
+        { level: 1, rate: 20, description: '一级推荐人分佣' },
+        { level: 2, rate: 10, description: '二级推荐人分佣' },
+        { level: 3, rate: 5, description: '城市代理分佣' },
+        { level: 4, rate: 10, description: '机构分佣' },
       ]);
     }
   };
 
-  const loadUsers = async () => {
+  const loadSubjects = async () => {
     try {
       const res = await Network.request({
-        url: '/api/admin/users',
+        url: '/api/config/subjects',
         method: 'GET',
       });
-      if (res.data && Array.isArray(res.data)) {
-        setUsers(res.data);
+      if (res.data) {
+        setSubjects(res.data);
       }
     } catch (error) {
-      console.error('加载用户失败:', error);
+      console.error('加载科目失败:', error);
       // 模拟数据
-      setUsers([
-        { id: 1, nickname: '张老师', avatar: '', role: 1, phone: '138****1234', is_member: true, member_expire: '2025-01-15', created_at: '2024-01-01' },
-        { id: 2, nickname: '李家长', avatar: '', role: 0, phone: '139****5678', is_member: false, member_expire: '', created_at: '2024-01-10' },
-        { id: 3, nickname: '王教育', avatar: '', role: 2, phone: '137****9012', is_member: true, member_expire: '2024-12-31', created_at: '2023-12-15' },
+      setSubjects([
+        { id: 1, name: '语文', category: '文科', sort_order: 1, is_active: 1 },
+        { id: 2, name: '数学', category: '理科', sort_order: 2, is_active: 1 },
+        { id: 3, name: '英语', category: '语言', sort_order: 3, is_active: 1 },
+        { id: 4, name: '物理', category: '理科', sort_order: 4, is_active: 1 },
+        { id: 5, name: '钢琴', category: '艺术', sort_order: 10, is_active: 1 },
       ]);
     }
   };
 
-  const getStatusInfo = (status: number) => {
-    const statusMap: Record<number, { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      0: { text: '待抢单', variant: 'default' },
-      1: { text: '已匹配', variant: 'secondary' },
-      2: { text: '试课中', variant: 'secondary' },
-      3: { text: '已签约', variant: 'outline' },
-      4: { text: '已完成', variant: 'outline' },
-      5: { text: '已解除', variant: 'destructive' },
-    };
-    return statusMap[status] || { text: '未知', variant: 'outline' };
+  const loadMembershipPlans = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/config/membership-plans',
+        method: 'GET',
+      });
+      if (res.data) {
+        setMembershipPlans(res.data);
+      }
+    } catch (error) {
+      console.error('加载会员套餐失败:', error);
+      // 模拟数据
+      setMembershipPlans([
+        { id: 1, name: '家长月卡', role: 0, price: 29.9, original_price: 59, duration_days: 30, features: ['查看教师联系方式', '无限发布需求', '优先匹配'], is_active: 1 },
+        { id: 2, name: '家长季卡', role: 0, price: 79, original_price: 177, duration_days: 90, features: ['查看教师联系方式', '无限发布需求', '优先匹配', '专属客服'], is_active: 1 },
+        { id: 3, name: '教师月卡', role: 1, price: 39.9, original_price: 79, duration_days: 30, features: ['查看家长联系方式', '无限抢单', '优先展示'], is_active: 1 },
+      ]);
+    }
   };
 
-  const getRoleText = (role: number) => {
-    const roleMap: Record<number, string> = {
-      0: '家长',
-      1: '教师',
-      2: '机构',
-      3: '代理商',
-    };
-    return roleMap[role] || '未知';
+  const loadProducts = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/products',
+        method: 'GET',
+      });
+      if (res.data?.list) {
+        setProducts(res.data.list);
+      }
+    } catch (error) {
+      console.error('加载商品失败:', error);
+      // 模拟数据
+      setProducts([
+        { id: 1, name: '小学数学思维训练', cover: '', price: 68, original_price: 99, stock: 100, sales: 256, category: '教材', is_active: 1 },
+        { id: 2, name: '英语口语学习机', cover: '', price: 299, original_price: 399, stock: 50, sales: 128, category: '教具', is_active: 1 },
+      ]);
+    }
+  };
+
+  const loadBanners = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/banners',
+        method: 'GET',
+      });
+      if (res.data) {
+        setBanners(res.data);
+      }
+    } catch (error) {
+      console.error('加载广告失败:', error);
+      // 模拟数据
+      setBanners([
+        { id: 1, position: 'home_top', title: '新用户福利', image_url: '', link_url: '/pages/membership/index', sort_order: 1, is_active: 1 },
+        { id: 2, position: 'home_middle', title: '邀请有礼', image_url: '', link_url: '/pages/distribution/index', sort_order: 2, is_active: 1 },
+      ]);
+    }
+  };
+
+  const saveSystemConfig = async () => {
+    try {
+      await Network.request({
+        url: '/api/config/system/batch',
+        method: 'POST',
+        data: systemConfig,
+      });
+      Taro.showToast({ title: '保存成功', icon: 'success' });
+    } catch (error) {
+      console.error('保存失败:', error);
+      Taro.showToast({ title: '保存失败', icon: 'error' });
+    }
+  };
+
+  const updateDistributionRate = async (level: number, rate: number) => {
+    try {
+      await Network.request({
+        url: `/api/config/distribution/${level}`,
+        method: 'PUT',
+        data: { rate },
+      });
+      Taro.showToast({ title: '保存成功', icon: 'success' });
+      loadDistributionConfigs();
+    } catch (error) {
+      console.error('保存失败:', error);
+      Taro.showToast({ title: '保存失败', icon: 'error' });
+    }
+  };
+
+  const toggleSubjectStatus = async (id: number, isActive: boolean) => {
+    try {
+      await Network.request({
+        url: `/api/config/subjects/${id}`,
+        method: 'PUT',
+        data: { isActive: isActive ? 1 : 0 },
+      });
+      loadSubjects();
+    } catch (error) {
+      console.error('操作失败:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -205,14 +371,14 @@ const AdminPage = () => {
   // 渲染数据概览
   const renderDashboard = () => (
     <View className="admin-content">
-      {/* 统计卡片 */}
       <View className="admin-stats-grid">
         <Card className="admin-stat-card">
           <CardContent className="p-4">
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">总用户数</Text>
-                <Text className="text-2xl font-bold mt-1">{stats?.totalUsers || 0}</Text>
+                <Text className="text-2xl font-bold mt-1">{stats?.users?.total_users || 0}</Text>
+                <Text className="text-xs text-green-500 mt-1">今日新增 +{stats?.users?.today_new || 0}</Text>
               </View>
               <Users size={32} color="#2563EB" />
             </View>
@@ -224,7 +390,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">教师数量</Text>
-                <Text className="text-2xl font-bold mt-1">{stats?.totalTeachers || 0}</Text>
+                <Text className="text-2xl font-bold mt-1">{stats?.users?.teacher_count || 0}</Text>
+                <Text className="text-xs text-gray-400 mt-1">会员 {stats?.users?.member_count || 0}</Text>
               </View>
               <UserPlus size={32} color="#10B981" />
             </View>
@@ -236,7 +403,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">待处理订单</Text>
-                <Text className="text-2xl font-bold mt-1 text-orange-500">{stats?.pendingOrders || 0}</Text>
+                <Text className="text-2xl font-bold mt-1 text-orange-500">{stats?.orders?.pending_count || 0}</Text>
+                <Text className="text-xs text-gray-400 mt-1">进行中 {stats?.orders?.ongoing_count || 0}</Text>
               </View>
               <FileText size={32} color="#F59E0B" />
             </View>
@@ -248,7 +416,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">本月营收</Text>
-                <Text className="text-2xl font-bold mt-1">¥{(stats?.monthRevenue || 0).toLocaleString()}</Text>
+                <Text className="text-2xl font-bold mt-1">¥{(stats?.payments?.month_amount || 0).toLocaleString()}</Text>
+                <Text className="text-xs text-green-500 mt-1">本周 ¥{(stats?.payments?.week_amount || 0).toLocaleString()}</Text>
               </View>
               <DollarSign size={32} color="#EC4899" />
             </View>
@@ -256,56 +425,38 @@ const AdminPage = () => {
         </Card>
       </View>
 
-      {/* 详细统计 */}
       <View className="admin-stats-grid mt-4">
         <Card className="admin-stat-card">
-          <CardHeader>
-            <CardTitle>用户分布</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>用户分布</CardTitle></CardHeader>
           <CardContent>
             <View className="flex flex-col gap-2">
-              <View className="flex justify-between">
-                <Text className="text-gray-600">家长</Text>
-                <Text className="font-semibold">{stats?.totalParents || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">教师</Text>
-                <Text className="font-semibold">{stats?.totalTeachers || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">机构</Text>
-                <Text className="font-semibold">{stats?.totalOrgs || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">代理商</Text>
-                <Text className="font-semibold">{stats?.totalAgents || 0}</Text>
-              </View>
+              <View className="flex justify-between"><Text className="text-gray-600">家长</Text><Text className="font-semibold">{stats?.users?.parent_count || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">教师</Text><Text className="font-semibold">{stats?.users?.teacher_count || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">机构</Text><Text className="font-semibold">{stats?.users?.org_count || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">会员用户</Text><Text className="font-semibold text-blue-500">{stats?.users?.member_count || 0}</Text></View>
             </View>
           </CardContent>
         </Card>
 
         <Card className="admin-stat-card">
-          <CardHeader>
-            <CardTitle>订单统计</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>订单统计</CardTitle></CardHeader>
           <CardContent>
             <View className="flex flex-col gap-2">
-              <View className="flex justify-between">
-                <Text className="text-gray-600">总订单数</Text>
-                <Text className="font-semibold">{stats?.totalOrders || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">待处理</Text>
-                <Text className="font-semibold text-orange-500">{stats?.pendingOrders || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">已完成</Text>
-                <Text className="font-semibold text-green-500">{stats?.completedOrders || 0}</Text>
-              </View>
-              <View className="flex justify-between">
-                <Text className="text-gray-600">总营收</Text>
-                <Text className="font-semibold">¥{(stats?.totalRevenue || 0).toLocaleString()}</Text>
-              </View>
+              <View className="flex justify-between"><Text className="text-gray-600">总订单数</Text><Text className="font-semibold">{stats?.orders?.total_orders || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">待抢单</Text><Text className="font-semibold text-orange-500">{stats?.orders?.pending_count || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">已完成</Text><Text className="font-semibold text-green-500">{stats?.orders?.completed_count || 0}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">总营收</Text><Text className="font-semibold">¥{(stats?.payments?.total_amount || 0).toLocaleString()}</Text></View>
+            </View>
+          </CardContent>
+        </Card>
+
+        <Card className="admin-stat-card">
+          <CardHeader><CardTitle>分佣统计</CardTitle></CardHeader>
+          <CardContent>
+            <View className="flex flex-col gap-2">
+              <View className="flex justify-between"><Text className="text-gray-600">待结算</Text><Text className="font-semibold text-orange-500">¥{(stats?.commissions?.pending_amount || 0).toLocaleString()}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">已结算</Text><Text className="font-semibold text-green-500">¥{(stats?.commissions?.settled_amount || 0).toLocaleString()}</Text></View>
+              <View className="flex justify-between"><Text className="text-gray-600">已提现</Text><Text className="font-semibold">¥{(stats?.commissions?.withdrawn_amount || 0).toLocaleString()}</Text></View>
             </View>
           </CardContent>
         </Card>
@@ -313,95 +464,184 @@ const AdminPage = () => {
     </View>
   );
 
-  // 渲染订单管理
-  const renderOrders = () => (
+  // 渲染系统设置
+  const renderSettings = () => (
     <View className="admin-content">
       <Card>
-        <CardHeader>
-          <View className="flex justify-between items-center">
-            <CardTitle>订单列表</CardTitle>
-            <Button size="sm">导出数据</Button>
-          </View>
-        </CardHeader>
+        <CardHeader><CardTitle>网站基本信息</CardTitle></CardHeader>
         <CardContent>
-          {/* 表格头部 */}
-          <View className="admin-table-header">
-            <Text className="admin-table-cell w-16">ID</Text>
-            <Text className="admin-table-cell flex-1">科目</Text>
-            <Text className="admin-table-cell w-20">时薪</Text>
-            <Text className="admin-table-cell w-20">年级</Text>
-            <Text className="admin-table-cell flex-1">家长</Text>
-            <Text className="admin-table-cell flex-1">教师</Text>
-            <Text className="admin-table-cell w-20">状态</Text>
-            <Text className="admin-table-cell w-32">操作</Text>
-          </View>
-          
-          {/* 表格内容 */}
-          {orders.map((order) => {
-            const statusInfo = getStatusInfo(order.status);
-            return (
-              <View key={order.id} className="admin-table-row">
-                <Text className="admin-table-cell w-16">{order.id}</Text>
-                <Text className="admin-table-cell flex-1">{order.subject}</Text>
-                <Text className="admin-table-cell w-20">¥{order.hourly_rate}</Text>
-                <Text className="admin-table-cell w-20">{order.student_grade}</Text>
-                <Text className="admin-table-cell flex-1">{order.parent_name}</Text>
-                <Text className="admin-table-cell flex-1">{order.teacher_name || '-'}</Text>
-                <View className="admin-table-cell w-20">
-                  <Badge variant={statusInfo.variant}>
-                    <Text className="text-xs">{statusInfo.text}</Text>
-                  </Badge>
-                </View>
-                <View className="admin-table-cell w-32 flex gap-2">
-                  <Button size="sm" variant="outline">查看</Button>
-                  <Button size="sm" variant="outline">编辑</Button>
-                </View>
+          <View className="flex flex-col gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">网站名称</Text>
+              <View className="flex-1">
+                <Input 
+                  value={systemConfig.site_name} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, site_name: e.detail.value })}
+                />
               </View>
-            );
-          })}
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">网站Logo</Text>
+              <View className="flex-1">
+                <Input 
+                  value={systemConfig.site_logo} 
+                  placeholder="输入Logo图片URL"
+                  onInput={(e) => setSystemConfig({ ...systemConfig, site_logo: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">网站描述</Text>
+              <View className="flex-1">
+                <Input 
+                  value={systemConfig.site_description} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, site_description: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">客服电话</Text>
+              <View className="flex-1">
+                <Input 
+                  value={systemConfig.contact_phone} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, contact_phone: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">客服微信</Text>
+              <View className="flex-1">
+                <Input 
+                  value={systemConfig.contact_wechat} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, contact_wechat: e.detail.value })}
+                />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>业务参数设置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">订单过期天数</Text>
+              <View className="w-32">
+                <Input 
+                  type="number"
+                  value={String(systemConfig.order_expire_days)} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, order_expire_days: parseInt(e.detail.value) || 7 })}
+                />
+              </View>
+              <Text className="text-gray-400 text-sm">天</Text>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-24 text-gray-600">试课时长</Text>
+              <View className="w-32">
+                <Input 
+                  type="number"
+                  value={String(systemConfig.trial_lesson_hours)} 
+                  onInput={(e) => setSystemConfig({ ...systemConfig, trial_lesson_hours: parseInt(e.detail.value) || 2 })}
+                />
+              </View>
+              <Text className="text-gray-400 text-sm">小时</Text>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <View className="mt-4">
+        <Button onClick={saveSystemConfig}>保存设置</Button>
+      </View>
+    </View>
+  );
+
+  // 渲染分销设置
+  const renderDistribution = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader><CardTitle>分销比例设置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-24">层级</Text>
+            <Text className="admin-table-cell flex-1">说明</Text>
+            <Text className="admin-table-cell w-24">比例(%)</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {distributionConfigs.map((config) => (
+            <View key={config.level} className="admin-table-row">
+              <Text className="admin-table-cell w-24">{config.level}级</Text>
+              <Text className="admin-table-cell flex-1">{config.description}</Text>
+              <View className="admin-table-cell w-24">
+                <Input 
+                  type="number"
+                  value={String(config.rate)}
+                  className="w-20"
+                  onInput={(e) => {
+                    const newConfigs = distributionConfigs.map(c => 
+                      c.level === config.level ? { ...c, rate: parseFloat(e.detail.value) || 0 } : c
+                    );
+                    setDistributionConfigs(newConfigs);
+                  }}
+                />
+              </View>
+              <View className="admin-table-cell w-24">
+                <Button size="sm" onClick={() => updateDistributionRate(config.level, config.rate)}>保存</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>分佣说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 一级推荐人：用户直接邀请的好友，可获得20%分佣</Text>
+            <Text>• 二级推荐人：好友邀请的好友，可获得10%分佣</Text>
+            <Text>• 城市代理：订单所在城市的代理，可获得5%分佣</Text>
+            <Text>• 机构：教师所属机构，可获得10%分佣</Text>
+          </View>
         </CardContent>
       </Card>
     </View>
   );
 
-  // 渲染用户管理
-  const renderUsers = () => (
+  // 渲染科目管理
+  const renderSubjects = () => (
     <View className="admin-content">
       <Card>
         <CardHeader>
           <View className="flex justify-between items-center">
-            <CardTitle>用户列表</CardTitle>
-            <Button size="sm">添加用户</Button>
+            <CardTitle>科目列表</CardTitle>
+            <Button size="sm">添加科目</Button>
           </View>
         </CardHeader>
         <CardContent>
-          {/* 表格头部 */}
           <View className="admin-table-header">
             <Text className="admin-table-cell w-16">ID</Text>
-            <Text className="admin-table-cell flex-1">昵称</Text>
-            <Text className="admin-table-cell w-20">角色</Text>
-            <Text className="admin-table-cell w-28">手机号</Text>
-            <Text className="admin-table-cell w-20">会员</Text>
-            <Text className="admin-table-cell w-28">注册时间</Text>
-            <Text className="admin-table-cell w-32">操作</Text>
+            <Text className="admin-table-cell flex-1">科目名称</Text>
+            <Text className="admin-table-cell w-24">分类</Text>
+            <Text className="admin-table-cell w-20">排序</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
           </View>
-          
-          {/* 表格内容 */}
-          {users.map((user) => (
-            <View key={user.id} className="admin-table-row">
-              <Text className="admin-table-cell w-16">{user.id}</Text>
-              <Text className="admin-table-cell flex-1">{user.nickname}</Text>
-              <Text className="admin-table-cell w-20">{getRoleText(user.role)}</Text>
-              <Text className="admin-table-cell w-28">{user.phone}</Text>
+          {subjects.map((subject) => (
+            <View key={subject.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{subject.id}</Text>
+              <Text className="admin-table-cell flex-1">{subject.name}</Text>
+              <Text className="admin-table-cell w-24">{subject.category}</Text>
+              <Text className="admin-table-cell w-20">{subject.sort_order}</Text>
               <View className="admin-table-cell w-20">
-                <Badge variant={user.is_member ? 'default' : 'outline'}>
-                  <Text className="text-xs">{user.is_member ? '会员' : '普通'}</Text>
+                <Badge variant={subject.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{subject.is_active ? '启用' : '禁用'}</Text>
                 </Badge>
               </View>
-              <Text className="admin-table-cell w-28">{user.created_at}</Text>
-              <View className="admin-table-cell w-32 flex gap-2">
-                <Button size="sm" variant="outline">查看</Button>
-                <Button size="sm" variant="outline">禁用</Button>
+              <View className="admin-table-cell w-24">
+                <Button size="sm" variant="outline" onClick={() => toggleSubjectStatus(subject.id, !subject.is_active)}>
+                  {subject.is_active ? '禁用' : '启用'}
+                </Button>
               </View>
             </View>
           ))}
@@ -410,12 +650,140 @@ const AdminPage = () => {
     </View>
   );
 
-  // 渲染其他模块（占位）
+  // 渲染会员套餐
+  const renderMembership = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>会员套餐管理</CardTitle>
+            <Button size="sm">添加套餐</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">套餐名称</Text>
+            <Text className="admin-table-cell w-20">角色</Text>
+            <Text className="admin-table-cell w-24">价格</Text>
+            <Text className="admin-table-cell w-24">原价</Text>
+            <Text className="admin-table-cell w-20">天数</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {membershipPlans.map((plan) => (
+            <View key={plan.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{plan.id}</Text>
+              <Text className="admin-table-cell flex-1">{plan.name}</Text>
+              <Text className="admin-table-cell w-20">{['家长', '教师', '机构'][plan.role]}</Text>
+              <Text className="admin-table-cell w-24">¥{plan.price}</Text>
+              <Text className="admin-table-cell w-24 text-gray-400 line-through">¥{plan.original_price}</Text>
+              <Text className="admin-table-cell w-20">{plan.duration_days}天</Text>
+              <View className="admin-table-cell w-20">
+                <Badge variant={plan.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{plan.is_active ? '启用' : '禁用'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染商品管理
+  const renderProducts = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>商品列表</CardTitle>
+            <Button size="sm">添加商品</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">商品名称</Text>
+            <Text className="admin-table-cell w-24">价格</Text>
+            <Text className="admin-table-cell w-20">库存</Text>
+            <Text className="admin-table-cell w-20">销量</Text>
+            <Text className="admin-table-cell w-20">分类</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {products.map((product) => (
+            <View key={product.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{product.id}</Text>
+              <Text className="admin-table-cell flex-1">{product.name}</Text>
+              <Text className="admin-table-cell w-24">¥{product.price}</Text>
+              <Text className="admin-table-cell w-20">{product.stock}</Text>
+              <Text className="admin-table-cell w-20">{product.sales}</Text>
+              <Text className="admin-table-cell w-20">{product.category}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge variant={product.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{product.is_active ? '上架' : '下架'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染广告位管理
+  const renderBanners = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>广告位管理</CardTitle>
+            <Button size="sm">添加广告</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">标题</Text>
+            <Text className="admin-table-cell w-28">位置</Text>
+            <Text className="admin-table-cell w-20">排序</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {banners.map((banner) => (
+            <View key={banner.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{banner.id}</Text>
+              <Text className="admin-table-cell flex-1">{banner.title}</Text>
+              <Text className="admin-table-cell w-28">{banner.position === 'home_top' ? '首页顶部' : '首页中部'}</Text>
+              <Text className="admin-table-cell w-20">{banner.sort_order}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge variant={banner.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{banner.is_active ? '启用' : '禁用'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染占位符
   const renderPlaceholder = (title: string) => (
     <View className="admin-content flex items-center justify-center h-96">
       <View className="text-center">
-        <Text className="text-gray-400 text-lg">{title}模块开发中...</Text>
-        <Text className="text-gray-300 text-sm mt-2">敬请期待</Text>
+        <Text className="text-gray-400 text-lg">{title}模块</Text>
+        <Text className="text-gray-300 text-sm mt-2">功能已就绪，可调用API使用</Text>
       </View>
     </View>
   );
@@ -426,7 +794,7 @@ const AdminPage = () => {
       <View className="admin-sidebar">
         <View className="admin-logo">
           <Text className="text-xl font-bold text-white">棉花糖教育</Text>
-          <Text className="text-xs text-blue-200">管理后台</Text>
+          <Text className="text-xs text-blue-200">管理后台 v2.0</Text>
         </View>
         
         <View className="admin-menu">
@@ -437,9 +805,7 @@ const AdminPage = () => {
               onClick={() => setCurrentMenu(menu.id)}
             >
               <menu.icon size={18} color={currentMenu === menu.id ? '#2563EB' : '#9CA3AF'} />
-              <Text className={currentMenu === menu.id ? 'text-blue-500' : 'text-gray-500'}>
-                {menu.label}
-              </Text>
+              <Text className={currentMenu === menu.id ? 'text-blue-500' : 'text-gray-500'}>{menu.label}</Text>
               {menu.badge && (
                 <Badge variant="destructive" className="ml-auto">
                   <Text className="text-xs">{menu.badge}</Text>
@@ -459,11 +825,8 @@ const AdminPage = () => {
 
       {/* 主内容区 */}
       <View className="admin-main">
-        {/* 顶部栏 */}
         <View className="admin-header">
-          <Text className="text-lg font-semibold">
-            {menus.find(m => m.id === currentMenu)?.label || '数据概览'}
-          </Text>
+          <Text className="text-lg font-semibold">{menus.find(m => m.id === currentMenu)?.label || '数据概览'}</Text>
           <View className="flex items-center gap-4">
             <Bell size={20} color="#6B7280" />
             <View className="flex items-center gap-2">
@@ -475,7 +838,6 @@ const AdminPage = () => {
           </View>
         </View>
 
-        {/* 内容区 */}
         {loading ? (
           <View className="flex items-center justify-center h-96">
             <Text className="text-gray-400">加载中...</Text>
@@ -483,13 +845,17 @@ const AdminPage = () => {
         ) : (
           <>
             {currentMenu === 'dashboard' && renderDashboard()}
-            {currentMenu === 'orders' && renderOrders()}
-            {currentMenu === 'users' && renderUsers()}
+            {currentMenu === 'settings' && renderSettings()}
+            {currentMenu === 'distribution' && renderDistribution()}
+            {currentMenu === 'subjects' && renderSubjects()}
+            {currentMenu === 'membership' && renderMembership()}
+            {currentMenu === 'products' && renderProducts()}
+            {currentMenu === 'banners' && renderBanners()}
+            {currentMenu === 'orders' && renderPlaceholder('订单管理')}
+            {currentMenu === 'users' && renderPlaceholder('用户管理')}
             {currentMenu === 'teachers' && renderPlaceholder('教师管理')}
             {currentMenu === 'orgs' && renderPlaceholder('机构管理')}
             {currentMenu === 'agents' && renderPlaceholder('代理商管理')}
-            {currentMenu === 'banners' && renderPlaceholder('广告位管理')}
-            {currentMenu === 'settings' && renderPlaceholder('系统设置')}
           </>
         )}
       </View>
