@@ -7,6 +7,10 @@ import { OrderModule } from '@/modules/order/order.module';
 import { MembershipModule } from '@/modules/membership/membership.module';
 import { DistributionModule } from '@/modules/distribution/distribution.module';
 import { AdminModule } from '@/modules/admin/admin.module';
+import { MessageModule } from '@/modules/message/message.module';
+import { PaymentModule } from '@/modules/payment/payment.module';
+import { TeacherModule } from '@/modules/teacher/teacher.module';
+import { DatabaseInitService } from '@/common/database-init.service';
 
 @Module({
   imports: [
@@ -16,8 +20,11 @@ import { AdminModule } from '@/modules/admin/admin.module';
     MembershipModule,
     DistributionModule,
     AdminModule,
+    MessageModule,
+    PaymentModule,
+    TeacherModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, DatabaseInitService],
 })
 export class AppModule {}

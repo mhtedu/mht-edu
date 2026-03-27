@@ -1,94 +1,231 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Query, Param, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  async createUser(@Body() body: {
-    openid?: string;
-    mobile?: string;
-    nickname?: string;
-    avatar?: string;
-    role: number;
-    inviter_id?: number;
-  }) {
-    return await this.userService.createUser(body);
+  /**
+   * 获取当前用户信息
+   */
+  @Get('info')
+  async getUserInfo(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getUserInfo(userId);
   }
 
-  @Get(':id')
-  async getUser(@Param('id') id: string) {
-    return await this.userService.getUserById(parseInt(id));
-  }
-
-  @Put(':id')
-  async updateUser(
-    @Param('id') id: string,
-    @Body() body: Partial<{
-      nickname: string;
-      avatar: string;
-      mobile: string;
-      latitude: string;
-      longitude: string;
-      city_code: string;
-    }>
+  /**
+   * 更新用户信息
+   */
+  @Put('info')
+  async updateUserInfo(
+    @Body() body: { nickname?: string; avatar?: string },
+    @Request() req: any,
   ) {
-    return await this.userService.updateUser(parseInt(id), body);
+    const userId = req.user?.id || 1;
+    return this.userService.updateUserInfo(userId, body);
   }
 
-  @Post(':id/location')
+  /**
+   * 更新位置信息
+   */
+  @Post('location')
   async updateLocation(
-    @Param('id') id: string,
-    @Body() body: { latitude: string; longitude: string; city_code?: string }
+    @Body() body: { latitude: number; longitude: number; address?: string },
+    @Request() req: any,
   ) {
-    return await this.userService.updateUserLocation(
-      parseInt(id),
-      body.latitude,
-      body.longitude,
-      body.city_code
-    );
+    const userId = req.user?.id || 1;
+    return this.userService.updateLocation(userId, body);
   }
 
-  @Get('teachers/list')
-  async getTeachers(@Query() query: {
-    latitude?: string;
-    longitude?: string;
-    subject?: string;
-    maxDistance?: string;
-    page?: string;
-    pageSize?: string;
-  }) {
-    return await this.userService.getTeachers({
-      ...query,
-      maxDistance: query.maxDistance ? parseInt(query.maxDistance) : undefined,
-      page: query.page ? parseInt(query.page) : 1,
-      pageSize: query.pageSize ? parseInt(query.pageSize) : 20,
-    });
+  /**
+   * 切换角色
+   */
+  @Post('switch-role')
+  async switchRole(
+    @Body() body: { role: number },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.switchRole(userId, body.role);
   }
 
-  @Get('teachers/:userId/profile')
-  async getTeacherProfile(@Param('userId') userId: string) {
-    return await this.userService.getTeacherProfile(parseInt(userId));
+  /**
+   * 获取会员信息
+   */
+  @Get('membership')
+  async getMembershipInfo(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getMembershipInfo(userId);
   }
 
-  @Put('teachers/:userId/profile')
+  /**
+   * 获取会员套餐列表
+   */
+  @Get('membership/plans')
+  async getMembershipPlans(@Query('role') role: string) {
+    return this.userService.getMembershipPlans(parseInt(role) || 0);
+  }
+
+  /**
+   * 获取收益信息
+   */
+  @Get('earnings')
+  async getEarnings(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getEarnings(userId);
+  }
+
+  /**
+   * 获取收益明细
+   */
+  @Get('earnings/records')
+  async getEarningRecords(
+    @Request() req: any,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.getEarningRecords(userId, parseInt(page), parseInt(pageSize));
+  }
+
+  /**
+   * 申请提现
+   */
+  @Post('withdraw')
+  async requestWithdrawal(
+    @Body() body: { amount: number; bankInfo: any },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.requestWithdrawal(userId, body.amount, body.bankInfo);
+  }
+
+  /**
+   * 获取邀请信息
+   */
+  @Get('invite')
+  async getInviteInfo(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getInviteInfo(userId);
+  }
+
+  /**
+   * 获取邀请列表
+   */
+  @Get('invite/list')
+  async getInviteList(
+    @Request() req: any,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.getInviteList(userId, parseInt(page), parseInt(pageSize));
+  }
+
+  /**
+   * 获取教师档案
+   */
+  @Get('teacher-profile')
+  async getTeacherProfile(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getTeacherProfile(userId);
+  }
+
+  /**
+   * 更新教师档案
+   */
+  @Post('teacher-profile')
   async updateTeacherProfile(
-    @Param('userId') userId: string,
-    @Body() body: Partial<{
-      real_name: string;
-      gender: number;
-      birth_year: string;
-      education: string;
-      certificates: any[];
-      subjects: string[];
-      max_distance: number;
-      hourly_rate_min: string;
-      hourly_rate_max: string;
-      intro: string;
-      photos: string[];
-    }>
+    @Body() body: {
+      real_name?: string;
+      gender?: number;
+      education?: string;
+      subjects?: string;
+      grades?: string;
+      teaching_years?: number;
+      hourly_rate?: number;
+      bio?: string;
+      certificates?: string[];
+    },
+    @Request() req: any,
   ) {
-    return await this.userService.updateTeacherProfile(parseInt(userId), body);
+    const userId = req.user?.id || 1;
+    return this.userService.updateTeacherProfile(userId, body);
+  }
+
+  /**
+   * 获取机构档案
+   */
+  @Get('org-profile')
+  async getOrgProfile(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getOrgProfile(userId);
+  }
+
+  /**
+   * 更新机构档案
+   */
+  @Post('org-profile')
+  async updateOrgProfile(
+    @Body() body: {
+      org_name?: string;
+      license_no?: string;
+      contact_name?: string;
+      contact_phone?: string;
+      address?: string;
+      intro?: string;
+    },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.updateOrgProfile(userId, body);
+  }
+
+  /**
+   * 绑定邀请码
+   */
+  @Post('bind-inviter')
+  async bindInviter(
+    @Body() body: { inviteCode: string },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.bindInviter(userId, body.inviteCode);
+  }
+
+  /**
+   * 上传头像
+   */
+  @Post('upload-avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(
+    @UploadedFile() file: any,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.uploadAvatar(userId, file);
+  }
+
+  /**
+   * 获取用户设置
+   */
+  @Get('settings')
+  async getSettings(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getSettings(userId);
+  }
+
+  /**
+   * 更新用户设置
+   */
+  @Put('settings')
+  async updateSettings(
+    @Body() body: { key: string; value: any },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.updateSettings(userId, body.key, body.value);
   }
 }

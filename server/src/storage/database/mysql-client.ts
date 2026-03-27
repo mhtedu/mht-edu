@@ -1,5 +1,4 @@
-import mysql, { Pool, PoolConnection, FieldPacket } from 'mysql2/promise';
-import { RowDataPacket } from 'mysql2/promise';
+import { createPool, Pool, PoolConnection, FieldPacket, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { execSync } from 'child_process';
 
 let envLoaded = false;
@@ -48,10 +47,10 @@ function getDatabaseConfig(): DatabaseConfig {
 }
 
 // 创建连接池
-function createPool(): Pool {
+function createPoolInstance(): Pool {
   const config = getDatabaseConfig();
   
-  return mysql.createPool({
+  return createPool({
     host: config.host,
     port: config.port,
     user: config.user,
@@ -68,7 +67,7 @@ function createPool(): Pool {
 // 获取连接池
 function getPool(): Pool {
   if (!pool) {
-    pool = createPool();
+    pool = createPoolInstance();
   }
   return pool;
 }
@@ -78,8 +77,8 @@ async function query<T extends RowDataPacket[]>(
   sql: string,
   params?: any[]
 ): Promise<[T, FieldPacket[]]> {
-  const pool = getPool();
-  return pool.execute<T>(sql, params);
+  const poolInstance = getPool();
+  return poolInstance.execute<T>(sql, params);
 }
 
 // 执行单条查询
@@ -94,21 +93,21 @@ async function queryOne<T extends RowDataPacket>(
 // 执行插入并返回插入ID
 async function insert(sql: string, params?: any[]): Promise<number> {
   const pool = getPool();
-  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
+  const [result] = await pool.execute<ResultSetHeader>(sql, params);
   return result.insertId;
 }
 
 // 执行更新并返回影响行数
 async function update(sql: string, params?: any[]): Promise<number> {
   const pool = getPool();
-  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
+  const [result] = await pool.execute<ResultSetHeader>(sql, params);
   return result.affectedRows;
 }
 
 // 执行删除并返回影响行数
 async function remove(sql: string, params?: any[]): Promise<number> {
   const pool = getPool();
-  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
+  const [result] = await pool.execute<ResultSetHeader>(sql, params);
   return result.affectedRows;
 }
 

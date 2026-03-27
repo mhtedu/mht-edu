@@ -1,78 +1,158 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
 import { OrderService } from './order.service';
 
-@Controller('orders')
+@Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
-  @Post()
-  async createOrder(@Body() body: {
-    parent_id: number;
-    subject: string;
-    hourly_rate: string;
-    student_gender?: number;
-    student_grade?: string;
-    address: string;
-    latitude: string;
-    longitude: string;
-    description?: string;
-  }) {
-    return await this.orderService.createOrder(body);
+  /**
+   * 家长发布订单
+   */
+  @Post('create')
+  async createOrder(
+    @Body() body: {
+      subject: string;
+      grade: string;
+      student_info: string;
+      schedule: string;
+      address: string;
+      latitude: number;
+      longitude: number;
+      budget: number;
+      requirement?: string;
+    },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.createOrder(userId, body);
   }
 
-  @Get('parent')
-  async getParentOrders(
-    @Query('parentId') parentId: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
+  /**
+   * 获取订单列表（家长视角）
+   */
+  @Get('list')
+  async getOrders(
+    @Request() req: any,
+    @Query('status') status?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
   ) {
-    return await this.orderService.getParentOrders(
-      parseInt(parentId),
-      page ? parseInt(page) : 1,
-      pageSize ? parseInt(pageSize) : 20
+    const userId = req.user?.id || 1;
+    return this.orderService.getOrdersByParent(
+      userId,
+      status ? parseInt(status) : undefined,
+      parseInt(page),
+      parseInt(pageSize),
     );
   }
 
-  @Get('teacher')
-  async getTeacherOrders(@Query() query: {
-    latitude: string;
-    longitude: string;
-    maxDistance?: string;
-    subject?: string;
-    page?: string;
-    pageSize?: string;
-  }) {
-    return await this.orderService.getTeacherOrders({
-      ...query,
-      maxDistance: query.maxDistance ? parseInt(query.maxDistance) : undefined,
-      page: query.page ? parseInt(query.page) : 1,
-      pageSize: query.pageSize ? parseInt(query.pageSize) : 20,
+  /**
+   * 获取订单详情
+   */
+  @Get(':id')
+  async getOrderDetail(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.getOrderDetail(parseInt(id), userId);
+  }
+
+  /**
+   * 获取订单抢单列表
+   */
+  @Get(':id/matches')
+  async getOrderMatches(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.getOrderMatches(parseInt(id), userId);
+  }
+
+  /**
+   * 选择教师（匹配）
+   */
+  @Post(':id/select-teacher')
+  async selectTeacher(
+    @Param('id') id: string,
+    @Body() body: { teacherId: number },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.selectTeacher(parseInt(id), userId, body.teacherId);
+  }
+
+  /**
+   * 更新订单状态
+   */
+  @Post(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: number },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.updateOrderStatus(parseInt(id), userId, body.status);
+  }
+
+  /**
+   * 取消订单
+   */
+  @Post(':id/cancel')
+  async cancelOrder(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.cancelOrder(parseInt(id), userId, body.reason);
+  }
+
+  /**
+   * 评价订单
+   */
+  @Post(':id/review')
+  async createReview(
+    @Param('id') id: string,
+    @Body() body: { rating: number; content: string },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.orderService.createReview(parseInt(id), userId, body.rating, body.content);
+  }
+
+  /**
+   * 获取附近的订单（教师视角）
+   */
+  @Get('nearby')
+  async getNearbyOrders(
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+    @Query('radius') radius: string = '10',
+    @Query('subject') subject?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    return this.orderService.getNearbyOrders({
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      radius: parseFloat(radius),
+      subject,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
     });
   }
 
-  @Get(':id')
-  async getOrder(@Param('id') id: string) {
-    return await this.orderService.getOrderById(parseInt(id));
-  }
-
-  @Post(':id/grab')
-  async grabOrder(
+  /**
+   * 获取订单推荐教师
+   */
+  @Get(':id/recommended-teachers')
+  async getRecommendedTeachers(
     @Param('id') id: string,
-    @Body() body: { teacher_id: number }
+    @Request() req: any,
   ) {
-    return await this.orderService.grabOrder(parseInt(id), body.teacher_id);
-  }
-
-  @Put(':id/unbind')
-  async unbindOrder(@Param('id') id: string) {
-    return await this.orderService.unbindOrder(parseInt(id));
-  }
-
-  @Get(':id/contact')
-  async getContact(
-    @Param('id') id: string,
-    @Query('userId') userId: string
-  ) {
-    return await this.orderService.getContactInfo(parseInt(id), parseInt(userId));
+    const userId = req.user?.id || 1;
+    return this.orderService.getRecommendedTeachers(parseInt(id), userId);
   }
 }
