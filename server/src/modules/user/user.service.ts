@@ -3,6 +3,39 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 @Injectable()
 export class UserService {
+  /**
+   * 计算两点之间的距离（米）- Haversine 公式
+   */
+  private calculateDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number {
+    const R = 6371000; // 地球半径（米）
+    const dLat = this.toRad(lat2 - lat1);
+    const dLng = this.toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) *
+        Math.cos(this.toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  private formatDistance(meters: number): string {
+    if (meters < 1000) {
+      return `${Math.round(meters)}米`;
+    }
+    return `${(meters / 1000).toFixed(1)}公里`;
+  }
+
   async createUser(userData: {
     openid?: string;
     mobile?: string;
@@ -102,23 +135,64 @@ export class UserService {
     pageSize?: number;
   }) {
     const client = getSupabaseClient();
-    const { page = 1, pageSize = 20 } = params;
+    const { page = 1, pageSize = 20, maxDistance = 50000, subject } = params;
+    const userLat = parseFloat(params.latitude || '0');
+    const userLng = parseFloat(params.longitude || '0');
+    const hasLocation = userLat !== 0 && userLng !== 0;
 
+    // 查询教师列表
     let query = client
       .from('users')
-      .select(`
-        *,
-        teacher_profiles (*)
-      `)
+      .select('*')
       .eq('role', 1) // 教师
-      .eq('status', 1) // 正常状态
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+      .eq('status', 1); // 正常状态
 
     const { data, error } = await query;
 
     if (error) throw new Error(`查询教师列表失败: ${error.message}`);
-    return data;
+
+    // 获取教师资料
+    const teacherIds = (data || []).map(t => t.id);
+    const { data: profiles } = await client
+      .from('teacher_profiles')
+      .select('*')
+      .in('user_id', teacherIds);
+
+    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+
+    // 计算距离并组装数据
+    let teachersWithDistance = (data || []).map(teacher => {
+      const profile = profileMap.get(teacher.id) || {};
+      const teacherLat = parseFloat(teacher.latitude) || 0;
+      const teacherLng = parseFloat(teacher.longitude) || 0;
+      const distance = hasLocation
+        ? this.calculateDistance(userLat, userLng, teacherLat, teacherLng)
+        : 0;
+
+      return {
+        ...teacher,
+        ...profile,
+        distance,
+        distance_text: hasLocation ? this.formatDistance(distance) : '未知',
+      };
+    });
+
+    // 按学科筛选
+    if (subject && subject !== '全部') {
+      teachersWithDistance = teachersWithDistance.filter(t =>
+        t.subjects && Array.isArray(t.subjects) && t.subjects.includes(subject)
+      );
+    }
+
+    // 有位置时按距离过滤和排序
+    if (hasLocation) {
+      teachersWithDistance = teachersWithDistance
+        .filter(t => t.distance <= maxDistance)
+        .sort((a, b) => a.distance - b.distance);
+    }
+
+    // 分页
+    return teachersWithDistance.slice((page - 1) * pageSize, page * pageSize);
   }
 
   async getTeacherProfile(userId: number) {
