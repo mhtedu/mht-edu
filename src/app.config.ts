@@ -30,6 +30,12 @@ export default defineAppConfig({
     'pages/login/index',
     // 商品详情
     'pages/product-detail/index',
+    // 聊天详情
+    'pages/chat/index',
+    // 课时管理（教师端）
+    'pages/course-manage/index',
+    // 家长主页
+    'pages/parent-profile/index',
   ],
   window: {
     backgroundTextStyle: 'light',
