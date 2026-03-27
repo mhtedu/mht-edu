@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components';
-import { useLoad, useDidShow } from '@tarojs/taro';
-import { useState } from 'react';
+import { useLoad } from '@tarojs/taro';
+import { useState, useEffect } from 'react';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,9 +31,9 @@ const IndexPage = () => {
     console.log('Page loaded.');
   });
 
-  useDidShow(async () => {
-    await loadOrders();
-  });
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
   const loadOrders = async () => {
     try {
@@ -50,7 +50,12 @@ const IndexPage = () => {
         },
       });
 
+      console.log('订单接口响应:', res);
+      console.log('res.data:', res.data);
+      console.log('isArray:', Array.isArray(res.data));
+
       if (res.data && Array.isArray(res.data)) {
+        console.log('设置订单数据:', res.data.length, '条');
         setOrders(res.data);
       }
     } catch (error) {

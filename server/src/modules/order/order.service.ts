@@ -61,10 +61,7 @@ export class OrderService {
     const client = getSupabaseClient();
     const { data, error } = await client
       .from('orders')
-      .select(`
-        *,
-        users!orders_parent_id_fkey (id, nickname, avatar)
-      `)
+      .select('*')
       .eq('parent_id', parentId)
       .order('created_at', { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
@@ -82,36 +79,50 @@ export class OrderService {
     pageSize?: number;
   }) {
     const client = getSupabaseClient();
-    const { page = 1, pageSize = 20, maxDistance = 50000 } = params;
-    const teacherLat = parseFloat(params.latitude);
-    const teacherLng = parseFloat(params.longitude);
+    const { page = 1, pageSize = 20, maxDistance = 50000, subject } = params;
+    const teacherLat = parseFloat(params.latitude) || 0;
+    const teacherLng = parseFloat(params.longitude) || 0;
+    const hasLocation = teacherLat !== 0 && teacherLng !== 0;
 
-    // 获取所有待抢单的订单
-    const { data, error } = await client
+    // 构建查询
+    let query = client
       .from('orders')
       .select('*')
       .eq('status', 0) // 待抢单
       .order('created_at', { ascending: false });
 
+    // 按学科筛选
+    if (subject && subject !== '全部') {
+      query = query.eq('subject', subject);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw new Error(`查询可抢订单失败: ${error.message}`);
 
-    // 计算距离并过滤
-    const ordersWithDistance = (data || [])
-      .map(order => {
-        const orderLat = parseFloat(order.latitude);
-        const orderLng = parseFloat(order.longitude);
-        const distance = this.calculateDistance(teacherLat, teacherLng, orderLat, orderLng);
-        return {
-          ...order,
-          distance,
-          distance_text: this.formatDistance(distance),
-        };
-      })
-      .filter(order => order.distance <= maxDistance)
-      .sort((a, b) => a.distance - b.distance)
-      .slice((page - 1) * pageSize, page * pageSize);
+    // 计算距离
+    let ordersWithDistance = (data || []).map(order => {
+      const orderLat = parseFloat(order.latitude) || 0;
+      const orderLng = parseFloat(order.longitude) || 0;
+      const distance = hasLocation 
+        ? this.calculateDistance(teacherLat, teacherLng, orderLat, orderLng)
+        : 0;
+      return {
+        ...order,
+        distance,
+        distance_text: hasLocation ? this.formatDistance(distance) : '未知',
+      };
+    });
 
-    return ordersWithDistance;
+    // 有位置时按距离过滤和排序
+    if (hasLocation) {
+      ordersWithDistance = ordersWithDistance
+        .filter(order => order.distance <= maxDistance)
+        .sort((a, b) => a.distance - b.distance);
+    }
+
+    // 分页
+    return ordersWithDistance.slice((page - 1) * pageSize, page * pageSize);
   }
 
   /**
@@ -128,10 +139,7 @@ export class OrderService {
     const client = getSupabaseClient();
     const { data, error } = await client
       .from('orders')
-      .select(`
-        *,
-        users!orders_parent_id_fkey (id, nickname, avatar, mobile)
-      `)
+      .select('*')
       .eq('id', id)
       .maybeSingle();
 
