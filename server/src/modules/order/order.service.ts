@@ -18,7 +18,7 @@ export class OrderService {
     // 生成订单号
     const orderNo = this.generateOrderNo();
 
-    const [result] = await db.execute(`
+    const result = await executeQuery(`
       INSERT INTO orders (
         order_no, parent_id, subject, grade, student_info, schedule,
         address, latitude, longitude, budget, requirement, status
@@ -62,7 +62,7 @@ export class OrderService {
       params.push(status);
     }
 
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT 
         o.*,
         u.nickname as teacher_nickname, u.avatar as teacher_avatar,
@@ -75,13 +75,13 @@ export class OrderService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM orders o WHERE ${conditions.join(' AND ')}
     `, params);
 
     // 获取每个订单的抢单数量
     for (const order of orders as any[]) {
-      const [matchCount] = await db.execute(`
+      const matchCount = await executeQuery(`
         SELECT COUNT(*) as count FROM order_matches WHERE order_id = ?
       `, [order.id]);
       order.match_count = matchCount[0]?.count || 0;
@@ -99,7 +99,7 @@ export class OrderService {
    * 获取订单详情
    */
   async getOrderDetail(orderId: number, userId: number) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT o.*, 
         u.nickname as parent_nickname, u.avatar as parent_avatar, u.mobile as parent_mobile,
         t.nickname as teacher_nickname, t.avatar as teacher_avatar, 
@@ -134,7 +134,7 @@ export class OrderService {
     }
 
     // 获取抢单列表
-    const [matches] = await db.execute(`
+    const matches = await executeQuery(`
       SELECT om.*, 
         u.nickname, u.avatar,
         tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years
@@ -155,7 +155,7 @@ export class OrderService {
    */
   async getOrderMatches(orderId: number, userId: number) {
     // 验证权限
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT parent_id FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -167,7 +167,7 @@ export class OrderService {
       throw new Error('无权限查看');
     }
 
-    const [matches] = await db.execute(`
+    const matches = await executeQuery(`
       SELECT om.*, 
         u.nickname, u.avatar,
         tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years, tp.hourly_rate
@@ -186,8 +186,8 @@ export class OrderService {
    */
   async selectTeacher(orderId: number, userId: number, teacherId: number) {
     // 验证权限
-    const [orders] = await db.execute(`
-      SELECT * FROM orders WHERE id = ? FOR UPDATE
+    const orders = await executeQuery(`
+      SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
     if (orders.length === 0) {
@@ -204,7 +204,7 @@ export class OrderService {
     }
 
     // 检查教师是否抢单
-    const [matches] = await db.execute(`
+    const matches = await executeQuery(`
       SELECT id FROM order_matches WHERE order_id = ? AND teacher_id = ?
     `, [orderId, teacherId]);
 
@@ -213,17 +213,17 @@ export class OrderService {
     }
 
     // 更新抢单记录状态
-    await db.execute(`
+    await executeQuery(`
       UPDATE order_matches SET status = 1 WHERE order_id = ? AND teacher_id = ?
     `, [orderId, teacherId]);
 
     // 拒绝其他教师
-    await db.execute(`
+    await executeQuery(`
       UPDATE order_matches SET status = 2 WHERE order_id = ? AND teacher_id != ?
     `, [orderId, teacherId]);
 
     // 更新订单状态
-    await db.execute(`
+    await executeQuery(`
       UPDATE orders SET status = 1, matched_teacher_id = ?, matched_at = NOW()
       WHERE id = ?
     `, [teacherId, orderId]);
@@ -241,7 +241,7 @@ export class OrderService {
    * 更新订单状态
    */
   async updateOrderStatus(orderId: number, userId: number, status: number) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -258,17 +258,17 @@ export class OrderService {
 
     // 状态流转检查
     const validTransitions: Record<number, number[]> = {
-      0: [1], // 待抢单 -> 已匹配
-      1: [2, 5], // 已匹配 -> 试课中 或 已解除
-      2: [3, 5], // 试课中 -> 已签约 或 已解除
-      3: [4, 5], // 已签约 -> 已完成 或 已解除
+      0: [1],
+      1: [2, 5],
+      2: [3, 5],
+      3: [4, 5],
     };
 
     if (!validTransitions[order.status]?.includes(status)) {
       throw new Error('状态流转不合法');
     }
 
-    await db.execute(`
+    await executeQuery(`
       UPDATE orders SET status = ? WHERE id = ?
     `, [status, orderId]);
 
@@ -279,7 +279,7 @@ export class OrderService {
    * 取消订单
    */
   async cancelOrder(orderId: number, userId: number, reason?: string) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -297,12 +297,12 @@ export class OrderService {
       throw new Error('订单已进入试课阶段，无法取消');
     }
 
-    await db.execute(`
+    await executeQuery(`
       UPDATE orders SET status = 5, cancel_reason = ? WHERE id = ?
     `, [reason || '', orderId]);
 
     // 通知已抢单教师
-    const [matches] = await db.execute(`
+    const matches = await executeQuery(`
       SELECT teacher_id FROM order_matches WHERE order_id = ?
     `, [orderId]);
 
@@ -320,7 +320,7 @@ export class OrderService {
    * 评价订单
    */
   async createReview(orderId: number, userId: number, rating: number, content: string) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -339,7 +339,7 @@ export class OrderService {
     }
 
     // 检查是否已评价
-    const [existing] = await db.execute(`
+    const existing = await executeQuery(`
       SELECT id FROM reviews WHERE order_id = ?
     `, [orderId]);
 
@@ -348,17 +348,17 @@ export class OrderService {
     }
 
     // 创建评价
-    await db.execute(`
+    await executeQuery(`
       INSERT INTO reviews (order_id, parent_id, teacher_id, rating, content)
       VALUES (?, ?, ?, ?, ?)
     `, [orderId, userId, order.matched_teacher_id, rating, content]);
 
     // 更新教师评分
-    const [avgRating] = await db.execute(`
+    const avgRating = await executeQuery(`
       SELECT AVG(rating) as avg FROM reviews WHERE teacher_id = ?
     `, [order.matched_teacher_id]);
 
-    await db.execute(`
+    await executeQuery(`
       UPDATE teacher_profiles 
       SET rating = ?, review_count = review_count + 1
       WHERE user_id = ?
@@ -388,7 +388,7 @@ export class OrderService {
     }
 
     // 计算距离并筛选
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT 
         o.*,
         u.nickname as parent_nickname, u.avatar as parent_avatar,
@@ -432,7 +432,7 @@ export class OrderService {
    * 获取订单推荐教师
    */
   async getRecommendedTeachers(orderId: number, userId: number) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -447,7 +447,7 @@ export class OrderService {
     }
 
     // 根据科目和距离推荐教师
-    const [teachers] = await db.execute(`
+    const teachers = await executeQuery(`
       SELECT 
         u.id, u.nickname, u.avatar, u.latitude, u.longitude,
         tp.real_name, tp.subjects, tp.education, tp.teaching_years, tp.rating, tp.hourly_rate,

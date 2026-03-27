@@ -19,7 +19,7 @@ export class PaymentService {
    */
   async createMembershipPayment(userId: number, planId: number) {
     // 获取套餐信息
-    const [plans] = await db.execute(`
+    const plans = await executeQuery(`
       SELECT * FROM membership_plans WHERE id = ? AND is_active = 1
     `, [planId]);
 
@@ -33,13 +33,13 @@ export class PaymentService {
     const paymentNo = this.generatePaymentNo();
 
     // 创建支付记录
-    await db.execute(`
+    await executeQuery(`
       INSERT INTO payments (user_id, target_type, target_id, amount, payment_no, status)
       VALUES (?, 1, ?, ?, ?, 0)
     `, [userId, planId, plan.price, paymentNo]);
 
     // 获取用户openid
-    const [users] = await db.execute(`
+    const users = await executeQuery(`
       SELECT openid FROM users WHERE id = ?
     `, [userId]);
 
@@ -71,7 +71,7 @@ export class PaymentService {
    */
   async createProductPayment(userId: number, productId: number, quantity: number) {
     // 获取商品信息
-    const [products] = await db.execute(`
+    const products = await executeQuery(`
       SELECT * FROM products WHERE id = ? AND is_active = 1
     `, [productId]);
 
@@ -89,13 +89,13 @@ export class PaymentService {
     const paymentNo = this.generatePaymentNo();
 
     // 创建支付记录
-    await db.execute(`
+    await executeQuery(`
       INSERT INTO payments (user_id, target_type, target_id, amount, payment_no, status)
       VALUES (?, 2, ?, ?, ?, 0)
     `, [userId, productId, totalAmount, paymentNo]);
 
     // 获取用户openid
-    const [users] = await db.execute(`
+    const users = await executeQuery(`
       SELECT openid FROM users WHERE id = ?
     `, [userId]);
 
@@ -204,7 +204,7 @@ export class PaymentService {
    */
   private async updatePaymentSuccess(paymentNo: string, transactionId: string) {
     // 获取支付记录
-    const [payments] = await db.execute(`
+    const payments = await executeQuery(`
       SELECT * FROM payments WHERE payment_no = ?
     `, [paymentNo]);
 
@@ -218,51 +218,38 @@ export class PaymentService {
       return; // 已处理过
     }
 
-    // 开启事务
-    const conn = await db.getConnection();
-    await conn.beginTransaction();
+    // 更新支付状态
+    await executeQuery(`
+      UPDATE payments SET status = 1, transaction_id = ?, paid_at = NOW()
+      WHERE payment_no = ?
+    `, [transactionId, paymentNo]);
 
-    try {
-      // 更新支付状态
-      await conn.execute(`
-        UPDATE payments SET status = 1, transaction_id = ?, paid_at = NOW()
-        WHERE payment_no = ?
-      `, [transactionId, paymentNo]);
-
-      // 根据支付类型处理
-      if (payment.target_type === 1) {
-        // 会员支付
-        await this.handleMembershipPayment(conn, payment);
-      } else if (payment.target_type === 2) {
-        // 商品支付
-        await this.handleProductPayment(conn, payment);
-      }
-
-      // 处理分佣
-      await this.handleCommission(conn, payment);
-
-      await conn.commit();
-    } catch (error) {
-      await conn.rollback();
-      throw error;
-    } finally {
-      conn.release();
+    // 根据支付类型处理
+    if (payment.target_type === 1) {
+      // 会员支付
+      await this.handleMembershipPayment(payment);
+    } else if (payment.target_type === 2) {
+      // 商品支付
+      await this.handleProductPayment(payment);
     }
+
+    // 处理分佣
+    await this.handleCommission(payment);
   }
 
   /**
    * 处理会员支付
    */
-  private async handleMembershipPayment(conn: any, payment: any) {
+  private async handleMembershipPayment(payment: any) {
     // 获取套餐信息
-    const [plans] = await conn.execute(`
+    const plans = await executeQuery(`
       SELECT * FROM membership_plans WHERE id = ?
     `, [payment.target_id]);
 
     const plan = plans[0] as any;
 
     // 计算过期时间
-    const [currentMember] = await conn.execute(`
+    const currentMember = await executeQuery(`
       SELECT membership_expire_at FROM users WHERE id = ?
     `, [payment.user_id]);
 
@@ -274,7 +261,7 @@ export class PaymentService {
     expireAt.setDate(expireAt.getDate() + plan.duration_days);
 
     // 更新用户会员状态
-    await conn.execute(`
+    await executeQuery(`
       UPDATE users SET membership_type = 1, membership_expire_at = ?
       WHERE id = ?
     `, [expireAt, payment.user_id]);
@@ -283,9 +270,9 @@ export class PaymentService {
   /**
    * 处理商品支付
    */
-  private async handleProductPayment(conn: any, payment: any) {
+  private async handleProductPayment(payment: any) {
     // 扣减库存
-    await conn.execute(`
+    await executeQuery(`
       UPDATE products SET stock = stock - 1, sales = sales + 1
       WHERE id = ?
     `, [payment.target_id]);
@@ -294,9 +281,9 @@ export class PaymentService {
   /**
    * 处理分佣
    */
-  private async handleCommission(conn: any, payment: any) {
+  private async handleCommission(payment: any) {
     // 获取用户邀请关系
-    const [users] = await conn.execute(`
+    const users = await executeQuery(`
       SELECT inviter_id, inviter_2nd_id, city_agent_id, affiliated_org_id, role
       FROM users WHERE id = ?
     `, [payment.user_id]);
@@ -307,7 +294,7 @@ export class PaymentService {
     // 一级分佣 20%
     if (user.inviter_id) {
       const commissionAmount = amount * 0.2;
-      await conn.execute(`
+      await executeQuery(`
         INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate)
         VALUES (?, ?, ?, 1, ?, 20.00)
       `, [user.inviter_id, payment.user_id, payment.id, commissionAmount]);
@@ -316,7 +303,7 @@ export class PaymentService {
     // 二级分佣 10%
     if (user.inviter_2nd_id) {
       const commissionAmount = amount * 0.1;
-      await conn.execute(`
+      await executeQuery(`
         INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate)
         VALUES (?, ?, ?, 2, ?, 10.00)
       `, [user.inviter_2nd_id, payment.user_id, payment.id, commissionAmount]);
@@ -325,7 +312,7 @@ export class PaymentService {
     // 城市代理分佣 5%
     if (user.city_agent_id) {
       const commissionAmount = amount * 0.05;
-      await conn.execute(`
+      await executeQuery(`
         INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate)
         VALUES (?, ?, ?, 3, ?, 5.00)
       `, [user.city_agent_id, payment.user_id, payment.id, commissionAmount]);
@@ -334,7 +321,7 @@ export class PaymentService {
     // 机构分佣 10%（如果是教师付款）
     if (user.role === 1 && user.affiliated_org_id) {
       const commissionAmount = amount * 0.1;
-      await conn.execute(`
+      await executeQuery(`
         INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate)
         VALUES (?, ?, ?, 4, ?, 10.00)
       `, [user.affiliated_org_id, payment.user_id, payment.id, commissionAmount]);
@@ -345,7 +332,7 @@ export class PaymentService {
    * 查询支付状态
    */
   async getPaymentStatus(userId: number, paymentNo: string) {
-    const [payments] = await db.execute(`
+    const payments = await executeQuery(`
       SELECT p.*, mp.name as plan_name, pr.name as product_name
       FROM payments p
       LEFT JOIN membership_plans mp ON p.target_type = 1 AND p.target_id = mp.id
@@ -366,7 +353,7 @@ export class PaymentService {
   async getPaymentRecords(userId: number, page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const [records] = await db.execute(`
+    const records = await executeQuery(`
       SELECT p.*, mp.name as plan_name, pr.name as product_name
       FROM payments p
       LEFT JOIN membership_plans mp ON p.target_type = 1 AND p.target_id = mp.id
@@ -376,7 +363,7 @@ export class PaymentService {
       LIMIT ? OFFSET ?
     `, [userId, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM payments WHERE user_id = ?
     `, [userId]);
 
@@ -392,7 +379,7 @@ export class PaymentService {
    * 模拟支付（开发环境测试用）
    */
   async mockPay(userId: number, paymentNo: string) {
-    const [payments] = await db.execute(`
+    const payments = await executeQuery(`
       SELECT * FROM payments WHERE payment_no = ? AND user_id = ?
     `, [paymentNo, userId]);
 

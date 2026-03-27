@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { db } from '@/storage/database/mysql-client';
+import { query } from '@/storage/database/mysql-client';
+
+async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
+  const [rows] = await query(sql, params);
+  return rows as any[];
+}
 
 @Injectable()
 export class AdminService {
@@ -7,7 +12,7 @@ export class AdminService {
 
   async getStats() {
     // 用户统计
-    const [userStats] = await db.execute(`
+    const userStats = await executeQuery(`
       SELECT 
         COUNT(*) as total_users,
         SUM(CASE WHEN role = 0 THEN 1 ELSE 0 END) as parent_count,
@@ -19,7 +24,7 @@ export class AdminService {
     `);
 
     // 订单统计
-    const [orderStats] = await db.execute(`
+    const orderStats = await executeQuery(`
       SELECT 
         COUNT(*) as total_orders,
         SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending_count,
@@ -31,7 +36,7 @@ export class AdminService {
     `);
 
     // 支付统计
-    const [paymentStats] = await db.execute(`
+    const paymentStats = await executeQuery(`
       SELECT 
         COUNT(*) as total_count,
         COALESCE(SUM(amount), 0) as total_amount,
@@ -43,7 +48,7 @@ export class AdminService {
     `);
 
     // 分佣统计
-    const [commissionStats] = await db.execute(`
+    const commissionStats = await executeQuery(`
       SELECT 
         COALESCE(SUM(CASE WHEN status = 0 THEN amount ELSE 0 END), 0) as pending_amount,
         COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as settled_amount,
@@ -60,7 +65,7 @@ export class AdminService {
   }
 
   async getTrendStats(days: number) {
-    const [trend] = await db.execute(`
+    const trend = await executeQuery(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as user_count
@@ -70,7 +75,7 @@ export class AdminService {
       ORDER BY date
     `, [days]);
 
-    const [orderTrend] = await db.execute(`
+    const orderTrend = await executeQuery(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as order_count
@@ -80,7 +85,7 @@ export class AdminService {
       ORDER BY date
     `, [days]);
 
-    const [paymentTrend] = await db.execute(`
+    const paymentTrend = await executeQuery(`
       SELECT 
         DATE(paid_at) as date,
         COUNT(*) as payment_count,
@@ -120,7 +125,7 @@ export class AdminService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const [users] = await db.execute(`
+    const users = await executeQuery(`
       SELECT u.*, 
         tp.real_name, tp.education, tp.subjects, tp.verify_status,
         o.org_name
@@ -132,7 +137,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM users ${whereClause}
     `, params);
 
@@ -145,7 +150,7 @@ export class AdminService {
   }
 
   async getUserDetail(id: number) {
-    const [users] = await db.execute(`
+    const users = await executeQuery(`
       SELECT u.*, 
         tp.*,
         o.*,
@@ -165,7 +170,7 @@ export class AdminService {
   }
 
   async updateUserStatus(id: number, status: number, reason?: string) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE users SET status = ? WHERE id = ?
     `, [status, id]);
 
@@ -173,7 +178,7 @@ export class AdminService {
   }
 
   async updateUserRole(id: number, role: number) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE users SET role = ? WHERE id = ?
     `, [role, id]);
 
@@ -181,7 +186,7 @@ export class AdminService {
   }
 
   async grantMembership(id: number, days: number) {
-    const [users] = await db.execute(`
+    const users = await executeQuery(`
       SELECT membership_expire_at FROM users WHERE id = ?
     `, [id]);
 
@@ -192,7 +197,7 @@ export class AdminService {
     }
     expireAt.setDate(expireAt.getDate() + days);
 
-    await db.execute(`
+    await executeQuery(`
       UPDATE users SET membership_type = 1, membership_expire_at = ? WHERE id = ?
     `, [expireAt, id]);
 
@@ -215,7 +220,7 @@ export class AdminService {
       params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
     }
 
-    const [teachers] = await db.execute(`
+    const teachers = await executeQuery(`
       SELECT u.*, tp.*
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
@@ -224,7 +229,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total 
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
@@ -240,7 +245,7 @@ export class AdminService {
   }
 
   async verifyTeacher(id: number, status: number, reason?: string) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE teacher_profiles 
       SET verify_status = ?, verify_reject_reason = ?
       WHERE user_id = ?
@@ -267,7 +272,7 @@ export class AdminService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT o.*, 
         u.nickname as parent_nickname, u.mobile as parent_mobile, u.avatar as parent_avatar,
         t.nickname as teacher_nickname, t.mobile as teacher_mobile,
@@ -281,7 +286,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM orders o ${whereClause}
     `, params);
 
@@ -294,7 +299,7 @@ export class AdminService {
   }
 
   async getOrderDetail(id: number) {
-    const [orders] = await db.execute(`
+    const orders = await executeQuery(`
       SELECT o.*, 
         u.nickname as parent_nickname, u.mobile as parent_mobile, u.avatar as parent_avatar,
         u.latitude as parent_lat, u.longitude as parent_lng
@@ -310,7 +315,7 @@ export class AdminService {
     const order = orders[0];
 
     // 获取抢单记录
-    const [matches] = await db.execute(`
+    const matches = await executeQuery(`
       SELECT om.*, u.nickname, u.avatar, tp.real_name, tp.subjects
       FROM order_matches om
       LEFT JOIN users u ON om.teacher_id = u.id
@@ -325,7 +330,7 @@ export class AdminService {
   }
 
   async updateOrderStatus(id: number, status: number) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE orders SET status = ? WHERE id = ?
     `, [status, id]);
 
@@ -334,13 +339,13 @@ export class AdminService {
 
   async matchOrder(id: number, teacherId: number) {
     // 创建匹配记录
-    await db.execute(`
+    await executeQuery(`
       INSERT INTO order_matches (order_id, teacher_id, status)
       VALUES (?, ?, 1)
     `, [id, teacherId]);
 
     // 更新订单状态
-    await db.execute(`
+    await executeQuery(`
       UPDATE orders SET status = 1, matched_teacher_id = ?, matched_at = NOW()
       WHERE id = ?
     `, [teacherId, id]);
@@ -349,7 +354,7 @@ export class AdminService {
   }
 
   async deleteOrder(id: number) {
-    await db.execute(`DELETE FROM orders WHERE id = ?`, [id]);
+    await executeQuery(`DELETE FROM orders WHERE id = ?`, [id]);
     return { success: true };
   }
 
@@ -367,7 +372,7 @@ export class AdminService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const [orgs] = await db.execute(`
+    const orgs = await executeQuery(`
       SELECT o.*, u.nickname, u.mobile, u.avatar
       FROM organizations o
       LEFT JOIN users u ON o.user_id = u.id
@@ -376,7 +381,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM organizations ${whereClause}
     `, params);
 
@@ -389,7 +394,7 @@ export class AdminService {
   }
 
   async auditOrg(id: number, status: number, reason?: string) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE organizations SET status = ?, reject_reason = ? WHERE user_id = ?
     `, [status, reason || null, id]);
 
@@ -401,7 +406,7 @@ export class AdminService {
   async getAgents(page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const [agents] = await db.execute(`
+    const agents = await executeQuery(`
       SELECT ca.*, u.nickname, u.mobile, u.avatar
       FROM city_agents ca
       LEFT JOIN users u ON ca.user_id = u.id
@@ -409,7 +414,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM city_agents
     `);
 
@@ -422,7 +427,7 @@ export class AdminService {
   }
 
   async createAgent(userId: number, cityCode: string, cityName: string, commissionRate: number) {
-    await db.execute(`
+    await executeQuery(`
       INSERT INTO city_agents (user_id, city_code, city_name, commission_rate)
       VALUES (?, ?, ?, ?)
     `, [userId, cityCode, cityName, commissionRate]);
@@ -431,7 +436,7 @@ export class AdminService {
   }
 
   async updateAgentRate(id: number, rate: number) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE city_agents SET commission_rate = ? WHERE user_id = ?
     `, [rate, id]);
 
@@ -443,7 +448,7 @@ export class AdminService {
   async getMembershipPlans(role?: number) {
     const conditions = role !== undefined ? `WHERE role = ${role}` : '';
 
-    const [plans] = await db.execute(`
+    const plans = await executeQuery(`
       SELECT * FROM membership_plans ${conditions} ORDER BY role, sort_order
     `);
 
@@ -458,7 +463,7 @@ export class AdminService {
     durationDays: number;
     features: string[];
   }) {
-    const [result] = await db.execute(`
+    const result = await executeQuery(`
       INSERT INTO membership_plans (name, role, price, original_price, duration_days, features)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [data.name, data.role, data.price, data.originalPrice, data.durationDays, JSON.stringify(data.features)]);
@@ -485,7 +490,7 @@ export class AdminService {
     if (data.isActive !== undefined) { updates.push('is_active = ?'); values.push(data.isActive); }
 
     if (updates.length > 0) {
-      await db.execute(`
+      await executeQuery(`
         UPDATE membership_plans SET ${updates.join(', ')} WHERE id = ?
       `, [...values, id]);
     }
@@ -499,13 +504,13 @@ export class AdminService {
     const offset = (page - 1) * pageSize;
     const conditions = isActive !== undefined ? `WHERE is_active = ${isActive}` : '';
 
-    const [products] = await db.execute(`
+    const products = await executeQuery(`
       SELECT * FROM products ${conditions}
       ORDER BY sort_order, created_at DESC
       LIMIT ? OFFSET ?
     `, [pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM products ${conditions}
     `);
 
@@ -527,7 +532,7 @@ export class AdminService {
     stock: number;
     category?: string;
   }) {
-    const [result] = await db.execute(`
+    const result = await executeQuery(`
       INSERT INTO products (name, cover, images, description, price, original_price, stock, category)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [data.name, data.cover, JSON.stringify(data.images || []), data.description, data.price, data.originalPrice, data.stock, data.category]);
@@ -562,7 +567,7 @@ export class AdminService {
     });
 
     if (updates.length > 0) {
-      await db.execute(`
+      await executeQuery(`
         UPDATE products SET ${updates.join(', ')} WHERE id = ?
       `, [...values, id]);
     }
@@ -571,7 +576,7 @@ export class AdminService {
   }
 
   async deleteProduct(id: number) {
-    await db.execute(`DELETE FROM products WHERE id = ?`, [id]);
+    await executeQuery(`DELETE FROM products WHERE id = ?`, [id]);
     return { success: true };
   }
 
@@ -580,7 +585,7 @@ export class AdminService {
   async getBanners(position?: string) {
     const conditions = position ? `WHERE position = '${position}'` : '';
 
-    const [banners] = await db.execute(`
+    const banners = await executeQuery(`
       SELECT * FROM banners ${conditions} ORDER BY sort_order
     `);
 
@@ -594,7 +599,7 @@ export class AdminService {
     linkUrl?: string;
     sortOrder?: number;
   }) {
-    const [result] = await db.execute(`
+    const result = await executeQuery(`
       INSERT INTO banners (position, title, image_url, link_url, sort_order)
       VALUES (?, ?, ?, ?, ?)
     `, [data.position, data.title, data.imageUrl, data.linkUrl, data.sortOrder || 0]);
@@ -621,7 +626,7 @@ export class AdminService {
     });
 
     if (updates.length > 0) {
-      await db.execute(`
+      await executeQuery(`
         UPDATE banners SET ${updates.join(', ')} WHERE id = ?
       `, [...values, id]);
     }
@@ -630,7 +635,7 @@ export class AdminService {
   }
 
   async deleteBanner(id: number) {
-    await db.execute(`DELETE FROM banners WHERE id = ?`, [id]);
+    await executeQuery(`DELETE FROM banners WHERE id = ?`, [id]);
     return { success: true };
   }
 
@@ -640,7 +645,7 @@ export class AdminService {
     const offset = (page - 1) * pageSize;
     const conditions = status !== undefined ? `WHERE c.status = ${status}` : '';
 
-    const [commissions] = await db.execute(`
+    const commissions = await executeQuery(`
       SELECT c.*, 
         u.nickname, u.avatar,
         fu.nickname as from_nickname,
@@ -654,7 +659,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM commissions c ${conditions}
     `);
 
@@ -667,7 +672,7 @@ export class AdminService {
   }
 
   async settleCommissions(ids: number[]) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE commissions SET status = 1, settled_at = NOW()
       WHERE id IN (${ids.map(() => '?').join(',')})
     `, ids);
@@ -681,7 +686,7 @@ export class AdminService {
     const offset = (page - 1) * pageSize;
     const conditions = status !== undefined ? `WHERE w.status = ${status}` : '';
 
-    const [withdrawals] = await db.execute(`
+    const withdrawals = await executeQuery(`
       SELECT w.*, u.nickname, u.avatar, u.mobile
       FROM withdrawals w
       LEFT JOIN users u ON w.user_id = u.id
@@ -690,7 +695,7 @@ export class AdminService {
       LIMIT ? OFFSET ?
     `, [pageSize, offset]);
 
-    const [countResult] = await db.execute(`
+    const countResult = await executeQuery(`
       SELECT COUNT(*) as total FROM withdrawals w ${conditions}
     `);
 
@@ -703,7 +708,7 @@ export class AdminService {
   }
 
   async auditWithdrawal(id: number, status: number, reason?: string) {
-    await db.execute(`
+    await executeQuery(`
       UPDATE withdrawals SET status = ?, reject_reason = ?
       WHERE id = ?
     `, [status, reason || null, id]);

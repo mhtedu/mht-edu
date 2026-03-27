@@ -40,9 +40,9 @@ export class OrderController {
     const userId = req.user?.id || 1;
     return this.orderService.getOrdersByParent(
       userId,
-      status ? parseInt(status) : undefined,
       parseInt(page),
       parseInt(pageSize),
+      status ? parseInt(status) : undefined,
     );
   }
 
