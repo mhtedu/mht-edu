@@ -1,0 +1,618 @@
+棉花糖教育成长平台 - 完整开发计划
+
+目标：快速构建一个基于 LBS 的家教信息撮合平台，整合个体教师、机构、家长，采用会员制 + 全员分销模式，不介入课时交易，仅提供信息展示、匹配沟通及教学辅助工具。存储：MySQL安装在 ECS 本地（自建数据库），所有数据落盘。技术栈：
+
+后端：Node.js + NestJS（TypeScript）
+
+服务器信息：Alibaba Cloud Linux 3.2104 LTS 64位
+
+IP：120.24.238.176
+
+站点目录：/www/wwwroot/dajiaopei.com
+
+数据库：MySQL
+
+名称：	dajiaopei
+
+用户名：dajiaopei
+
+密码:djp2026
+
+缓存/消息队列：Redis 7.x（本地）
+
+前端：电脑端、H5,、微信小程序 + 微信公众号 H5（uni-app）
+
+管理后台：Vue3 + Element Plus
+
+服务器：Alibaba Cloud Linux 3.2104 LTS（Docker 或直接部署）
+
+推送：极光推送 / 微信订阅消息
+
+核心原则：
+
+1.平台不介入课时费交易，仅提供信息撮合和工具。
+
+2.联系方式仅在订单匹配后对双方可见，不公开。
+
+3.全员分销，两级佣金 + 城市代理提点，所有非课时消费均可设置独立分佣比例。
+
+4.机构通过邀请链接/二维码挂靠教师，不强制派单，仅用于分佣关系。
+
+5.所有端口均在前端个人中心里面切换。
+
+一、数据库设计（本地 MySQL ）
+
+1.1 用户表 users
+
+sql
+
+复制下载
+
+CREATE TABLE `users` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `openid` varchar(64) DEFAULT NULL COMMENT '微信openid',  `unionid` varchar(64) DEFAULT NULL,  `mobile` varchar(20) DEFAULT NULL COMMENT '手机号',  `nickname` varchar(50) DEFAULT NULL,  `avatar` varchar(255) DEFAULT NULL,  `role` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0家长 1个体教师 2机构老板 3城市代理',  `status` tinyint(1) DEFAULT '1' COMMENT '1正常 0封禁',  `membership_type` tinyint(1) DEFAULT '0' COMMENT '0免费 1付费会员',  `membership_expire_at` datetime DEFAULT NULL COMMENT '会员到期时间',  `latitude` decimal(10,7) DEFAULT NULL COMMENT '纬度',  `longitude` decimal(10,7) DEFAULT NULL COMMENT '经度',  `city_code` varchar(10) DEFAULT NULL COMMENT '城市编码',  `inviter_id` int(11) DEFAULT NULL COMMENT '一级邀请人ID',  `inviter_2nd_id` int(11) DEFAULT NULL COMMENT '二级邀请人ID（冗余，由触发器维护）',  `city_agent_id` int(11) DEFAULT NULL COMMENT '归属城市代理ID（根据注册城市匹配）',  `affiliated_org_id` int(11) DEFAULT NULL COMMENT '挂靠机构ID（仅教师）',  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  KEY `idx_openid` (`openid`),  KEY `idx_inviter` (`inviter_id`),  KEY `idx_location` (`latitude`,`longitude`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.2 教师扩展表 teacher_profiles
+
+sql
+
+复制下载
+
+CREATE TABLE `teacher_profiles` (  `user_id` int(11) NOT NULL,  `real_name` varchar(20) DEFAULT NULL,  `gender` tinyint(1) DEFAULT NULL,  `birth_year` year DEFAULT NULL,  `education` varchar(50) DEFAULT NULL COMMENT '学历',  `certificates` json DEFAULT NULL COMMENT '资质证书图片数组',  `subjects` json DEFAULT NULL COMMENT '擅长科目数组',  `max_distance` int(11) DEFAULT '10' COMMENT '最大接单距离(km)',  `hourly_rate_min` decimal(10,2) DEFAULT NULL,  `hourly_rate_max` decimal(10,2) DEFAULT NULL,  `intro` text COMMENT '自我介绍',  `photos` json DEFAULT NULL COMMENT '个人照片',  `schedule_settings` json DEFAULT NULL COMMENT '排课偏好设置',  PRIMARY KEY (`user_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.3 机构表 organizations
+
+sql
+
+复制下载
+
+CREATE TABLE `organizations` (  `user_id` int(11) NOT NULL,  `org_name` varchar(100) NOT NULL,  `license` varchar(255) DEFAULT NULL COMMENT '营业执照',  `address` varchar(255) DEFAULT NULL,  `contact_person` varchar(20) DEFAULT NULL,  `contact_phone` varchar(20) DEFAULT NULL,  `intro` text,  `status` tinyint(1) DEFAULT '0' COMMENT '0待审核 1已审核 2驳回',  PRIMARY KEY (`user_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.4 城市代理表 city_agents
+
+sql
+
+复制下载
+
+CREATE TABLE `city_agents` (  `user_id` int(11) NOT NULL,  `city_code` varchar(10) NOT NULL,  `city_name` varchar(50) NOT NULL,  `commission_rate` decimal(5,2) DEFAULT '10.00' COMMENT '城市提点比例（%）',  `balance` decimal(12,2) DEFAULT '0.00' COMMENT '待结算佣金',  PRIMARY KEY (`user_id`),  UNIQUE KEY `city_code` (`city_code`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.5 家长需求表 orders
+
+sql
+
+复制下载
+
+CREATE TABLE `orders` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `parent_id` int(11) NOT NULL COMMENT '家长ID',  `subject` varchar(50) NOT NULL COMMENT '科目',  `hourly_rate` decimal(10,2) NOT NULL COMMENT '期望课酬',  `student_gender` tinyint(1) DEFAULT NULL COMMENT '1男 2女',  `student_grade` varchar(20) DEFAULT NULL COMMENT '年级',  `address` varchar(255) NOT NULL,  `latitude` decimal(10,7) NOT NULL,  `longitude` decimal(10,7) NOT NULL,  `description` text COMMENT '详细需求',  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待抢单 1已匹配沟通中 2试课中 3已签约 4已完成 5已解除',  `matched_teacher_id` int(11) DEFAULT NULL COMMENT '当前匹配教师ID',  `matched_at` datetime DEFAULT NULL,  `expire_at` datetime DEFAULT NULL COMMENT '订单过期时间（超时未接自动释放）',  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  KEY `idx_parent` (`parent_id`),  KEY `idx_status_expire` (`status`,`expire_at`),  KEY `idx_location` (`latitude`,`longitude`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.6 订单匹配记录表 order_matches
+
+sql
+
+复制下载
+
+CREATE TABLE `order_matches` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `order_id` int(11) NOT NULL,  `teacher_id` int(11) NOT NULL,  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0匹配中 1已接单 2已解除 3已完成',  `contact_unlocked` tinyint(1) DEFAULT '0' COMMENT '是否已解锁联系方式',  `unlocked_at` datetime DEFAULT NULL,  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  UNIQUE KEY `order_teacher` (`order_id`,`teacher_id`),  KEY `idx_teacher` (`teacher_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.7 会员套餐表 membership_plans
+
+sql
+
+复制下载
+
+CREATE TABLE `membership_plans` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `name` varchar(50) NOT NULL,  `role` tinyint(1) NOT NULL COMMENT '0家长 1教师 2机构',  `price` decimal(10,2) NOT NULL,  `duration_days` int(11) NOT NULL COMMENT '有效天数',  `commission_level1_rate` decimal(5,2) DEFAULT '0.00' COMMENT '一级佣金比例%',  `commission_level2_rate` decimal(5,2) DEFAULT '0.00' COMMENT '二级佣金比例%',  `city_agent_rate` decimal(5,2) DEFAULT '0.00' COMMENT '城市提点比例%',  `is_active` tinyint(1) DEFAULT '1',  PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.8 商品表（教辅等） products
+
+sql
+
+复制下载
+
+CREATE TABLE `products` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `name` varchar(100) NOT NULL,  `cover` varchar(255) DEFAULT NULL,  `price` decimal(10,2) NOT NULL,  `stock` int(11) DEFAULT '0',  `commission_level1_rate` decimal(5,2) DEFAULT '0.00',  `commission_level2_rate` decimal(5,2) DEFAULT '0.00',  `city_agent_rate` decimal(5,2) DEFAULT '0.00',  `is_active` tinyint(1) DEFAULT '1',  PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.9 订单支付表（会员/商品购买） payments
+
+sql
+
+复制下载
+
+CREATE TABLE `payments` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `user_id` int(11) NOT NULL,  `target_type` tinyint(1) NOT NULL COMMENT '1会员 2商品',  `target_id` int(11) NOT NULL COMMENT '会员套餐ID或商品ID',  `amount` decimal(10,2) NOT NULL,  `payment_no` varchar(64) NOT NULL COMMENT '平台订单号',  `transaction_id` varchar(64) DEFAULT NULL COMMENT '微信支付交易号',  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付 2已退款',  `paid_at` datetime DEFAULT NULL,  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  UNIQUE KEY `payment_no` (`payment_no`),  KEY `idx_user` (`user_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.10 分佣记录表 commissions
+
+sql
+
+复制下载
+
+CREATE TABLE `commissions` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `user_id` int(11) NOT NULL COMMENT '获得佣金的用户ID',  `from_user_id` int(11) DEFAULT NULL COMMENT '来源用户ID（购买者）',  `payment_id` int(11) NOT NULL COMMENT '关联支付记录',  `level_type` tinyint(1) NOT NULL COMMENT '1一级 2二级 3城市代理 4机构',  `amount` decimal(10,2) NOT NULL COMMENT '佣金金额',  `rate` decimal(5,2) NOT NULL COMMENT '佣金比例',  `status` tinyint(1) DEFAULT '0' COMMENT '0待结算 1已结算 2已提现',  `settled_at` datetime DEFAULT NULL,  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  KEY `idx_user` (`user_id`),  KEY `idx_payment` (`payment_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.11 教师排课记录表 teacher_schedules（个人记账工具）
+
+sql
+
+复制下载
+
+CREATE TABLE `teacher_schedules` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `teacher_id` int(11) NOT NULL,  `student_name` varchar(50) NOT NULL,  `student_grade` varchar(20) DEFAULT NULL,  `subject` varchar(50) DEFAULT NULL,  `start_time` datetime NOT NULL,  `end_time` datetime NOT NULL,  `note` text COMMENT '课后记录',  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  KEY `idx_teacher_time` (`teacher_id`,`start_time`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.12 联系方式查看日志 contact_view_logs
+
+sql
+
+复制下载
+
+CREATE TABLE `contact_view_logs` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `order_id` int(11) NOT NULL,  `user_id` int(11) NOT NULL,  `target_user_id` int(11) NOT NULL COMMENT '被查看的用户ID',  `ip` varchar(45) DEFAULT NULL,  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  KEY `idx_order` (`order_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.13 广告位表 ad_positions
+
+sql
+
+复制下载
+
+CREATE TABLE `ad_positions` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `position_key` varchar(50) NOT NULL COMMENT '位置标识: home_top, home_middle',  `title` varchar(100) DEFAULT NULL,  `image_url` varchar(255) NOT NULL,  `link_url` varchar(255) DEFAULT NULL,  `sort_order` int(11) DEFAULT '0',  `is_active` tinyint(1) DEFAULT '1',  PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+1.14 机构邀请链接记录表 org_invite_links
+
+sql
+
+复制下载
+
+CREATE TABLE `org_invite_links` (  `id` int(11) NOT NULL AUTO_INCREMENT,  `org_id` int(11) NOT NULL,  `code` varchar(32) NOT NULL,  `qr_code_url` varchar(255) DEFAULT NULL,  `expire_at` datetime DEFAULT NULL,  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,  PRIMARY KEY (`id`),  UNIQUE KEY `code` (`code`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+二、功能模块划分（无时间周数，可并行开发）
+
+模块一：基础架构与用户系统
+
+NestJS 项目初始化，TypeScript，TypeORM，Redis 客户端，统一响应格式，JWT 认证。
+
+手机端网页登录或者微信公众号、手机号绑定。（后面开发为微信小程序）
+
+角色选择（家长/教师/机构，机构需提交资质审核）。
+
+城市定位（前端获取经纬度，后端保存）。
+
+会员套餐展示与购买（微信支付统一下单，回调更新用户会员状态）。
+
+分销关系绑定（生成邀请链接/海报，注册时绑定邀请人，自动计算二级邀请人）。
+
+模块二：LBS 需求发布与抢单
+
+家长端发布需求表单（科目、课酬、年级、性别、地址）。
+
+教师端 LBS 订单列表（基于距离排序，只显示付费教师的可抢订单）。
+
+抢单逻辑（Redis 分布式锁，更新订单状态，创建匹配记录）。
+
+订单详情页：双方解锁联系方式（仅匹配后可见，记录日志）。
+
+订单状态流转：待抢单 → 已匹配 → 沟通中/试课中 → 已完成/已解除（解除后回流公海池）。
+
+定时任务：自动解除超时未沟通的订单。
+
+模块三：机构与教师挂靠
+
+机构入驻申请（提交营业执照等），管理后台审核。
+
+机构生成邀请链接/二维码（带 code）。
+
+教师点击邀请链接扫码，确认挂靠，更新 affiliated_org_id。
+
+机构后台查看挂靠教师列表、分佣记录。
+
+当挂靠教师产生消费时，自动为机构创建分佣记录（level_type=4，比例从商品/会员套餐的 commission_org_rate 字段获取）。
+
+模块四：全员分销与佣金结算
+
+支付成功回调触发分佣：根据购买者的邀请链（一级、二级）、城市代理、挂靠机构，分别创建佣金记录。
+
+佣金明细查询（用户端展示）。
+
+提现申请（用户发起，管理后台审核，转账后更新状态）。
+
+模块五：教师工具与商城
+
+教师排课工具（日历视图，增删改查课时记录）。
+
+教辅商城（商品列表、购买、支付触发分佣）。
+
+管理后台商品管理（CRUD，设置分佣比例）。
+
+模块六：首页与广告
+
+城市定位显示，轮播广告（从数据库读取）。
+
+学科筛选条，双列信息流（根据用户角色展示教师或订单，LBS 排序）。
+
+中部横幅广告。
+
+
+
+模块七：消息推送与定时任务
+
+微信订阅消息/极光推送：订单被抢、新订单发布。
+
+定时任务：自动解除匹配订单、清理过期订单、检查会员过期。
+
+模块八：管理后台
+
+Vue3 独立项目，使用 Element Plus。
+
+功能：用户管理、订单管理、商品管理、会员套餐管理、广告位管理、机构审核、佣金管理、城市代理管理、数据统计。
+
+
+
+
+
+三、关键接口设计（RESTful）
+
+模块
+
+方法
+
+路径
+
+描述
+
+用户
+
+POST
+
+/api/auth/wechat-login
+
+微信登录
+
+用户
+
+POST
+
+/api/auth/bind-mobile
+
+绑定手机号
+
+用户
+
+GET
+
+/api/user/profile
+
+获取个人信息
+
+用户
+
+PUT
+
+/api/user/profile
+
+更新个人信息
+
+用户
+
+GET
+
+/api/user/membership
+
+会员信息
+
+用户
+
+POST
+
+/api/user/buy-membership
+
+购买会员
+
+用户
+
+POST
+
+/api/user/location
+
+更新位置
+
+订单
+
+POST
+
+/api/orders
+
+发布需求
+
+订单
+
+GET
+
+/api/orders/parent
+
+家长订单列表
+
+订单
+
+GET
+
+/api/orders/teacher
+
+教师可抢订单列表（LBS）
+
+订单
+
+POST
+
+/api/orders/:id/grab
+
+抢单
+
+订单
+
+GET
+
+/api/orders/:id
+
+订单详情
+
+订单
+
+PUT
+
+/api/orders/:id/unbind
+
+解除绑定
+
+订单
+
+GET
+
+/api/orders/:id/contact
+
+获取联系方式
+
+教师
+
+GET
+
+/api/teacher/schedules
+
+排课列表
+
+教师
+
+POST
+
+/api/teacher/schedules
+
+新增排课
+
+教师
+
+PUT
+
+/api/teacher/schedules/:id
+
+更新排课
+
+教师
+
+DELETE
+
+/api/teacher/schedules/:id
+
+删除排课
+
+商品
+
+GET
+
+/api/products
+
+商品列表
+
+商品
+
+GET
+
+/api/products/:id
+
+商品详情
+
+商品
+
+POST
+
+/api/orders/product
+
+购买商品
+
+分销
+
+GET
+
+/api/distribution/invite-info
+
+邀请信息
+
+分销
+
+GET
+
+/api/distribution/commission-list
+
+佣金明细
+
+分销
+
+POST
+
+/api/distribution/withdraw
+
+申请提现
+
+机构
+
+POST
+
+/api/org/apply
+
+机构入驻申请
+
+机构
+
+GET
+
+/api/org/invite-links
+
+邀请链接列表
+
+机构
+
+POST
+
+/api/org/invite-links
+
+生成邀请链接
+
+机构
+
+GET
+
+/api/org/teachers
+
+挂靠教师列表
+
+机构
+
+GET
+
+/api/org/commission
+
+机构分佣统计
+
+代理
+
+GET
+
+/api/agent/dashboard
+
+代理看板
+
+代理
+
+GET
+
+/api/agent/commission
+
+代理佣金明细
+
+公共
+
+GET
+
+/api/ad-positions
+
+广告位列表
+
+公共
+
+GET
+
+/api/subjects
+
+学科列表
+
+公共
+
+GET
+
+/api/cities
+
+城市列表
+
+
+
+四、服务器部署方案（本地 MySQL）
+
+4.1 数据库初始化
+
+
+
+执行上述所有建表 SQL。
+
+插入初始数据（默认管理员、会员套餐、广告位）。
+
+示例数据见附录（可提供）。
+
+4.2环境变量配置
+
+创建 .env 文件，包含：
+
+
+
+text
+
+
+
+复制下载
+
+
+
+DB_HOST=127.0.0.1DB_PORT=3306DB_USER=workbuddyDB_PASSWORD=xxxDB_NAME=workbuddyREDIS_HOST=127.0.0.1REDIS_PORT=6379WECHAT_APPID=xxxWECHAT_SECRET=xxxWECHAT_PAY_MCHID=xxxWECHAT_PAY_KEY=xxxOSS_ACCESS_KEY=xxxOSS_SECRET_KEY=xxx
+
+
+
+4.4 部署步骤
+
+
+
+克隆代码库。
+
+后端：npm install，npm run build，使用 PM2 启动：pm2 start dist/main.js --name workbuddy-api。
+
+
+
+
+
+前端小程序：使用 uni-app 编译为微信小程序，上传到微信公众平台。
+
+管理后台：npm run build，将 dist 文件放到 Nginx 静态目录，配置反向代理 API。
+
+
+
+
+
+五、测试要点
+
+功能测试：所有接口正常，状态流转正确，分佣计算准确。
+
+并发测试：抢单接口使用 Redis 锁，模拟多用户同时抢同一订单。
+
+安全测试：SQL 注入防护（TypeORM 参数化），未授权访问，联系方式泄露。
+
+支付回调：模拟微信支付回调，验证订单状态变更和分佣记录生成。
+
+
+
+
+
+六、交付清单
+
+后端源码（NestJS 项目，含所有模块）
+
+前端源码（uni-app 小程序 + Vue3 管理后台）
+
+
+
+数据库初始化脚本（SQL 文件）
+
+环境配置说明（.env.example）
+
+API 文档（Swagger 自动生成，提供访问地址）
+
+部署文档（包含 MySQL 安装、Nginx 配置、PM2 启动命令）
+
+
+
+
+
+执行指令：请严格按照上述设计，完整实现所有模块。代码需符合 TypeScript 严格模式，使用 TypeORM 进行数据库操作，使用 Redis 实现缓存与分布式锁。每个模块需编写单元测试（Jest），确保核心逻辑正确。最终输出可运行的项目，并提供部署指南。
+
+
+
+
+
+
+
