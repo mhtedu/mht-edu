@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,14 @@ const LoginPage = () => {
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  // 初始化：读取之前保存的角色
+  useEffect(() => {
+    const savedRole = Taro.getStorageSync('userRole');
+    if (savedRole !== '' && savedRole !== undefined && savedRole !== null) {
+      setSelectedRole(savedRole as UserRole);
+    }
+  }, []);
 
   // 发送验证码
   const handleSendCode = () => {
@@ -140,38 +148,38 @@ const LoginPage = () => {
               </View>
             </View>
 
-            {/* 角色选择 - 注册时显示 */}
-            {mode === 'register' && (
-              <View className="mb-6">
-                <Text className="text-gray-600 text-sm mb-3">选择您的身份</Text>
-                <View className="flex flex-row gap-3">
-                  <View
-                    className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center ${
-                      selectedRole === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => setSelectedRole(0)}
-                  >
-                    <GraduationCap size={32} color={selectedRole === 0 ? '#2563EB' : '#9CA3AF'} />
-                    <Text className={`mt-2 ${selectedRole === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
-                      我是家长
-                    </Text>
-                    <Text className="text-xs text-gray-400 mt-1">找老师辅导孩子</Text>
-                  </View>
-                  <View
-                    className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center ${
-                      selectedRole === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => setSelectedRole(1)}
-                  >
-                    <BookOpen size={32} color={selectedRole === 1 ? '#2563EB' : '#9CA3AF'} />
-                    <Text className={`mt-2 ${selectedRole === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
-                      我是教师
-                    </Text>
-                    <Text className="text-xs text-gray-400 mt-1">接单授课赚钱</Text>
-                  </View>
+            {/* 角色选择 - 登录和注册都显示 */}
+            <View className="mb-6">
+              <Text className="text-gray-600 text-sm mb-3">
+                {mode === 'login' ? '选择您的身份' : '选择您的身份'}
+              </Text>
+              <View className="flex flex-row gap-3">
+                <View
+                  className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center ${
+                    selectedRole === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => setSelectedRole(0)}
+                >
+                  <GraduationCap size={32} color={selectedRole === 0 ? '#2563EB' : '#9CA3AF'} />
+                  <Text className={`mt-2 ${selectedRole === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
+                    我是家长
+                  </Text>
+                  <Text className="text-xs text-gray-400 mt-1">找老师辅导孩子</Text>
+                </View>
+                <View
+                  className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center ${
+                    selectedRole === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => setSelectedRole(1)}
+                >
+                  <BookOpen size={32} color={selectedRole === 1 ? '#2563EB' : '#9CA3AF'} />
+                  <Text className={`mt-2 ${selectedRole === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
+                    我是教师
+                  </Text>
+                  <Text className="text-xs text-gray-400 mt-1">接单授课赚钱</Text>
                 </View>
               </View>
-            )}
+            </View>
 
             {/* 手机号输入 */}
             <View className="mb-4">
