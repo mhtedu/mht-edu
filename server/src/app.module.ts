@@ -12,6 +12,7 @@ import { OrderCloseModule } from './modules/order-close/order-close.module';
 import { CityModule } from './modules/city/city.module';
 import { OrgModule } from './modules/org/org.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { ShareModule } from './modules/share/share.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ActivityModule } from './modules/activity/activity.module';
     CityModule,
     OrgModule,
     ActivityModule,
+    ShareModule,
   ],
 })
 export class AppModule {}

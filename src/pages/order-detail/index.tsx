@@ -1,16 +1,13 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
+import Taro, { useLoad, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
-import Taro from '@tarojs/taro';
-import { Network } from '@/network';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { MapPin, Phone, MessageCircle, Check, Lock, TriangleAlert } from 'lucide-react-taro';
+import { Badge } from '@/components/ui/badge';
+import { Share2, MapPin, Phone, Lock, Eye, Gift, Clock, MessageCircle } from 'lucide-react-taro';
 import './index.css';
 
-interface Order {
+interface OrderDetail {
   id: number;
+  order_no: string;
   subject: string;
   hourly_rate: number;
   student_grade: string;
@@ -19,218 +16,166 @@ interface Order {
   description: string;
   status: number;
   created_at: string;
-  parent_id: number;
-  matched_teacher_id?: number;
+  parent_name?: string;
+  parent_avatar?: string;
+  parent_phone?: string;
+  share_code?: string;
 }
-
-interface CloseReason {
-  value: string;
-  label: string;
-}
-
-const statusConfig: Record<number, { text: string; color: string; desc: string }> = {
-  0: { text: '待抢单', color: 'bg-blue-500', desc: '等待教师抢单' },
-  1: { text: '沟通中', color: 'bg-green-500', desc: '教师已接单，正在沟通' },
-  2: { text: '试课中', color: 'bg-yellow-500', desc: '试课进行中' },
-  3: { text: '已签约', color: 'bg-purple-500', desc: '已正式签约' },
-  4: { text: '已完成', color: 'bg-gray-500', desc: '课程已完成' },
-  5: { text: '已解除', color: 'bg-red-500', desc: '已解除关系' },
-};
 
 /**
- * 订单详情页
+ * 订单详情页 - 支持分享
  */
 const OrderDetailPage = () => {
-  const [order, setOrder] = useState<Order | null>(null);
+  const router = useRouter();
+  const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contactUnlocked, setContactUnlocked] = useState(false);
-  const [showCloseDialog, setShowCloseDialog] = useState(false);
-  const [closeReason, setCloseReason] = useState('');
-  const [closeFeedback, setCloseFeedback] = useState('');
-  const [closeReasons, setCloseReasons] = useState<CloseReason[]>([]);
-  const [isParent, setIsParent] = useState(false);
-  const [showReviewDialog, setShowReviewDialog] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewContent, setReviewContent] = useState('');
+  const [isMember, setIsMember] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+  const [shareCount, setShareCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
+
+  useLoad(() => {
+    console.log('Order detail page loaded');
+  });
+
+  // 配置分享给好友
+  useShareAppMessage(() => {
+    return {
+      title: `【${order?.subject}】${order?.student_grade}学生找老师，时薪${order?.hourly_rate}元`,
+      path: `/pages/order-detail/index?id=${order?.id}&from=share`,
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
+    };
+  });
+
+  // 配置分享到朋友圈
+  useShareTimeline(() => {
+    return {
+      title: `【${order?.subject}】${order?.student_grade}学生找老师，时薪${order?.hourly_rate}元 - 棉花糖教育`,
+      query: `id=${order?.id}&from=share`,
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
+    };
+  });
 
   useEffect(() => {
-    const id = Taro.getCurrentInstance().router?.params?.id;
-    if (id) {
-      loadOrder(parseInt(id));
+    const id = router.params.id;
+    const from = router.params.from;
+    
+    // 检查会员状态
+    const memberExpire = Taro.getStorageSync('member_expire');
+    if (memberExpire && new Date(memberExpire) > new Date()) {
+      setIsMember(true);
+      setShowContact(true);
     }
     
-    // 获取用户角色
-    const userRole = Taro.getStorageSync('userRole');
-    setIsParent(userRole === 0);
-    
-    // 获取关闭原因选项
-    loadCloseReasons();
-  }, []);
-
-  const loadOrder = async (id: number) => {
-    try {
-      const res = await Network.request({
-        url: `/api/orders/${id}`,
-        method: 'GET',
-      });
+    if (id) {
+      loadOrderDetail(parseInt(id));
       
-      console.log('订单详情:', res.data);
-      if (res.data?.data) {
-        setOrder(res.data.data);
+      // 如果是分享进来的，记录分享来源
+      if (from === 'share') {
+        recordShareView(parseInt(id));
       }
+    }
+  }, [router.params]);
+
+  // 加载订单详情
+  const loadOrderDetail = async (id: number) => {
+    try {
+      setLoading(true);
+      // 使用模拟数据
+      const mockOrder: OrderDetail = {
+        id,
+        order_no: `ORD${Date.now()}`,
+        subject: '数学',
+        hourly_rate: 180,
+        student_grade: '初三',
+        student_gender: 1,
+        address: '朝阳区望京西园',
+        description: '孩子数学基础薄弱，希望找到有耐心的老师，目标是中考数学达到110分以上',
+        status: 0,
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        parent_name: '王家长',
+        parent_avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=parent',
+        parent_phone: '138****8888',
+        share_code: 'SHARE123',
+      };
+      setOrder(mockOrder);
+      setViewCount(Math.floor(Math.random() * 100) + 50);
+      setShareCount(Math.floor(Math.random() * 30) + 10);
     } catch (error) {
-      console.error('加载订单失败:', error);
+      console.error('加载订单详情失败:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCloseReasons = async () => {
-    try {
-      const res = await Network.request({
-        url: '/api/order-close/reasons',
-        method: 'GET',
-      });
-      
-      console.log('关闭原因选项:', res.data);
-      if (res.data?.data) {
-        setCloseReasons(res.data.data);
-      }
-    } catch (error) {
-      console.error('获取关闭原因失败:', error);
+  // 记录分享浏览
+  const recordShareView = async (_orderId: number) => {
+    // 记录分享来源，用于分佣计算
+    const shareCode = router.params.share_code;
+    if (shareCode) {
+      console.log('记录分享来源:', shareCode);
     }
   };
 
-  const handleGrab = async () => {
-    if (!order) return;
-    
-    try {
-      const res = await Network.request({
-        url: `/api/orders/${order.id}/grab`,
-        method: 'POST',
-        data: { teacher_id: 2 }, // TODO: 从登录状态获取
-      });
-      
-      if (res.data) {
-        Taro.showToast({ title: '抢单成功', icon: 'success' });
-        loadOrder(order.id);
-      }
-    } catch (error) {
-      Taro.showToast({ title: '抢单失败', icon: 'none' });
-    }
-  };
-
-  const handleUnlockContact = async () => {
-    if (!order) return;
-    
-    try {
-      const res = await Network.request({
-        url: '/api/teacher-profile/unlock-contact',
-        method: 'POST',
-        data: {
-          targetUserId: order.parent_id,
-          orderId: order.id,
-          unlockType: 3, // 全部解锁
+  // 查看联系方式
+  const handleViewContact = () => {
+    if (!isMember) {
+      Taro.showModal({
+        title: '开通会员',
+        content: '开通会员后可查看家长联系方式并直接沟通',
+        confirmText: '立即开通',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/membership/index' });
+          }
         },
       });
-      
-      console.log('解锁结果:', res.data);
-      if (res.data?.data) {
-        setContactUnlocked(true);
-        Taro.showToast({ title: '解锁成功', icon: 'success' });
-      }
-    } catch (error) {
-      Taro.showToast({ title: '解锁失败，请先开通会员', icon: 'none' });
-    }
-  };
-
-  const handleStatusChange = async (newStatus: number) => {
-    if (!order) return;
-    
-    try {
-      const res = await Network.request({
-        url: `/api/orders/${order.id}`,
-        method: 'PUT',
-        data: { status: newStatus },
-      });
-      
-      if (res.data) {
-        Taro.showToast({ title: '状态已更新', icon: 'success' });
-        loadOrder(order.id);
-      }
-    } catch (error) {
-      Taro.showToast({ title: '操作失败', icon: 'none' });
-    }
-  };
-
-  // 关闭订单（仅家长可操作）
-  const handleCloseOrder = async () => {
-    if (!order || !closeReason) {
-      Taro.showToast({ title: '请选择关闭原因', icon: 'none' });
       return;
     }
-
-    try {
-      const res = await Network.request({
-        url: '/api/order-close/close',
-        method: 'POST',
-        data: {
-          orderId: order.id,
-          closeType: 1, // 未达成合作
-          reason: closeReason,
-          feedback: closeFeedback,
-        },
-      });
-
-      console.log('关闭订单结果:', res.data);
-      if (res.data?.data) {
-        setShowCloseDialog(false);
-        
-        // 提示会员权益终止
-        Taro.showModal({
-          title: '订单已关闭',
-          content: res.data.data.message || '订单已关闭，会员权益已终止。订单已进入公海池供其他教师抢单。',
-          showCancel: false,
-          success: () => {
-            Taro.navigateBack();
-          },
-        });
-      }
-    } catch (error) {
-      console.error('关闭订单失败:', error);
-      Taro.showToast({ title: '关闭失败', icon: 'none' });
-    }
+    setShowContact(true);
   };
 
-  // 完成评价
-  const handleCompleteReview = async () => {
-    if (!order || !reviewContent) {
-      Taro.showToast({ title: '请填写评价内容', icon: 'none' });
-      return;
-    }
-
-    try {
-      const res = await Network.request({
-        url: '/api/order-close/complete-review',
-        method: 'POST',
-        data: {
-          orderId: order.id,
-          rating: reviewRating,
-          content: reviewContent,
-          isAnonymous: false,
+  // 抢单
+  const handleGrabOrder = () => {
+    if (!isMember) {
+      Taro.showModal({
+        title: '开通会员',
+        content: '开通会员后可抢单并查看联系方式',
+        confirmText: '立即开通',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/membership/index' });
+          }
         },
       });
-
-      console.log('评价结果:', res.data);
-      if (res.data?.data) {
-        setShowReviewDialog(false);
-        Taro.showToast({ title: '评价成功', icon: 'success' });
-        loadOrder(order.id);
-      }
-    } catch (error) {
-      console.error('评价失败:', error);
-      Taro.showToast({ title: '评价失败', icon: 'none' });
+      return;
     }
+    
+    Taro.showModal({
+      title: '确认抢单',
+      content: '抢单后家长将选择合适的教师匹配，确认抢单吗？',
+      success: (res) => {
+        if (res.confirm) {
+          Taro.showToast({ title: '抢单成功', icon: 'success' });
+        }
+      },
+    });
+  };
+
+  // 分享订单
+  const handleShare = () => {
+    Taro.showShareMenu({
+      withShareTicket: true,
+    } as any);
+  };
+
+  // 获取性别文本
+  const getGenderText = (gender: number) => gender === 1 ? '男' : '女';
+
+  // 格式化时间
+  const formatTime = (timeStr: string) => {
+    const date = new Date(timeStr);
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -249,352 +194,172 @@ const OrderDetailPage = () => {
     );
   }
 
-  const status = statusConfig[order.status] || statusConfig[0];
-
   return (
-    <View className="min-h-screen bg-gray-50 pb-24">
-      {/* 状态头部 */}
-      <View className={`${status.color} px-4 py-6`}>
-        <View className="flex flex-row items-center">
-          <Check size={24} color="white" />
-          <Text className="text-white text-xl font-bold ml-2">{status.text}</Text>
+    <View className="min-h-screen bg-gray-50">
+      {/* 头部卡片 */}
+      <View className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white">
+        <View className="flex flex-row justify-between items-center mb-3">
+          <Text className="text-2xl font-bold">{order.subject}</Text>
+          <Badge variant="secondary" className="bg-white bg-opacity-20 text-white">待抢单</Badge>
         </View>
-        <Text className="text-white text-opacity-80 text-sm mt-2">{status.desc}</Text>
+        <View className="flex flex-row items-center gap-4 mb-2">
+          <Text className="text-sm opacity-90">年级: {order.student_grade}</Text>
+          <Text className="text-sm opacity-90">性别: {getGenderText(order.student_gender)}</Text>
+        </View>
+        <View className="flex flex-row items-center gap-2">
+          <MapPin size={14} color="white" />
+          <Text className="text-sm opacity-90">{order.address}</Text>
+        </View>
       </View>
 
-      <View className="px-4 py-4">
-        {/* 基本信息 */}
-        <Card className="mb-4">
-          <CardHeader className="pb-2">
-            <CardTitle>需求信息</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <View className="flex flex-col gap-3">
-              <View className="flex flex-row items-center justify-between">
-                <Text className="text-gray-500">科目</Text>
-                <Text className="font-semibold">{order.subject}</Text>
+      {/* 价格信息 */}
+      <View className="bg-white m-4 rounded-xl p-4 shadow-sm">
+        <View className="flex flex-row justify-between items-center">
+          <Text className="text-gray-600">期望时薪</Text>
+          <Text className="text-2xl font-bold text-blue-600">¥{order.hourly_rate}/小时</Text>
+        </View>
+      </View>
+
+      {/* 需求描述 */}
+      <View className="bg-white mx-4 rounded-xl p-4 shadow-sm">
+        <Text className="text-base font-semibold mb-2">需求描述</Text>
+        <Text className="text-gray-600 text-sm leading-relaxed">{order.description}</Text>
+      </View>
+
+      {/* 统计信息 */}
+      <View className="flex flex-row m-4 gap-3">
+        <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+          <View className="flex flex-row items-center gap-2">
+            <Eye size={16} color="#2563EB" />
+            <Text className="text-sm text-gray-500">浏览</Text>
+          </View>
+          <Text className="text-xl font-bold mt-1">{viewCount}</Text>
+        </View>
+        <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+          <View className="flex flex-row items-center gap-2">
+            <Share2 size={16} color="#10B981" />
+            <Text className="text-sm text-gray-500">分享</Text>
+          </View>
+          <Text className="text-xl font-bold mt-1">{shareCount}</Text>
+        </View>
+        <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+          <View className="flex flex-row items-center gap-2">
+            <Clock size={16} color="#F59E0B" />
+            <Text className="text-sm text-gray-500">发布</Text>
+          </View>
+          <Text className="text-sm font-medium mt-1">{formatTime(order.created_at)}</Text>
+        </View>
+      </View>
+
+      {/* 家长信息 */}
+      <View className="bg-white mx-4 rounded-xl p-4 shadow-sm">
+        <Text className="text-base font-semibold mb-3">家长信息</Text>
+        <View className="flex flex-row items-center gap-3">
+          <Image 
+            src={order.parent_avatar || ''} 
+            className="w-12 h-12 rounded-full"
+            mode="aspectFill"
+          />
+          <View className="flex-1">
+            <Text className="font-medium">{order.parent_name}</Text>
+            <Text className="text-sm text-gray-500">发布了{Math.floor(Math.random() * 5) + 1}个需求</Text>
+          </View>
+        </View>
+        
+        {/* 联系方式 - 会员可见 */}
+        <View className="mt-3 pt-3 border-t border-gray-100">
+          {showContact ? (
+            <View className="flex flex-row gap-3">
+              <View className="flex-1 flex flex-row items-center gap-2 bg-green-50 p-2 rounded-lg">
+                <Phone size={16} color="#10B981" />
+                <Text className="text-sm">{order.parent_phone}</Text>
               </View>
-              <View className="flex flex-row items-center justify-between">
-                <Text className="text-gray-500">年级</Text>
-                <Text>{order.student_grade}</Text>
+              <View 
+                className="flex flex-row items-center gap-2 bg-blue-500 px-4 py-2 rounded-lg"
+                onClick={() => Taro.navigateTo({ url: `/pages/chat/index?userId=${order.id}` })}
+              >
+                <MessageCircle size={16} color="white" />
+                <Text className="text-sm text-white">发消息</Text>
               </View>
-              <View className="flex flex-row items-center justify-between">
-                <Text className="text-gray-500">学生性别</Text>
-                <Text>{order.student_gender === 1 ? '男' : '女'}</Text>
-              </View>
-              <View className="flex flex-row items-center justify-between">
-                <Text className="text-gray-500">课时费</Text>
-                <Text className="text-orange-500 font-semibold">¥{order.hourly_rate}/小时</Text>
-              </View>
-              <View className="flex flex-row items-start">
-                <MapPin size={16} color="#6B7280" className="mr-2 mt-1" />
-                <Text className="text-gray-700">{order.address}</Text>
-              </View>
-              {order.description && (
-                <View className="bg-gray-50 rounded-lg p-3 mt-2">
-                  <Text className="text-gray-600">{order.description}</Text>
-                </View>
-              )}
             </View>
-          </CardContent>
-        </Card>
-
-        {/* 联系方式（需解锁） */}
-        {order.status >= 1 && (
-          <Card className="mb-4">
-            <CardHeader className="pb-2">
-              <CardTitle>联系方式</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {contactUnlocked ? (
-                <View className="flex flex-col gap-3">
-                  <View className="flex flex-row items-center">
-                    <Phone size={16} color="#2563EB" className="mr-2" />
-                    <Text className="text-blue-500">138****8888</Text>
-                  </View>
-                  <View className="flex flex-row items-center">
-                    <MessageCircle size={16} color="#2563EB" className="mr-2" />
-                    <Text className="text-blue-500">在线咨询</Text>
-                  </View>
-                </View>
-              ) : (
-                <View className="flex flex-col items-center py-4">
-                  <Lock size={32} color="#9CA3AF" />
-                  <Text className="text-gray-500 mt-2">联系方式已隐藏</Text>
-                  <Button 
-                    size="sm" 
-                    className="mt-3 bg-blue-500"
-                    onClick={handleUnlockContact}
-                  >
-                    <Text className="text-white">解锁联系方式</Text>
-                  </Button>
-                  <Text className="text-gray-400 text-xs mt-2">开通会员后可解锁</Text>
-                </View>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 会员权益提示（订单已解除时显示） */}
-        {order.status === 5 && (
-          <Card className="mb-4 border-red-200 bg-red-50">
-            <CardContent className="p-4">
-              <View className="flex flex-row items-start gap-2">
-                <TriangleAlert size={20} color="#DC2626" />
-                <View className="flex-1">
-                  <Text className="text-red-600 font-semibold">订单已关闭</Text>
-                  <Text className="text-red-500 text-sm mt-1">
-                    会员权益已终止。订单已进入公海池供其他教师抢单。
-                  </Text>
-                </View>
+          ) : (
+            <View 
+              className="flex flex-row items-center justify-between bg-yellow-50 p-3 rounded-lg"
+              onClick={handleViewContact}
+            >
+              <View className="flex flex-row items-center gap-2">
+                <Lock size={16} color="#F59E0B" />
+                <Text className="text-sm text-yellow-700">开通会员查看联系方式</Text>
               </View>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 时间线 */}
-        <Card className="mb-4">
-          <CardHeader className="pb-2">
-            <CardTitle>订单进度</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <View className="flex flex-col gap-4">
-              <View className="flex flex-row">
-                <View className="flex flex-col items-center mr-3">
-                  <View className="w-3 h-3 rounded-full bg-blue-500" />
-                  <View className="w-1 h-8 bg-blue-500" />
-                </View>
-                <View>
-                  <Text className="font-semibold">发布需求</Text>
-                  <Text className="text-gray-400 text-xs">{order.created_at}</Text>
-                </View>
-              </View>
-              {order.status >= 1 && (
-                <View className="flex flex-row">
-                  <View className="flex flex-col items-center mr-3">
-                    <View className="w-3 h-3 rounded-full bg-blue-500" />
-                    <View className="w-1 h-8 bg-blue-500" />
-                  </View>
-                  <View>
-                    <Text className="font-semibold">教师接单</Text>
-                    <Text className="text-gray-400 text-xs">教师已接单</Text>
-                  </View>
-                </View>
-              )}
-              {order.status >= 2 && (
-                <View className="flex flex-row">
-                  <View className="flex flex-col items-center mr-3">
-                    <View className="w-3 h-3 rounded-full bg-blue-500" />
-                    <View className="w-1 h-8 bg-blue-500" />
-                  </View>
-                  <View>
-                    <Text className="font-semibold">开始试课</Text>
-                    <Text className="text-gray-400 text-xs">试课进行中</Text>
-                  </View>
-                </View>
-              )}
+              <Text className="text-sm text-yellow-600 font-medium">立即开通 →</Text>
             </View>
-          </CardContent>
-        </Card>
+          )}
+        </View>
+      </View>
+
+      {/* 分享奖励提示 */}
+      <View className="bg-gradient-to-r from-green-500 to-blue-500 mx-4 mt-4 rounded-xl p-4 shadow-sm">
+        <View className="flex flex-row items-center gap-3">
+          <Gift size={24} color="white" />
+          <View className="flex-1">
+            <Text className="text-white font-medium">分享赚钱</Text>
+            <Text className="text-white text-opacity-80 text-xs">分享需求给好友，成交后可获得佣金奖励</Text>
+          </View>
+          <View
+            className="bg-white px-4 py-2 rounded-lg"
+            onClick={() => {
+              // 微信小程序会自动弹出分享面板，因为已配置useShareAppMessage
+              Taro.showShareMenu({
+                withShareTicket: true,
+              } as any);
+            }}
+          >
+            <Text className="text-green-600 text-sm font-medium">立即分享</Text>
+          </View>
+        </View>
       </View>
 
       {/* 底部操作栏 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
-        {order.status === 0 && (
-          <Button className="w-full bg-blue-500" onClick={handleGrab}>
-            <Text className="text-white font-semibold">立即抢单</Text>
-          </Button>
-        )}
-        {order.status === 1 && (
-          <View className="flex flex-row gap-3">
-            {/* 家长可以关闭订单 */}
-            {isParent && (
-              <Button 
-                variant="outline" 
-                className="flex-1 border-red-500 text-red-500" 
-                onClick={() => setShowCloseDialog(true)}
-              >
-                <Text className="text-red-500">关闭订单</Text>
-              </Button>
-            )}
-            {/* 教师可以解除绑定 */}
-            {!isParent && (
-              <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
-                <Text>解除绑定</Text>
-              </Button>
-            )}
-            <Button className="flex-1 bg-green-500" onClick={() => handleStatusChange(2)}>
-              <Text className="text-white">开始试课</Text>
-            </Button>
-          </View>
-        )}
-        {order.status === 2 && (
-          <View className="flex flex-row gap-3">
-            {/* 家长可以关闭订单 */}
-            {isParent && (
-              <Button 
-                variant="outline" 
-                className="flex-1 border-red-500 text-red-500" 
-                onClick={() => setShowCloseDialog(true)}
-              >
-                <Text className="text-red-500">关闭订单</Text>
-              </Button>
-            )}
-            {/* 教师可以试课不合适 */}
-            {!isParent && (
-              <Button variant="outline" className="flex-1" onClick={() => handleStatusChange(5)}>
-                <Text>试课不合适</Text>
-              </Button>
-            )}
-            <Button className="flex-1 bg-purple-500" onClick={() => handleStatusChange(3)}>
-              <Text className="text-white">确认签约</Text>
-            </Button>
-          </View>
-        )}
-        {order.status === 3 && (
-          <Button className="w-full bg-green-500" onClick={() => setShowReviewDialog(true)}>
-            <Text className="text-white">完成并评价</Text>
-          </Button>
-        )}
+      <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex flex-row gap-3">
+        <View 
+          className="flex flex-row items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-xl flex-1"
+          onClick={handleShare}
+        >
+          <Share2 size={18} color="#6B7280" />
+          <Text className="text-gray-700">分享</Text>
+        </View>
+        <View 
+          className="flex flex-row items-center justify-center gap-2 px-4 py-3 bg-blue-500 rounded-xl flex-[2]"
+          onClick={handleGrabOrder}
+        >
+          <Text className="text-white font-medium">立即抢单</Text>
+        </View>
       </View>
 
-      {/* 关闭订单弹窗 */}
-      {showCloseDialog && (
-        <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-          <DialogContent className="w-80">
-            <DialogHeader>
-              <DialogTitle>关闭订单</DialogTitle>
-            </DialogHeader>
-            <View className="flex flex-col gap-4">
-              {/* 警告提示 */}
-              <View className="bg-red-50 p-3 rounded-lg">
-                <View className="flex flex-row items-start gap-2">
-                  <TriangleAlert size={16} color="#DC2626" />
-                  <View className="flex-1">
-                    <Text className="text-red-600 text-sm font-semibold">重要提示</Text>
-                    <Text className="text-red-500 text-xs mt-1">
-                      关闭订单将终止您的会员权益，订单将进入公海池供其他教师抢单。
-                    </Text>
-                  </View>
-                </View>
+      {/* 会员引导弹窗 - 分享进入的用户 */}
+      {router.params.from === 'share' && !isMember && (
+        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <View className="bg-white rounded-2xl p-6 mx-8 w-[80%]">
+            <Text className="text-lg font-bold text-center mb-2">发现好老师</Text>
+            <Text className="text-sm text-gray-600 text-center mb-4">
+              开通会员即可查看完整信息、联系方式，并抢单接课
+            </Text>
+            <View className="flex flex-col gap-2">
+              <View 
+                className="bg-blue-500 py-3 rounded-xl text-center"
+                onClick={() => Taro.navigateTo({ url: '/pages/membership/index' })}
+              >
+                <Text className="text-white font-medium">开通会员</Text>
               </View>
-
-              {/* 关闭原因 */}
-              <View>
-                <Text className="text-sm font-semibold mb-2">关闭原因</Text>
-                <View className="flex flex-col gap-2">
-                  {closeReasons.map((reason) => (
-                    <View
-                      key={reason.value}
-                      className={`p-3 rounded-lg border ${
-                        closeReason === reason.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200'
-                      }`}
-                      onClick={() => setCloseReason(reason.value)}
-                    >
-                      <Text className={closeReason === reason.value ? 'text-blue-600' : 'text-gray-700'}>
-                        {reason.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* 补充说明 */}
-              <View>
-                <Text className="text-sm font-semibold mb-2">补充说明（选填）</Text>
-                <View className="bg-gray-50 rounded-lg p-3">
-                  <Textarea
-                    style={{ width: '100%', minHeight: '80px', backgroundColor: 'transparent' }}
-                    placeholder="请输入补充说明..."
-                    value={closeFeedback}
-                    onInput={(e) => setCloseFeedback(e.detail.value)}
-                  />
-                </View>
-              </View>
-
-              {/* 按钮 */}
-              <View className="flex flex-row gap-3">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setShowCloseDialog(false)}
-                >
-                  <Text>取消</Text>
-                </Button>
-                <Button 
-                  className="flex-1 bg-red-500"
-                  onClick={handleCloseOrder}
-                  disabled={!closeReason}
-                >
-                  <Text className="text-white">确认关闭</Text>
-                </Button>
+              <View 
+                className="bg-gray-100 py-3 rounded-xl text-center"
+                onClick={() => Taro.redirectTo({ url: '/pages/index/index' })}
+              >
+                <Text className="text-gray-600">查看更多需求</Text>
               </View>
             </View>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* 评价弹窗 */}
-      {showReviewDialog && (
-        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-          <DialogContent className="w-80">
-            <DialogHeader>
-              <DialogTitle>评价教师</DialogTitle>
-            </DialogHeader>
-            <View className="flex flex-col gap-4">
-              {/* 评分 */}
-              <View>
-                <Text className="text-sm font-semibold mb-2">评分</Text>
-                <View className="flex flex-row gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <View
-                      key={star}
-                      onClick={() => setReviewRating(star)}
-                      className="p-1"
-                    >
-                      <Text className={`text-2xl ${star <= reviewRating ? 'text-yellow-500' : 'text-gray-300'}`}>
-                        ★
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* 评价内容 */}
-              <View>
-                <Text className="text-sm font-semibold mb-2">评价内容</Text>
-                <View className="bg-gray-50 rounded-lg p-3">
-                  <Textarea
-                    style={{ width: '100%', minHeight: '100px', backgroundColor: 'transparent' }}
-                    placeholder="请输入您的评价..."
-                    value={reviewContent}
-                    onInput={(e) => setReviewContent(e.detail.value)}
-                  />
-                </View>
-              </View>
-
-              {/* 按钮 */}
-              <View className="flex flex-row gap-3">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setShowReviewDialog(false)}
-                >
-                  <Text>取消</Text>
-                </Button>
-                <Button 
-                  className="flex-1 bg-blue-500"
-                  onClick={handleCompleteReview}
-                  disabled={!reviewContent}
-                >
-                  <Text className="text-white">提交评价</Text>
-                </Button>
-              </View>
-            </View>
-          </DialogContent>
-        </Dialog>
+          </View>
+        </View>
       )}
     </View>
   );

@@ -1,11 +1,10 @@
 import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components';
-import Taro, { useLoad, useDidShow } from '@tarojs/taro';
+import Taro, { useLoad, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
-import { Network } from '@/network';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Lock, Building2, ChevronDown, Users, Clock, MapPin as LocationIcon } from 'lucide-react-taro';
+import { MapPin, Lock, Building2, ChevronDown, Users, Share2 } from 'lucide-react-taro';
 import CitySelector from '@/components/city-selector';
 import './index.css';
 
@@ -62,7 +61,7 @@ interface FeedAd {
 interface Activity {
   id: number;
   title: string;
-  type: 'visit' | 'training' | 'lecture' | 'other'; // 探校、培训、讲座、其他
+  type: 'visit' | 'training' | 'lecture' | 'other';
   cover_image: string;
   start_time: string;
   end_time: string;
@@ -71,9 +70,9 @@ interface Activity {
   offline_price: number;
   max_participants: number;
   current_participants: number;
-  target_roles: number[]; // 0-家长, 1-教师, 2-机构
+  target_roles: number[];
   status: 'upcoming' | 'ongoing' | 'ended';
-  is_online: boolean; // 是否线上活动
+  is_online: boolean;
 }
 
 // 城市类型
@@ -85,6 +84,127 @@ interface City {
   is_hot: number;
 }
 
+// 城市数据配置
+const CITY_DATA: Record<string, { lat: number; lng: number; teachers: Teacher[]; orders: Order[] }> = {
+  '北京': {
+    lat: 39.9042,
+    lng: 116.4074,
+    teachers: [
+      { id: 1, nickname: '张老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhang', real_name: '张明', gender: 1, education: '北京大学·硕士', subjects: ['数学', '物理'], hourly_rate_min: 150, hourly_rate_max: 200, intro: '8年教学经验，擅长中考数学提分，帮助学生快速掌握解题技巧', distance: 1200, distance_text: '1.2km' },
+      { id: 2, nickname: '李老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=li', real_name: '李芳', gender: 2, education: '清华大学·本科', subjects: ['英语', '语文'], hourly_rate_min: 120, hourly_rate_max: 180, intro: '英语专八，口语流利，留学英国两年，纯正英式发音', distance: 2500, distance_text: '2.5km' },
+      { id: 3, nickname: '王老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wang', real_name: '王强', gender: 1, education: '北京师范大学·博士', subjects: ['化学', '生物'], hourly_rate_min: 200, hourly_rate_max: 300, intro: '重点中学在职教师，10年一线教学经验', distance: 3800, distance_text: '3.8km' },
+      { id: 4, nickname: '刘老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=liu', real_name: '刘婷', gender: 2, education: '中国人民大学·硕士', subjects: ['语文', '历史'], hourly_rate_min: 130, hourly_rate_max: 180, intro: '擅长语文阅读写作指导，帮助学生培养良好阅读习惯', distance: 1500, distance_text: '1.5km' },
+      { id: 5, nickname: '陈老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=chen', real_name: '陈浩', gender: 1, education: '北京航空航天大学·本科', subjects: ['数学', '物理'], hourly_rate_min: 100, hourly_rate_max: 150, intro: '年轻有活力，善于与中小学生沟通，注重培养逻辑思维', distance: 4200, distance_text: '4.2km' },
+    ],
+    orders: [
+      { id: 1, subject: '数学', hourly_rate: 180, student_grade: '初三', student_gender: 1, address: '朝阳区望京西园', description: '需要数学指导，目标中考110分以上', status: 0, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), distance: 800, distance_text: '0.8km' },
+      { id: 2, subject: '英语', hourly_rate: 150, student_grade: '高二', student_gender: 2, address: '海淀区中关村', description: '英语口语提升，准备出国留学', status: 0, created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), distance: 1500, distance_text: '1.5km' },
+      { id: 3, subject: '物理', hourly_rate: 200, student_grade: '高一', student_gender: 1, address: '西城区金融街', description: '物理成绩不稳定，需要系统提升', status: 0, created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), distance: 2800, distance_text: '2.8km' },
+      { id: 4, subject: '化学', hourly_rate: 160, student_grade: '高三', student_gender: 1, address: '丰台区方庄', description: '高三冲刺阶段，化学需要快速提分', status: 0, created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), distance: 3500, distance_text: '3.5km' },
+    ],
+  },
+  '上海': {
+    lat: 31.2304,
+    lng: 121.4737,
+    teachers: [
+      { id: 11, nickname: '周老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhou', real_name: '周雪', gender: 2, education: '复旦大学·硕士', subjects: ['英语', '法语'], hourly_rate_min: 160, hourly_rate_max: 220, intro: '精通英语和法语，可进行双语教学，适合有留学需求的学生', distance: 1800, distance_text: '1.8km' },
+      { id: 12, nickname: '吴老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wu', real_name: '吴杰', gender: 1, education: '上海交通大学·博士', subjects: ['数学', '物理'], hourly_rate_min: 180, hourly_rate_max: 280, intro: '数学博士，对高中数学有独到理解，善于培养数学思维', distance: 2200, distance_text: '2.2km' },
+      { id: 13, nickname: '孙老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sun', real_name: '孙伟', gender: 1, education: '同济大学·硕士', subjects: ['物理', '化学'], hourly_rate_min: 150, hourly_rate_max: 200, intro: '工科背景，物理知识扎实，善于将物理与工程实践结合', distance: 3100, distance_text: '3.1km' },
+      { id: 14, nickname: '赵老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhao', real_name: '赵敏', gender: 2, education: '华东师范大学·本科', subjects: ['语文', '英语'], hourly_rate_min: 120, hourly_rate_max: 160, intro: '师范专业毕业，教学方法规范，耐心细致', distance: 900, distance_text: '0.9km' },
+      { id: 15, nickname: '钱老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=qian', real_name: '钱浩', gender: 1, education: '上海财经大学·硕士', subjects: ['数学', '经济'], hourly_rate_min: 140, hourly_rate_max: 190, intro: '擅长数学和经济类科目，对高考有深入研究', distance: 2600, distance_text: '2.6km' },
+    ],
+    orders: [
+      { id: 11, subject: '数学', hourly_rate: 200, student_grade: '高三', student_gender: 1, address: '浦东新区陆家嘴', description: '高考数学冲刺，目标130分以上', status: 0, created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), distance: 1200, distance_text: '1.2km' },
+      { id: 12, subject: '英语', hourly_rate: 180, student_grade: '初一', student_gender: 2, address: '静安区南京西路', description: '初中英语入门，希望培养兴趣', status: 0, created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), distance: 2000, distance_text: '2.0km' },
+      { id: 13, subject: '物理', hourly_rate: 190, student_grade: '高二', student_gender: 1, address: '徐汇区漕河泾', description: '高中物理竞赛准备', status: 0, created_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(), distance: 3400, distance_text: '3.4km' },
+    ],
+  },
+  '广州': {
+    lat: 23.1291,
+    lng: 113.2644,
+    teachers: [
+      { id: 21, nickname: '黄老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=huang', real_name: '黄丽', gender: 2, education: '中山大学·硕士', subjects: ['语文', '历史'], hourly_rate_min: 130, hourly_rate_max: 180, intro: '文科综合能力强，善于构建知识体系', distance: 1600, distance_text: '1.6km' },
+      { id: 22, nickname: '林老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lin', real_name: '林峰', gender: 1, education: '华南理工大学·本科', subjects: ['数学', '物理'], hourly_rate_min: 140, hourly_rate_max: 200, intro: '理工科背景，逻辑思维清晰，善于解题', distance: 2100, distance_text: '2.1km' },
+      { id: 23, nickname: '何老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=he', real_name: '何静', gender: 2, education: '暨南大学·硕士', subjects: ['英语'], hourly_rate_min: 150, hourly_rate_max: 200, intro: '英语专业八级，口语流利，留学经历丰富', distance: 2800, distance_text: '2.8km' },
+      { id: 24, nickname: '罗老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=luo', real_name: '罗燕', gender: 2, education: '广东外语外贸大学·本科', subjects: ['英语', '日语'], hourly_rate_min: 120, hourly_rate_max: 170, intro: '英日双语教学，适合多语种学习需求', distance: 1400, distance_text: '1.4km' },
+    ],
+    orders: [
+      { id: 21, subject: '英语', hourly_rate: 160, student_grade: '初三', student_gender: 2, address: '天河区珠江新城', description: '中考英语冲刺，目标115分以上', status: 0, created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), distance: 1000, distance_text: '1.0km' },
+      { id: 22, subject: '数学', hourly_rate: 150, student_grade: '初二', student_gender: 1, address: '越秀区东山口', description: '初中数学基础巩固，提升解题能力', status: 0, created_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(), distance: 2300, distance_text: '2.3km' },
+      { id: 23, subject: '语文', hourly_rate: 140, student_grade: '高一', student_gender: 2, address: '海珠区江南西', description: '高中语文入门，重点提升作文', status: 0, created_at: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(), distance: 3100, distance_text: '3.1km' },
+    ],
+  },
+  '深圳': {
+    lat: 22.5431,
+    lng: 114.0579,
+    teachers: [
+      { id: 31, nickname: '郑老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zheng', real_name: '郑凯', gender: 1, education: '深圳大学·硕士', subjects: ['数学', '编程'], hourly_rate_min: 160, hourly_rate_max: 220, intro: '数学与编程双修，适合有编程兴趣的学生', distance: 1900, distance_text: '1.9km' },
+      { id: 32, nickname: '马老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ma', real_name: '马欣', gender: 2, education: '香港大学·硕士', subjects: ['英语', '语文'], hourly_rate_min: 180, hourly_rate_max: 250, intro: '港大硕士，国际化视野，双语教学', distance: 2400, distance_text: '2.4km' },
+      { id: 33, nickname: '徐老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=xu', real_name: '徐涛', gender: 1, education: '南方科技大学·博士', subjects: ['物理', '化学'], hourly_rate_min: 200, hourly_rate_max: 300, intro: '理工科博士，对物理化学有深入研究', distance: 3200, distance_text: '3.2km' },
+      { id: 34, nickname: '冯老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=feng', real_name: '冯雨', gender: 2, education: '深圳职业技术学院·本科', subjects: ['美术', '设计'], hourly_rate_min: 100, hourly_rate_max: 150, intro: '艺术设计专业，培养创意思维', distance: 1100, distance_text: '1.1km' },
+    ],
+    orders: [
+      { id: 31, subject: '数学', hourly_rate: 180, student_grade: '高二', student_gender: 1, address: '南山区科技园', description: '高中数学竞赛准备，目标省赛获奖', status: 0, created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), distance: 800, distance_text: '0.8km' },
+      { id: 32, subject: '英语', hourly_rate: 200, student_grade: '高三', student_gender: 2, address: '福田区CBD', description: '高考英语冲刺，目标135分以上', status: 0, created_at: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(), distance: 1500, distance_text: '1.5km' },
+      { id: 33, subject: '编程', hourly_rate: 220, student_grade: '初一', student_gender: 1, address: '罗湖区东门', description: '编程入门，培养逻辑思维', status: 0, created_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), distance: 2700, distance_text: '2.7km' },
+    ],
+  },
+  '杭州': {
+    lat: 30.2741,
+    lng: 120.1551,
+    teachers: [
+      { id: 41, nickname: '朱老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhu', real_name: '朱琳', gender: 2, education: '浙江大学·硕士', subjects: ['语文', '政治'], hourly_rate_min: 140, hourly_rate_max: 190, intro: '文科综合高手，善于构建知识体系', distance: 1500, distance_text: '1.5km' },
+      { id: 42, nickname: '许老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=xu2', real_name: '许强', gender: 1, education: '浙江大学·博士', subjects: ['化学', '生物'], hourly_rate_min: 190, hourly_rate_max: 280, intro: '化学博士，对化学有深入研究', distance: 2000, distance_text: '2.0km' },
+      { id: 43, nickname: '沈老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=shen', real_name: '沈浩', gender: 1, education: '中国美术学院·硕士', subjects: ['美术', '书法'], hourly_rate_min: 150, hourly_rate_max: 200, intro: '美院毕业，专业美术书法指导', distance: 2600, distance_text: '2.6km' },
+      { id: 44, nickname: '韦老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wei', real_name: '韦婷', gender: 2, education: '浙江工业大学·本科', subjects: ['英语'], hourly_rate_min: 110, hourly_rate_max: 160, intro: '英语专业毕业，口语流利', distance: 1200, distance_text: '1.2km' },
+    ],
+    orders: [
+      { id: 41, subject: '数学', hourly_rate: 170, student_grade: '初三', student_gender: 2, address: '西湖区文三路', description: '中考数学冲刺，目标满分', status: 0, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), distance: 1000, distance_text: '1.0km' },
+      { id: 42, subject: '美术', hourly_rate: 150, student_grade: '小学六年级', student_gender: 2, address: '滨江区', description: '美术兴趣培养，考级指导', status: 0, created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), distance: 1800, distance_text: '1.8km' },
+      { id: 43, subject: '英语', hourly_rate: 160, student_grade: '高一', student_gender: 1, address: '余杭区', description: '高中英语基础巩固', status: 0, created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), distance: 3500, distance_text: '3.5km' },
+    ],
+  },
+  '南京': {
+    lat: 32.0603,
+    lng: 118.7969,
+    teachers: [
+      { id: 51, nickname: '杨老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yang', real_name: '杨帆', gender: 1, education: '南京大学·硕士', subjects: ['物理', '数学'], hourly_rate_min: 160, hourly_rate_max: 230, intro: '工科背景，物理知识扎实', distance: 1700, distance_text: '1.7km' },
+      { id: 52, nickname: '韩老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=han', real_name: '韩磊', gender: 1, education: '东南大学·硕士', subjects: ['地理'], hourly_rate_min: 130, hourly_rate_max: 180, intro: '地理专业，善于图表教学', distance: 2200, distance_text: '2.2km' },
+      { id: 53, nickname: '冯老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=feng2', real_name: '冯雨', gender: 2, education: '南京师范大学·本科', subjects: ['语文', '历史'], hourly_rate_min: 120, hourly_rate_max: 160, intro: '师范专业，教学方法规范', distance: 1100, distance_text: '1.1km' },
+    ],
+    orders: [
+      { id: 51, subject: '物理', hourly_rate: 180, student_grade: '高三', student_gender: 1, address: '鼓楼区新街口', description: '高考物理冲刺，目标90分以上', status: 0, created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), distance: 900, distance_text: '0.9km' },
+      { id: 52, subject: '语文', hourly_rate: 140, student_grade: '初二', student_gender: 2, address: '玄武区', description: '语文阅读写作提升', status: 0, created_at: new Date(Date.now() - 11 * 60 * 60 * 1000).toISOString(), distance: 2400, distance_text: '2.4km' },
+    ],
+  },
+  '成都': {
+    lat: 30.5728,
+    lng: 104.0668,
+    teachers: [
+      { id: 61, nickname: '唐老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tang', real_name: '唐莉', gender: 2, education: '四川大学·硕士', subjects: ['英语', '语文'], hourly_rate_min: 140, hourly_rate_max: 200, intro: '文科双修，教学经验丰富', distance: 1300, distance_text: '1.3km' },
+      { id: 62, nickname: '邓老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=deng', real_name: '邓超', gender: 1, education: '电子科技大学·博士', subjects: ['数学', '物理'], hourly_rate_min: 180, hourly_rate_max: 280, intro: '中科大毕业，理科专家', distance: 1900, distance_text: '1.9km' },
+      { id: 63, nickname: '曹老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=cao', real_name: '曹敏', gender: 2, education: '西南财经大学·硕士', subjects: ['英语', '日语'], hourly_rate_min: 130, hourly_rate_max: 180, intro: '英日双语教学，留学经历', distance: 2500, distance_text: '2.5km' },
+    ],
+    orders: [
+      { id: 61, subject: '数学', hourly_rate: 160, student_grade: '高一', student_gender: 1, address: '锦江区春熙路', description: '高中数学入门，打好基础', status: 0, created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), distance: 1100, distance_text: '1.1km' },
+      { id: 62, subject: '英语', hourly_rate: 150, student_grade: '初三', student_gender: 2, address: '武侯区', description: '中考英语冲刺', status: 0, created_at: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(), distance: 2000, distance_text: '2.0km' },
+    ],
+  },
+  '武汉': {
+    lat: 30.5928,
+    lng: 114.3055,
+    teachers: [
+      { id: 71, nickname: '蒋老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jiang', real_name: '蒋丽', gender: 2, education: '武汉大学·硕士', subjects: ['语文', '历史'], hourly_rate_min: 130, hourly_rate_max: 180, intro: '文科综合，善于知识体系构建', distance: 1600, distance_text: '1.6km' },
+      { id: 72, nickname: '沈老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=shen2', real_name: '沈浩', gender: 1, education: '华中科技大学·博士', subjects: ['物理', '化学'], hourly_rate_min: 190, hourly_rate_max: 290, intro: '理工博士，理科教学专家', distance: 2100, distance_text: '2.1km' },
+      { id: 73, nickname: '韦老师', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wei2', real_name: '韦婷', gender: 2, education: '华中师范大学·本科', subjects: ['英语', '语文'], hourly_rate_min: 110, hourly_rate_max: 150, intro: '师范专业，教学方法规范', distance: 900, distance_text: '0.9km' },
+    ],
+    orders: [
+      { id: 71, subject: '物理', hourly_rate: 170, student_grade: '高二', student_gender: 1, address: '洪山区光谷', description: '高中物理竞赛准备', status: 0, created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), distance: 1300, distance_text: '1.3km' },
+      { id: 72, subject: '英语', hourly_rate: 140, student_grade: '初一', student_gender: 2, address: '武昌区', description: '初中英语入门', status: 0, created_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(), distance: 1800, distance_text: '1.8km' },
+    ],
+  },
+};
+
 /**
  * 首页 - 根据用户角色显示不同内容
  * 家长角色：显示教师列表
@@ -94,10 +214,8 @@ const IndexPage = () => {
   // 用户状态
   const [isMember, setIsMember] = useState(false);
   const [userRole, setUserRole] = useState(0); // 0-家长, 1-教师
-  
+
   // 位置状态
-  const [latitude, setLatitude] = useState<number>(0);
-  const [longitude, setLongitude] = useState<number>(0);
   const [currentCity, setCurrentCity] = useState('定位中...');
   const [showCitySelector, setShowCitySelector] = useState(false);
   
@@ -129,12 +247,33 @@ const IndexPage = () => {
     console.log('Page loaded.');
   });
 
+  // 配置分享给好友
+  useShareAppMessage(() => {
+    const title = userRole === 0 
+      ? '棉花糖教育 - 找好老师，上棉花糖' 
+      : '棉花糖教育 - 接好需求，上棉花糖';
+    return {
+      title,
+      path: '/pages/index/index?invite=1',
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+    };
+  });
+
+  // 配置分享到朋友圈
+  useShareTimeline(() => {
+    return {
+      title: '棉花糖教育成长平台 - 专业家教信息撮合',
+      query: 'invite=1',
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+    };
+  });
+
   // 每次页面显示时重新读取角色
   useDidShow(() => {
     const token = Taro.getStorageSync('token');
     if (!token) {
-      Taro.redirectTo({ url: '/pages/login/index' });
-      return;
+      // 未登录也显示演示数据
+      console.log('未登录，使用演示数据');
     }
     
     // 重新读取角色
@@ -145,6 +284,18 @@ const IndexPage = () => {
     if (role !== userRole) {
       setUserRole(role);
     }
+    
+    // 检查会员状态
+    const memberExpire = Taro.getStorageSync('member_expire');
+    if (memberExpire && new Date(memberExpire) > new Date()) {
+      setIsMember(true);
+    }
+    
+    // 读取用户选择的城市
+    const savedCity = Taro.getStorageSync('selectedCity');
+    if (savedCity) {
+      setCurrentCity(savedCity);
+    }
   });
 
   useEffect(() => {
@@ -154,10 +305,10 @@ const IndexPage = () => {
 
   useEffect(() => {
     // 角色或筛选变化后加载数据
-    if (latitude !== 0 || longitude !== 0) {
+    if (currentCity !== '定位中...') {
       loadData();
     }
-  }, [latitude, longitude, userRole, selectedSubject, currentCity]);
+  }, [currentCity, userRole, selectedSubject]);
 
   // 初始化页面
   const initPage = async () => {
@@ -166,65 +317,13 @@ const IndexPage = () => {
     // 设置模拟信息流广告
     setFeedAds(mockFeedAds);
     
-    // 检查登录状态
-    const token = Taro.getStorageSync('token');
-    if (token) {
-      // 获取用户角色 - 确保转换为数字
-      const savedRole = Taro.getStorageSync('userRole');
-      const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
-      console.log('读取到的角色值:', savedRole, '转换后:', role);
-      setUserRole(role);
-      
-      // 检查会员状态
-      const memberExpire = Taro.getStorageSync('member_expire');
-      if (memberExpire && new Date(memberExpire) > new Date()) {
-        setIsMember(true);
-      }
-      
-      // 读取用户选择的城市
-      const savedCity = Taro.getStorageSync('selectedCity');
-      if (savedCity) {
-        setCurrentCity(savedCity);
-      }
+    // 读取用户选择的城市
+    const savedCity = Taro.getStorageSync('selectedCity');
+    if (savedCity) {
+      setCurrentCity(savedCity);
     } else {
-      // 未登录，跳转到登录页
-      setTimeout(() => {
-        Taro.redirectTo({ url: '/pages/login/index' });
-      }, 500);
-    }
-    
-    // 获取位置
-    await getLocation();
-  };
-
-  // 获取位置
-  const getLocation = async () => {
-    try {
-      // H5 端获取位置
-      if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
-        // 模拟北京望京位置
-        setLatitude(39.995);
-        setLongitude(116.473);
-        if (currentCity === '定位中...') {
-          setCurrentCity('北京·望京');
-        }
-        return;
-      }
-      
-      const res = await Taro.getLocation({ type: 'gcj02' });
-      setLatitude(res.latitude);
-      setLongitude(res.longitude);
-      if (currentCity === '定位中...') {
-        setCurrentCity('已定位');
-      }
-    } catch (error) {
-      console.error('获取位置失败:', error);
-      // 使用默认位置（北京）
-      setLatitude(39.995);
-      setLongitude(116.473);
-      if (currentCity === '定位中...') {
-        setCurrentCity('北京');
-      }
+      // 默认北京
+      setCurrentCity('北京');
     }
   };
 
@@ -233,192 +332,31 @@ const IndexPage = () => {
     setCurrentCity(city.name);
     Taro.setStorageSync('selectedCity', city.name);
     setShowCitySelector(false);
-    
-    // 更新用户城市到后端
-    try {
-      await Network.request({
-        url: '/api/city/select',
-        method: 'POST',
-        data: { cityId: city.id },
-      });
-    } catch (error) {
-      console.error('更新城市失败:', error);
-    }
   };
 
   // 加载数据
   const loadData = async () => {
+    // 根据城市获取数据
+    const cityKey = currentCity.replace(/·.*$/, '').replace('·', '');
+    const cityData = CITY_DATA[cityKey] || CITY_DATA['北京'];
+    
     if (userRole === 0) {
       // 家长：加载教师列表
-      await loadTeachers();
+      const filteredTeachers = selectedSubject === '全部' 
+        ? cityData.teachers 
+        : cityData.teachers.filter(t => t.subjects.includes(selectedSubject));
+      setTeachers(filteredTeachers);
     } else if (userRole === 1) {
       // 教师：加载订单列表
-      await loadOrders();
-    } else {
-      // 机构：加载待审核教师/订单
-      setLoading(false);
+      const filteredOrders = selectedSubject === '全部'
+        ? cityData.orders
+        : cityData.orders.filter(o => o.subject === selectedSubject);
+      setOrders(filteredOrders);
     }
-    // 所有角色都加载活动
-    await loadActivities();
-  };
-
-  // 加载教师列表
-  const loadTeachers = async () => {
-    try {
-      setLoading(true);
-      const res = await Network.request({
-        url: '/api/user/teachers/list',
-        method: 'GET',
-        data: {
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          subject: selectedSubject,
-          city: currentCity !== '定位中...' ? currentCity : undefined,
-          page: 1,
-          pageSize: 20,
-        },
-      });
-
-      console.log('教师列表响应:', res.data);
-      if (res.data && Array.isArray(res.data)) {
-        setTeachers(res.data);
-      }
-    } catch (error) {
-      console.error('加载教师列表失败:', error);
-      // 使用模拟数据
-      setTeachers(getMockTeachers());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 加载订单列表
-  const loadOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await Network.request({
-        url: '/api/orders/list',
-        method: 'GET',
-        data: {
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          subject: selectedSubject !== '全部' ? selectedSubject : undefined,
-          city: currentCity !== '定位中...' ? currentCity : undefined,
-          page: 1,
-          pageSize: 20,
-        },
-      });
-
-      console.log('订单列表响应:', res.data);
-      if (res.data && Array.isArray(res.data)) {
-        setOrders(res.data);
-      }
-    } catch (error) {
-      console.error('加载订单失败:', error);
-      // 使用模拟数据
-      setOrders(getMockOrders());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 模拟教师数据
-  const getMockTeachers = (): Teacher[] => [
-    {
-      id: 1,
-      nickname: '张老师',
-      avatar: 'https://placehold.co/100/2563EB/white?text=张',
-      real_name: '张明',
-      gender: 1,
-      education: '北京大学·硕士',
-      subjects: ['数学', '物理'],
-      hourly_rate_min: 150,
-      hourly_rate_max: 200,
-      intro: '8年教学经验，擅长中考数学提分',
-      distance: 1200,
-      distance_text: '1.2km',
-    },
-    {
-      id: 2,
-      nickname: '李老师',
-      avatar: 'https://placehold.co/100/EC4899/white?text=李',
-      real_name: '李芳',
-      gender: 2,
-      education: '清华大学·本科',
-      subjects: ['英语', '语文'],
-      hourly_rate_min: 120,
-      hourly_rate_max: 180,
-      intro: '英语专八，口语流利',
-      distance: 2500,
-      distance_text: '2.5km',
-    },
-    {
-      id: 3,
-      nickname: '王老师',
-      avatar: 'https://placehold.co/100/10B981/white?text=王',
-      real_name: '王强',
-      gender: 1,
-      education: '北京师范大学·博士',
-      subjects: ['化学', '生物'],
-      hourly_rate_min: 200,
-      hourly_rate_max: 300,
-      intro: '重点中学在职教师',
-      distance: 3800,
-      distance_text: '3.8km',
-    },
-  ];
-
-  // 模拟订单数据
-  const getMockOrders = (): Order[] => [
-    {
-      id: 1,
-      subject: '数学',
-      hourly_rate: 180,
-      student_grade: '初三',
-      student_gender: 1,
-      address: '朝阳区望京西园',
-      description: '需要数学指导，目标中考110分以上',
-      status: 0,
-      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      distance: 800,
-      distance_text: '0.8km',
-    },
-    {
-      id: 2,
-      subject: '英语',
-      hourly_rate: 150,
-      student_grade: '高二',
-      student_gender: 2,
-      address: '海淀区中关村',
-      description: '英语口语提升，准备出国',
-      status: 0,
-      created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-      distance: 1500,
-      distance_text: '1.5km',
-    },
-  ];
-
-  // 加载活动列表
-  const loadActivities = async () => {
-    try {
-      const res = await Network.request({
-        url: '/api/activities/list',
-        method: 'GET',
-        data: {
-          role: userRole,
-          page: 1,
-          pageSize: 5,
-        },
-      });
-
-      if (res.data && Array.isArray(res.data)) {
-        setActivities(res.data);
-      }
-    } catch (error) {
-      console.error('加载活动失败:', error);
-      // 使用模拟数据
-      setActivities(getMockActivities());
-    }
+    
+    // 设置活动数据
+    setActivities(getMockActivities());
+    setLoading(false);
   };
 
   // 模拟活动数据
@@ -435,7 +373,7 @@ const IndexPage = () => {
       offline_price: 99,
       max_participants: 50,
       current_participants: 32,
-      target_roles: [0], // 仅家长可见
+      target_roles: [0],
       status: 'upcoming',
       is_online: false,
     },
@@ -451,15 +389,15 @@ const IndexPage = () => {
       offline_price: 0,
       max_participants: 200,
       current_participants: 156,
-      target_roles: [0, 1], // 家长和教师可见
+      target_roles: [0, 1],
       status: 'upcoming',
       is_online: true,
     },
     {
       id: 3,
-      title: '教师教学技能提升培训',
+      title: '教师教学技能提升研修',
       type: 'training',
-      cover_image: 'https://placehold.co/400x200/EC4899/white?text=教师培训',
+      cover_image: 'https://placehold.co/400x200/EC4899/white?text=教师研修',
       start_time: '2024-04-25 09:00',
       end_time: '2024-04-26 17:00',
       address: '海淀区教师进修学校',
@@ -467,7 +405,7 @@ const IndexPage = () => {
       offline_price: 299,
       max_participants: 30,
       current_participants: 28,
-      target_roles: [1], // 仅教师可见
+      target_roles: [1],
       status: 'upcoming',
       is_online: false,
     },
@@ -479,24 +417,10 @@ const IndexPage = () => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 24) {
-      return `${hours}小时前`;
-    }
+    if (hours < 1) return '刚刚';
+    if (hours < 24) return `${hours}小时前`;
     const days = Math.floor(hours / 24);
     return `${days}天前`;
-  };
-
-  // 获取订单状态
-  const getStatusInfo = (status: number) => {
-    const statusMap: Record<number, { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      0: { text: '待抢单', variant: 'default' },
-      1: { text: '已匹配', variant: 'secondary' },
-      2: { text: '试课中', variant: 'secondary' },
-      3: { text: '已签约', variant: 'outline' },
-      4: { text: '已完成', variant: 'outline' },
-      5: { text: '已解除', variant: 'destructive' },
-    };
-    return statusMap[status] || { text: '未知', variant: 'outline' };
   };
 
   // 获取性别图标
@@ -513,54 +437,42 @@ const IndexPage = () => {
 
   // 查看教师详情
   const handleViewTeacher = (teacherId: number) => {
-    if (!isMember) {
-      Taro.showModal({
-        title: '提示',
-        content: '开通会员后可查看教师详情和联系方式',
-        confirmText: '开通会员',
-        success: (res) => {
-          if (res.confirm) {
-            Taro.navigateTo({ url: '/pages/membership/index' });
-          }
-        },
-      });
-      return;
-    }
     Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${teacherId}` });
   };
 
   // 查看订单详情
   const handleViewOrder = (orderId: number) => {
-    if (!isMember) {
-      Taro.showModal({
-        title: '提示',
-        content: '开通会员后可查看订单详情和联系方式',
-        confirmText: '开通会员',
-        success: (res) => {
-          if (res.confirm) {
-            Taro.navigateTo({ url: '/pages/membership/index' });
-          }
-        },
-      });
-      return;
-    }
     Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderId}` });
+  };
+
+  // 分享订单
+  const handleShareOrder = (_order: Order) => {
+    // 设置分享内容
+    Taro.showShareMenu({
+      withShareTicket: true,
+    } as any);
+    
+    Taro.showModal({
+      title: '分享需求',
+      content: '分享到微信好友、群或朋友圈，有人通过您的分享签约，您可获得佣金奖励！',
+      confirmText: '立即分享',
+      success: (res) => {
+        if (res.confirm) {
+          // 触发分享
+        }
+      },
+    });
   };
 
   // 获取活动类型标签
   const getActivityTypeTag = (type: Activity['type']) => {
     const typeMap = {
       visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
-      training: { label: '培训', color: 'bg-green-100 text-green-600' },
+      training: { label: '研修', color: 'bg-green-100 text-green-600' },
       lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
       other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
     };
     return typeMap[type];
-  };
-
-  // 活动报名
-  const handleActivitySignUp = (activity: Activity) => {
-    Taro.navigateTo({ url: `/pages/activity-detail/index?id=${activity.id}` });
   };
 
   // 过滤当前角色可见的活动
@@ -661,10 +573,6 @@ const IndexPage = () => {
 
       {/* 内容区域 */}
       <View className="p-4 pb-24">
-        {(() => {
-          console.log('渲染内容区域 - userRole:', userRole, '类型:', typeof userRole);
-          return null;
-        })()}
         {loading ? (
           <View className="flex items-center justify-center py-8">
             <Text className="text-gray-500">加载中...</Text>
@@ -678,91 +586,55 @@ const IndexPage = () => {
             </View>
           ) : (
             <View className="flex flex-col gap-3">
-              {teachers.map((teacher, index) => (
-                <View key={teacher.id}>
-                  <Card className="bg-white">
-                    <CardContent className="p-4">
-                      <View className="flex flex-row gap-3">
-                        {/* 头像 */}
-                        <Image 
-                          src={teacher.avatar} 
-                          className="w-16 h-16 rounded-full"
-                          mode="aspectFill"
-                        />
-                        {/* 信息 */}
-                        <View className="flex-1 flex flex-col gap-1">
-                          <View className="flex flex-row items-center justify-between">
-                            <View className="flex flex-row items-center gap-2">
-                              <Text className="text-base font-semibold">
-                                {isMember ? (teacher.real_name || teacher.nickname) : teacher.nickname}
-                              </Text>
-                              <Text className="text-xs text-gray-500">{getGenderText(teacher.gender)}</Text>
-                            </View>
-                            <Text className="text-xs text-gray-400">{teacher.distance_text}</Text>
-                          </View>
-                          
-                          <Text className="text-xs text-gray-500">{teacher.education}</Text>
-                          
-                          {/* 学科标签 */}
-                          <View className="flex flex-row gap-1 mt-1">
-                            {teacher.subjects?.map((subj) => (
-                              <Badge key={subj} variant="secondary">
-                                <Text className="text-xs">{subj}</Text>
-                              </Badge>
-                            ))}
-                          </View>
-                          
-                          {/* 价格和简介 */}
-                          <View className="flex flex-row items-center justify-between mt-2">
-                            <Text className="text-orange-500 font-semibold">
-                              ¥{teacher.hourly_rate_min}-{teacher.hourly_rate_max}/小时
+              {teachers.map((teacher) => (
+                <Card key={teacher.id} className="bg-white">
+                  <CardContent className="p-4">
+                    <View className="flex flex-row gap-3">
+                      {/* 头像 */}
+                      <Image 
+                        src={teacher.avatar} 
+                        className="w-16 h-16 rounded-full"
+                        mode="aspectFill"
+                      />
+                      {/* 信息 */}
+                      <View className="flex-1 flex flex-col gap-1">
+                        <View className="flex flex-row items-center justify-between">
+                          <View className="flex flex-row items-center gap-2">
+                            <Text className="text-base font-semibold">
+                              {teacher.real_name || teacher.nickname}
                             </Text>
+                            <Text className="text-xs text-gray-500">{getGenderText(teacher.gender)}</Text>
                           </View>
-                          
-                          {teacher.intro && (
-                            <Text className="text-xs text-gray-500 mt-1 line-clamp-2">
-                              {teacher.intro}
-                            </Text>
-                          )}
-                          
-                          {/* 操作按钮 */}
-                          <View className="flex flex-row gap-2 mt-3">
-                            <Button size="sm" className="flex-1" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
-                              <Text className="text-sm">预约试课</Text>
-                            </Button>
-                            <Button size="sm" variant="outline" className="flex-1" onClick={() => handleViewTeacher(teacher.id)}>
-                              <Text className="text-sm">查看详情</Text>
-                            </Button>
-                          </View>
+                          <Text className="text-xs text-gray-400">{teacher.distance_text}</Text>
                         </View>
-                      </View>
-                    </CardContent>
-                  </Card>
-                  {/* 在第2个教师后插入信息流广告 */}
-                  {index === 1 && feedAds.length > 0 && (
-                    <View 
-                      key={`ad-${feedAds[0].id}`}
-                      className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl overflow-hidden mt-3"
-                      onClick={() => feedAds[0].link_url && Taro.navigateTo({ url: feedAds[0].link_url })}
-                    >
-                      {feedAds[0].image_url && (
-                        <Image 
-                          src={feedAds[0].image_url} 
-                          className="w-full h-24"
-                          mode="aspectFill"
-                        />
-                      )}
-                      <View className="p-3">
-                        <Text className="font-semibold text-gray-800">{feedAds[0].title}</Text>
-                        <Text className="text-xs text-gray-500 mt-1">{feedAds[0].content}</Text>
-                        <View className="flex flex-row items-center justify-between mt-2">
-                          <Text className="text-xs text-blue-500">了解更多 →</Text>
-                          <Text className="text-xs text-gray-400">广告</Text>
+                        <Text className="text-xs text-gray-500">{teacher.education}</Text>
+                        <View className="flex flex-row gap-1 flex-wrap">
+                          {teacher.subjects.map((s) => (
+                            <Badge key={s} variant="secondary" className="text-xs">
+                              {s}
+                            </Badge>
+                          ))}
+                        </View>
+                        <View className="flex flex-row items-center justify-between">
+                          <Text className="text-sm text-blue-600 font-medium">
+                            ¥{teacher.hourly_rate_min}-{teacher.hourly_rate_max}/小时
+                          </Text>
                         </View>
                       </View>
                     </View>
-                  )}
-                </View>
+                    <View className="mt-2 pt-2 border-t border-gray-100">
+                      <Text className="text-xs text-gray-600 line-clamp-2">{teacher.intro}</Text>
+                    </View>
+                    <View className="mt-3 flex flex-row gap-2">
+                      <View 
+                        className="flex-1 bg-blue-500 rounded-lg py-2 items-center"
+                        onClick={() => handleViewTeacher(teacher.id)}
+                      >
+                        <Text className="text-white text-sm">查看详情</Text>
+                      </View>
+                    </View>
+                  </CardContent>
+                </Card>
               ))}
             </View>
           )
@@ -771,223 +643,171 @@ const IndexPage = () => {
           orders.length === 0 ? (
             <View className="flex flex-col items-center justify-center py-8">
               <Text className="text-gray-500 mb-2">暂无订单</Text>
-              <Text className="text-sm text-gray-400">附近暂无新的需求</Text>
+              <Text className="text-sm text-gray-400 mb-4">附近暂无新的需求</Text>
+              <View className="flex flex-row gap-2">
+                <View 
+                  className="px-4 py-2 bg-blue-500 rounded-lg"
+                  onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}
+                >
+                  <Text className="text-white text-sm">发布需求</Text>
+                </View>
+                <Button open-type="share" className="px-4 py-2 bg-green-500 rounded-lg">
+                  <Text className="text-white text-sm">分享获客</Text>
+                </Button>
+              </View>
             </View>
           ) : (
             <View className="flex flex-col gap-3">
-              {orders.map((order) => {
-                const statusInfo = getStatusInfo(order.status);
-                return (
-                  <Card key={order.id} className="bg-white">
-                    <CardHeader className="pb-2">
-                      <View className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base">{order.subject}</CardTitle>
-                        <Badge variant={statusInfo.variant}>
-                          <Text className="text-xs">{statusInfo.text}</Text>
-                        </Badge>
-                      </View>
-                    </CardHeader>
-                    <CardContent>
-                      <View className="flex flex-col gap-2">
-                        <View className="flex flex-row items-center justify-between">
-                          <Text className="text-orange-500 font-semibold text-lg">
-                            ¥{order.hourly_rate}/小时
-                          </Text>
-                          <Text className="text-xs text-gray-500">
-                            {order.distance_text} · {formatTime(order.created_at)}
-                          </Text>
-                        </View>
-                        <View className="flex flex-row items-center">
-                          <MapPin size={12} color="#6B7280" className="mr-1" />
-                          <Text className="text-sm text-gray-600">
-                            {isMember ? order.address : '开通会员查看详细地址'}
-                          </Text>
-                        </View>
+              {orders.map((order, index) => (
+                <View key={order.id}>
+                  <Card className="bg-white">
+                    <CardContent className="p-4">
+                      <View className="flex flex-row justify-between items-start mb-2">
                         <View className="flex flex-row items-center gap-2">
-                          <Text className="text-sm text-gray-500">
-                            {order.student_grade}
-                          </Text>
-                          <Text className="text-sm text-gray-500">
-                            {order.student_gender === 1 ? '男生' : '女生'}
-                          </Text>
+                          <Text className="text-lg font-semibold">{order.subject}</Text>
+                          <Badge variant="default">待抢单</Badge>
                         </View>
-                        {order.description && (
-                          <Text className="text-sm text-gray-500 line-clamp-2">
-                            {order.description}
-                          </Text>
-                        )}
-                        <View className="flex flex-row gap-2 mt-2">
-                          <Button size="sm" className="flex-1" variant="default" onClick={() => handleViewOrder(order.id)}>
-                            <Text className="text-sm">抢单</Text>
-                          </Button>
-                          <Button size="sm" className="flex-1" variant="outline" onClick={() => handleViewOrder(order.id)}>
-                            <Text className="text-sm">详情</Text>
-                          </Button>
+                        <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
+                      </View>
+                      
+                      <View className="flex flex-row items-center gap-4 mb-2">
+                        <Text className="text-sm text-gray-600">年级: {order.student_grade}</Text>
+                        <Text className="text-sm text-gray-600">性别: {getGenderText(order.student_gender)}</Text>
+                      </View>
+                      
+                      <View className="flex flex-row items-center gap-2 mb-2">
+                        <MapPin size={14} color="#6B7280" />
+                        <Text className="text-sm text-gray-600">{order.address}</Text>
+                        <Text className="text-xs text-gray-400">{order.distance_text}</Text>
+                      </View>
+                      
+                      <Text className="text-sm text-gray-700 mb-3">{order.description}</Text>
+                      
+                      <View className="flex flex-row justify-between items-center">
+                        <Text className="text-lg font-bold text-blue-600">¥{order.hourly_rate}/小时</Text>
+                        <View className="flex flex-row gap-2">
+                          <View 
+                            className="flex flex-row items-center gap-1 px-3 py-1 border border-gray-300 rounded"
+                            onClick={() => handleShareOrder(order)}
+                          >
+                            <Share2 size={14} color="#6B7280" />
+                            <Text className="text-sm text-gray-600">分享</Text>
+                          </View>
+                          <View 
+                            className="flex flex-row items-center gap-1 px-3 py-1 bg-blue-500 rounded"
+                            onClick={() => handleViewOrder(order.id)}
+                          >
+                            <Text className="text-sm text-white">抢单</Text>
+                          </View>
                         </View>
                       </View>
                     </CardContent>
                   </Card>
-                );
-              })}
+                  
+                  {/* 信息流广告 - 在第2个订单后显示 */}
+                  {index === 1 && feedAds.map((ad) => (
+                    <Card key={ad.id} className="bg-gradient-to-r from-green-50 to-blue-50">
+                      <CardContent className="p-3">
+                        <View className="flex flex-row items-center gap-3">
+                          <View className="flex-1">
+                            <Text className="text-sm font-semibold text-gray-800">{ad.title}</Text>
+                            <Text className="text-xs text-gray-600">{ad.content}</Text>
+                          </View>
+                          <View className="px-3 py-1 bg-blue-500 rounded">
+                            <Text className="text-xs text-white">了解</Text>
+                          </View>
+                        </View>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </View>
+              ))}
             </View>
           )
         ) : (
-          // ========== 机构端：工作台入口 ==========
-          <View className="flex flex-col gap-4">
-            <Card className="bg-white">
-              <CardContent className="p-4">
-                <View className="flex flex-row items-center gap-3">
-                  <View className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                    <Building2 size={24} color="#9333EA" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="font-semibold">机构管理</Text>
-                    <Text className="text-gray-500 text-xs mt-1">管理机构信息、教师和课程</Text>
-                  </View>
-                  <Button size="sm" onClick={() => Taro.navigateTo({ url: '/pages/org-dashboard/index' })}>
-                    <Text className="text-white text-sm">进入</Text>
-                  </Button>
-                </View>
-              </CardContent>
-            </Card>
+          // ========== 机构端 ==========
+          <View className="flex flex-col items-center justify-center py-8">
+            <Building2 size={48} color="#9CA3AF" />
+            <Text className="text-gray-500 mt-2 mb-4">机构工作台</Text>
+            <View className="flex flex-row gap-2">
+              <View 
+                className="px-4 py-2 bg-blue-500 rounded-lg"
+                onClick={() => Taro.navigateTo({ url: '/pages/org-teachers/index' })}
+              >
+                <Text className="text-white text-sm">管理教师</Text>
+              </View>
+              <View 
+                className="px-4 py-2 bg-green-500 rounded-lg"
+                onClick={() => Taro.navigateTo({ url: '/pages/publish/index?mode=org' })}
+              >
+                <Text className="text-white text-sm">代录需求</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
-            <Card className="bg-white">
-              <CardContent className="p-4">
-                <View className="flex flex-row items-center justify-between mb-3">
-                  <Text className="font-semibold">今日数据</Text>
-                  <Text className="text-gray-400 text-xs">更新于刚刚</Text>
-                </View>
-                <View className="flex flex-row justify-around">
-                  <View className="flex flex-col items-center">
-                    <Text className="text-2xl font-bold text-blue-500">12</Text>
-                    <Text className="text-gray-500 text-xs mt-1">在册教师</Text>
+        {/* 活动区域 */}
+        {visibleActivities.length > 0 && (
+          <View className="mt-4">
+            <View className="flex flex-row justify-between items-center mb-2">
+              <Text className="text-base font-semibold">热门活动</Text>
+              <Text 
+                className="text-sm text-blue-600"
+                onClick={() => Taro.navigateTo({ url: '/pages/activities/index' })}
+              >
+                更多 →
+              </Text>
+            </View>
+            <ScrollView scrollX className="flex flex-row gap-3">
+              {visibleActivities.map((activity) => {
+                const typeTag = getActivityTypeTag(activity.type);
+                return (
+                  <View 
+                    key={activity.id}
+                    className="flex-shrink-0 w-64 bg-white rounded-lg overflow-hidden shadow-sm"
+                    onClick={() => Taro.navigateTo({ url: `/pages/activity-detail/index?id=${activity.id}` })}
+                  >
+                    <Image 
+                      src={activity.cover_image} 
+                      className="w-full h-28"
+                      mode="aspectFill"
+                    />
+                    <View className="p-3">
+                      <View className="flex flex-row items-center gap-2 mb-1">
+                        <View className={`px-2 py-1 rounded text-xs ${typeTag.color}`}>
+                          {typeTag.label}
+                        </View>
+                        {activity.is_online && (
+                          <View className="px-2 py-1 bg-purple-100 text-purple-600 rounded text-xs">
+                            线上
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-sm font-medium line-clamp-1">{activity.title}</Text>
+                      <View className="flex flex-row items-center gap-1 mt-1">
+                        <Users size={12} color="#9CA3AF" />
+                        <Text className="text-xs text-gray-500">
+                          {activity.current_participants}/{activity.max_participants}人
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View className="flex flex-col items-center">
-                    <Text className="text-2xl font-bold text-green-500">28</Text>
-                    <Text className="text-gray-500 text-xs mt-1">在教课程</Text>
-                  </View>
-                  <View className="flex flex-col items-center">
-                    <Text className="text-2xl font-bold text-orange-500">156</Text>
-                    <Text className="text-gray-500 text-xs mt-1">学员数量</Text>
-                  </View>
-                </View>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white">
-              <CardContent className="p-4">
-                <View className="flex flex-row items-center justify-between mb-3">
-                  <Text className="font-semibold">待处理事项</Text>
-                  <Badge variant="destructive">
-                    <Text className="text-xs">3项</Text>
-                  </Badge>
-                </View>
-                <View className="flex flex-col gap-3">
-                  <View className="flex flex-row items-center justify-between">
-                    <Text className="text-gray-600 text-sm">待审核教师申请</Text>
-                    <Text className="text-blue-500 font-semibold">2</Text>
-                  </View>
-                  <View className="flex flex-row items-center justify-between">
-                    <Text className="text-gray-600 text-sm">待确认课程预约</Text>
-                    <Text className="text-blue-500 font-semibold">1</Text>
-                  </View>
-                  <View className="flex flex-row items-center justify-between">
-                    <Text className="text-gray-600 text-sm">待处理家长咨询</Text>
-                    <Text className="text-blue-500 font-semibold">0</Text>
-                  </View>
-                </View>
-              </CardContent>
-            </Card>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
       </View>
 
-      {/* 活动报名列表 */}
-      {visibleActivities.length > 0 && (
-        <View className="px-4 mt-4">
-          <View className="flex flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-semibold text-gray-800">活动报名</Text>
-            <View 
-              className="flex flex-row items-center"
-              onClick={() => Taro.navigateTo({ url: '/pages/activities/index' })}
-            >
-              <Text className="text-sm text-gray-500">全部活动</Text>
-              <ChevronDown size={14} color="#9CA3AF" className="rotate-[-90deg]" />
-            </View>
-          </View>
-          <ScrollView scrollX className="flex flex-row gap-3 overflow-x-auto pb-2">
-            {visibleActivities.map((activity) => {
-              const typeTag = getActivityTypeTag(activity.type);
-              return (
-                <View 
-                  key={activity.id}
-                  className="min-w-[280px] bg-white rounded-xl overflow-hidden shadow-sm"
-                  onClick={() => handleActivitySignUp(activity)}
-                >
-                  <Image 
-                    src={activity.cover_image}
-                    className="w-full h-32"
-                    mode="aspectFill"
-                  />
-                  <View className="p-3">
-                    <View className="flex flex-row items-center gap-2 mb-2">
-                      <Badge className={typeTag.color}>
-                        <Text className="text-xs">{typeTag.label}</Text>
-                      </Badge>
-                      {activity.is_online && (
-                        <Badge className="bg-blue-100 text-blue-600">
-                          <Text className="text-xs">线上</Text>
-                        </Badge>
-                      )}
-                    </View>
-                    <Text className="font-semibold text-gray-800 line-clamp-1">{activity.title}</Text>
-                    <View className="flex flex-row items-center gap-1 mt-2">
-                      <Clock size={12} color="#6B7280" />
-                      <Text className="text-xs text-gray-500">{activity.start_time}</Text>
-                    </View>
-                    <View className="flex flex-row items-center gap-1 mt-1">
-                      <LocationIcon size={12} color="#6B7280" />
-                      <Text className="text-xs text-gray-500 line-clamp-1">{activity.address}</Text>
-                    </View>
-                    <View className="flex flex-row items-center justify-between mt-3">
-                      <View className="flex flex-row items-center gap-1">
-                        <Users size={12} color="#6B7280" />
-                        <Text className="text-xs text-gray-500">
-                          {activity.current_participants}/{activity.max_participants}
-                        </Text>
-                      </View>
-                      <Text className="text-orange-500 font-semibold">
-                        {activity.is_online ? (activity.online_price > 0 ? `¥${activity.online_price}` : '免费') : (activity.offline_price > 0 ? `¥${activity.offline_price}` : '免费')}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 底部发布按钮 - 仅家长端显示 */}
-      {userRole === 0 && (
-        <View className="fixed bottom-20 right-4 z-50">
-          <Button 
-            className="w-12 h-12 rounded-full shadow-lg" 
-            size="lg"
-            onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}
-          >
-            <Text className="text-2xl text-white">+</Text>
-          </Button>
-        </View>
-      )}
-
       {/* 城市选择器 */}
-      <CitySelector
-        visible={showCitySelector}
-        currentCity={currentCity}
-        onClose={() => setShowCitySelector(false)}
-        onSelect={handleSelectCity}
-      />
+      {showCitySelector && (
+        <CitySelector
+          visible={showCitySelector}
+          currentCity={currentCity}
+          onClose={() => setShowCitySelector(false)}
+          onSelect={handleSelectCity}
+        />
+      )}
     </View>
   );
 };

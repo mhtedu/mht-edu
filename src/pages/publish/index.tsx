@@ -1,12 +1,12 @@
 import { View, Text, Picker } from '@tarojs/components';
-import { useState } from 'react';
-import Taro from '@tarojs/taro';
-import { Network } from '@/network';
+import { useState, useEffect } from 'react';
+import Taro, { useRouter } from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, DollarSign, User, BookOpen } from 'lucide-react-taro';
+import { Switch } from '@/components/ui/switch';
+import { MapPin, DollarSign, User, BookOpen, Building2, Share2 } from 'lucide-react-taro';
 import './index.css';
 
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
@@ -14,10 +14,13 @@ const grades = ['小学一年级', '小学二年级', '小学三年级', '小学
 const genderOptions = ['男', '女'];
 
 /**
- * 发布需求页面 - 家长发布家教需求
+ * 发布需求页面 - 支持家长发布和机构代录
  */
 const PublishPage = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [isOrgMode, setIsOrgMode] = useState(false); // 是否机构代录模式
+  
   const [formData, setFormData] = useState({
     subject: '数学',
     student_grade: '初二',
@@ -25,10 +28,22 @@ const PublishPage = () => {
     hourly_rate: '',
     address: '',
     description: '',
+    // 机构代录额外字段
+    parent_name: '',
+    parent_phone: '',
+    share_to_parent: true, // 是否分享给家长
   });
+  
   const [subjectIndex, setSubjectIndex] = useState(1);
   const [gradeIndex, setGradeIndex] = useState(7);
   const [genderIndex, setGenderIndex] = useState(0);
+
+  useEffect(() => {
+    // 检查是否是机构代录模式
+    if (router.params.mode === 'org') {
+      setIsOrgMode(true);
+    }
+  }, [router.params]);
 
   const handleSubmit = async () => {
     // 验证
@@ -39,6 +54,18 @@ const PublishPage = () => {
     if (!formData.address) {
       Taro.showToast({ title: '请输入上课地址', icon: 'none' });
       return;
+    }
+    
+    // 机构代录模式额外验证
+    if (isOrgMode) {
+      if (!formData.parent_name) {
+        Taro.showToast({ title: '请输入家长姓名', icon: 'none' });
+        return;
+      }
+      if (!formData.parent_phone) {
+        Taro.showToast({ title: '请输入家长电话', icon: 'none' });
+        return;
+      }
     }
 
     setLoading(true);
@@ -55,28 +82,45 @@ const PublishPage = () => {
         console.log('获取位置失败，使用默认位置');
       }
 
-      const res = await Network.request({
-        url: '/api/orders',
-        method: 'POST',
-        data: {
-          parent_id: 1, // TODO: 从登录状态获取
-          subject: formData.subject,
-          hourly_rate: formData.hourly_rate,
-          student_gender: genderIndex === 0 ? 1 : 2,
-          student_grade: formData.student_grade,
-          address: formData.address,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          description: formData.description,
-        },
+      // 提交数据（模拟）
+      // 实际项目中应调用后端API：
+      // await Network.request({
+      //   url: '/api/orders',
+      //   method: 'POST',
+      //   data: {
+      //     parent_id: isOrgMode ? 0 : 1,
+      //     subject: formData.subject,
+      //     ...
+      //   }
+      // });
+      console.log('发布数据:', {
+        parent_id: isOrgMode ? 0 : 1, // 机构代录时parent_id为0，由机构承接
+        subject: formData.subject,
+        hourly_rate: formData.hourly_rate,
+        student_gender: genderIndex === 0 ? 1 : 2,
+        student_grade: formData.student_grade,
+        address: formData.address,
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        description: formData.description,
+        // 机构代录额外数据
+        is_org_proxy: isOrgMode,
+        parent_name: formData.parent_name,
+        parent_phone: formData.parent_phone,
+        share_to_parent: formData.share_to_parent,
       });
 
-      if (res.data) {
-        Taro.showToast({ title: '发布成功', icon: 'success' });
-        setTimeout(() => {
+      // 模拟提交成功
+      Taro.showModal({
+        title: isOrgMode ? '代录成功' : '发布成功',
+        content: isOrgMode 
+          ? '需求已代录成功，对话将由机构承接。' + (formData.share_to_parent ? '已发送分享链接给家长。' : '')
+          : '需求已发布，等待教师抢单',
+        showCancel: false,
+        success: () => {
           Taro.navigateBack();
-        }, 1500);
-      }
+        },
+      });
     } catch (error) {
       console.error('发布失败:', error);
       Taro.showToast({ title: '发布失败', icon: 'none' });
@@ -89,11 +133,76 @@ const PublishPage = () => {
     <View className="min-h-screen bg-gray-50 pb-20">
       {/* 头部 */}
       <View className="bg-blue-500 px-4 py-6">
-        <Text className="text-white text-xl font-bold">发布家教需求</Text>
-        <Text className="text-blue-100 text-sm mt-1">填写详细信息，让优质老师找到您</Text>
+        <View className="flex flex-row items-center justify-between">
+          <View>
+            <Text className="text-white text-xl font-bold">
+              {isOrgMode ? '代录需求' : '发布家教需求'}
+            </Text>
+            <Text className="text-blue-100 text-sm mt-1">
+              {isOrgMode ? '为家长代录需求，对话由机构承接' : '填写详细信息，让优质老师找到您'}
+            </Text>
+          </View>
+          {isOrgMode && (
+            <View className="bg-white bg-opacity-20 px-3 py-1 rounded-full">
+              <Text className="text-white text-xs">机构模式</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View className="p-4">
+        {/* 机构代录 - 家长信息 */}
+        {isOrgMode && (
+          <Card className="mb-4 border-2 border-blue-200">
+            <CardHeader className="pb-2">
+              <View className="flex flex-row items-center">
+                <Building2 size={18} color="#2563EB" className="mr-2" />
+                <CardTitle>家长信息</CardTitle>
+              </View>
+            </CardHeader>
+            <CardContent>
+              <View className="flex flex-col gap-3">
+                <View className="flex flex-row items-center">
+                  <Text className="text-gray-600 w-20">家长姓名</Text>
+                  <View className="flex-1 bg-gray-50 rounded-lg px-3">
+                    <Input
+                      placeholder="请输入家长姓名"
+                      value={formData.parent_name}
+                      onInput={(e) => setFormData({ ...formData, parent_name: e.detail.value })}
+                      className="bg-transparent py-2"
+                    />
+                  </View>
+                </View>
+                <View className="flex flex-row items-center">
+                  <Text className="text-gray-600 w-20">联系电话</Text>
+                  <View className="flex-1 bg-gray-50 rounded-lg px-3">
+                    <Input
+                      type="number"
+                      placeholder="请输入家长电话"
+                      value={formData.parent_phone}
+                      onInput={(e) => setFormData({ ...formData, parent_phone: e.detail.value })}
+                      className="bg-transparent py-2"
+                    />
+                  </View>
+                </View>
+                <View className="flex flex-row items-center justify-between py-2">
+                  <View className="flex flex-row items-center">
+                    <Share2 size={16} color="#2563EB" className="mr-2" />
+                    <Text className="text-gray-600">分享链接给家长</Text>
+                  </View>
+                  <Switch
+                    checked={formData.share_to_parent}
+                    onCheckedChange={(checked) => setFormData({ ...formData, share_to_parent: checked })}
+                  />
+                </View>
+                <Text className="text-xs text-gray-400">
+                  开启后，家长可通过链接查看需求进度并与机构沟通
+                </Text>
+              </View>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 学科选择 */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
@@ -244,7 +353,11 @@ const PublishPage = () => {
           disabled={loading}
         >
           <Text className="text-white font-semibold">
-            {loading ? '发布中...' : '发布需求'}
+            {loading 
+              ? '发布中...' 
+              : isOrgMode 
+                ? '确认代录' 
+                : '发布需求'}
           </Text>
         </Button>
       </View>
