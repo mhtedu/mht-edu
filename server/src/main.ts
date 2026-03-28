@@ -19,13 +19,7 @@ function parsePort(): number {
     }
   }
   
-  // 2. 开发环境固定使用 3000 端口
-  if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-    console.log('DEBUG: Development mode, using default port 3000');
-    return 3000;
-  }
-  
-  // 3. 生产环境可以从 PORT 环境变量读取
+  // 2. 然后从 PORT 环境变量读取（生产环境）
   if (process.env.PORT) {
     const port = parseInt(process.env.PORT, 10);
     if (!isNaN(port) && port > 0 && port < 65536) {
@@ -34,7 +28,7 @@ function parsePort(): number {
     }
   }
   
-  // 4. 默认端口 3000
+  // 3. 默认端口 3000（仅开发环境）
   console.log('DEBUG: Using default port 3000');
   return 3000;
 }
