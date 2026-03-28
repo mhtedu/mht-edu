@@ -523,6 +523,12 @@ const IndexPage = () => {
                 </View>
                 <Text className="text-xs text-gray-600 mt-1">发布需求</Text>
               </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/elite-class/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <GraduationCap size={18} color="#6366F1" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">牛师班</Text>
+              </View>
               <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/favorites/index' })}>
                 <View className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
                   <Text className="text-pink-600 text-lg">♥</Text>
@@ -535,12 +541,6 @@ const IndexPage = () => {
                 </View>
                 <Text className="text-xs text-gray-600 mt-1">会员中心</Text>
               </View>
-              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/distribution/index' })}>
-                <View className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <Gift size={18} color="#9333EA" />
-                </View>
-                <Text className="text-xs text-gray-600 mt-1">邀请有礼</Text>
-              </View>
             </>
           ) : userRole === 1 ? (
             // 教师端快捷入口
@@ -550,6 +550,12 @@ const IndexPage = () => {
                   <BookOpen size={18} color="#22C55E" />
                 </View>
                 <Text className="text-xs text-gray-600 mt-1">工作台</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/create-elite-class/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <GraduationCap size={18} color="#6366F1" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">创建牛师班</Text>
               </View>
               <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/share-center/index' })}>
                 <View className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
@@ -562,12 +568,6 @@ const IndexPage = () => {
                   <Text className="text-blue-600 text-lg">¥</Text>
                 </View>
                 <Text className="text-xs text-gray-600 mt-1">收益中心</Text>
-              </View>
-              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/publish/index?mode=teacher' })}>
-                <View className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <Text className="text-purple-600 text-lg">+</Text>
-                </View>
-                <Text className="text-xs text-gray-600 mt-1">代录需求</Text>
               </View>
             </>
           ) : (

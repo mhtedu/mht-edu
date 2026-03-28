@@ -55,6 +55,12 @@ export default defineAppConfig({
     'pages/earnings/index',
     // 设置页面
     'pages/settings/index',
+    // 牛师班列表（家长端）
+    'pages/elite-class/index',
+    // 牛师班详情
+    'pages/elite-class-detail/index',
+    // 创建牛师班（教师端）
+    'pages/create-elite-class/index',
   ],
   window: {
     backgroundTextStyle: 'light',

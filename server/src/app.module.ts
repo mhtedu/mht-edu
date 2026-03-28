@@ -13,6 +13,7 @@ import { CityModule } from './modules/city/city.module';
 import { OrgModule } from './modules/org/org.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { ShareModule } from './modules/share/share.module';
+import { EliteClassModule } from './modules/elite-class/elite-class.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ShareModule } from './modules/share/share.module';
     OrgModule,
     ActivityModule,
     ShareModule,
+    EliteClassModule,
   ],
 })
 export class AppModule {}
