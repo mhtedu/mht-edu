@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Lock, Building2, ChevronDown, Users, Share2 } from 'lucide-react-taro';
+import { MapPin, Lock, Building2, ChevronDown, Users, Share2, GraduationCap, BookOpen, Gift } from 'lucide-react-taro';
 import CitySelector from '@/components/city-selector';
 import './index.css';
 
@@ -491,13 +491,114 @@ const IndexPage = () => {
             <Text className="text-sm text-gray-700">{currentCity}</Text>
             <ChevronDown size={14} color="#9CA3AF" />
           </View>
-          <View className="flex flex-row items-center">
-            <View className="px-3 py-1 rounded-full bg-blue-100">
-              <Text className="text-xs text-blue-600">
-                {userRole === 0 ? '家长端' : userRole === 1 ? '教师端' : '机构端'}
-              </Text>
-            </View>
+          {/* 角色切换入口 */}
+          <View 
+            className="flex flex-row items-center bg-blue-500 px-3 py-1 rounded-full"
+            onClick={() => Taro.navigateTo({ url: '/pages/role-switch/index' })}
+          >
+            {userRole === 0 ? (
+              <GraduationCap size={14} color="white" />
+            ) : userRole === 1 ? (
+              <BookOpen size={14} color="white" />
+            ) : (
+              <Building2 size={14} color="white" />
+            )}
+            <Text className="text-xs text-white ml-1">
+              {userRole === 0 ? '家长端' : userRole === 1 ? '教师端' : '机构端'}
+            </Text>
+            <ChevronDown size={12} color="white" className="ml-1" />
           </View>
+        </View>
+      </View>
+
+      {/* 快捷入口 - 根据角色显示不同功能 */}
+      <View className="bg-white px-4 py-3 border-b border-gray-100">
+        <View className="flex flex-row justify-around">
+          {userRole === 0 ? (
+            // 家长端快捷入口
+            <>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Text className="text-blue-600 text-lg">+</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">发布需求</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/favorites/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+                  <Text className="text-pink-600 text-lg">♥</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">收藏教师</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/membership/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
+                  <Text className="text-yellow-600 text-lg">👑</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">会员中心</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/distribution/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <Gift size={18} color="#9333EA" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">邀请有礼</Text>
+              </View>
+            </>
+          ) : userRole === 1 ? (
+            // 教师端快捷入口
+            <>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/teacher-workbench/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <BookOpen size={18} color="#22C55E" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">工作台</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/share-center/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <Share2 size={18} color="#F97316" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">转发赚钱</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/earnings/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Text className="text-blue-600 text-lg">¥</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">收益中心</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/publish/index?mode=teacher' })}>
+                <View className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <Text className="text-purple-600 text-lg">+</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">代录需求</Text>
+              </View>
+            </>
+          ) : (
+            // 机构端快捷入口
+            <>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/org-dashboard/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <Building2 size={18} color="#9333EA" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">机构管理</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/publish/index?mode=org' })}>
+                <View className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Text className="text-blue-600 text-lg">+</Text>
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">代录需求</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/org-teachers/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <Users size={18} color="#22C55E" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">教师管理</Text>
+              </View>
+              <View className="flex flex-col items-center" onClick={() => Taro.navigateTo({ url: '/pages/distribution/index' })}>
+                <View className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <Gift size={18} color="#F97316" />
+                </View>
+                <Text className="text-xs text-gray-600 mt-1">推广招生</Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 

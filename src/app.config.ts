@@ -4,6 +4,12 @@ export default defineAppConfig({
     'pages/mall/index',
     'pages/message/index',
     'pages/profile/index',
+    // 角色切换中心
+    'pages/role-switch/index',
+    // 教师工作台
+    'pages/teacher-workbench/index',
+    // 分享中心
+    'pages/share-center/index',
     // 发布需求
     'pages/publish/index',
     // 教师详情
@@ -24,6 +30,7 @@ export default defineAppConfig({
     'pages/org-settings/index',
     // 代理端
     'pages/agent-dashboard/index',
+    'pages/agent-apply/index',
     // PC管理后台
     'pages/admin/index',
     // 登录注册
