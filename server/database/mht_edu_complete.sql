@@ -21,7 +21,7 @@ USE mht_edu;
 -- ------------------------------
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
-    `id` INT AUTO_INCREMENT,
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
     `openid` VARCHAR(64) COMMENT '微信openid',
     `unionid` VARCHAR(64) COMMENT '微信unionid',
     `mobile` VARCHAR(20) COMMENT '手机号',
@@ -99,7 +99,7 @@ CREATE TABLE `teacher_profiles` (
 -- ------------------------------
 DROP TABLE IF EXISTS `organizations`;
 CREATE TABLE `organizations` (
-    `id` INT AUTO_INCREMENT,
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL COMMENT '关联用户ID',
     `name` VARCHAR(100) NOT NULL COMMENT '机构名称',
     `logo` VARCHAR(255) COMMENT '机构Logo',
