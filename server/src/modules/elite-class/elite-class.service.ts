@@ -10,6 +10,7 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
 export class EliteClassService {
   /**
    * 检查用户是否为超级会员
+   * 条件：付费购买 或 邀请10人（任意角色）
    */
   async checkSuperMember(userId: number): Promise<{ isSuper: boolean; reason?: string }> {
     // 1. 检查付费超级会员
@@ -22,27 +23,24 @@ export class EliteClassService {
       return { isSuper: true };
     }
 
-    // 2. 检查邀请达标情况
+    // 2. 检查邀请达标情况（任意角色累计10人）
     const inviteStats = await executeQuery(`
-      SELECT 
-        SUM(CASE WHEN u.role = 1 THEN 1 ELSE 0 END) as teacher_count,
-        SUM(CASE WHEN u.role = 0 THEN 1 ELSE 0 END) as parent_count
+      SELECT COUNT(*) as total_count
       FROM users u
       WHERE u.inviter_id = ? AND u.status = 1
     `, [userId]);
 
-    const teacherCount = (inviteStats[0] as any)?.teacher_count || 0;
-    const parentCount = (inviteStats[0] as any)?.parent_count || 0;
+    const totalCount = (inviteStats[0] as any)?.total_count || 0;
 
-    if (teacherCount >= 10 || parentCount >= 10) {
+    if (totalCount >= 10) {
       // 自动授予超级会员资格
-      await this.grantSuperMember(userId, teacherCount >= 10 ? 2 : 3);
+      await this.grantSuperMember(userId, 2); // type=2 邀请达标
       return { isSuper: true };
     }
 
     return { 
       isSuper: false, 
-      reason: `需要邀请${10 - teacherCount}名教师或${10 - parentCount}名家长达标` 
+      reason: `已邀请${totalCount}人，还需邀请${10 - totalCount}人即可免费开通` 
     };
   }
 

@@ -61,6 +61,12 @@ export default defineAppConfig({
     'pages/elite-class-detail/index',
     // 创建牛师班（教师端）
     'pages/create-elite-class/index',
+    // 教师端牛师班管理
+    'pages/elite-class-manage/index',
+    // 机构端牛师班管理
+    'pages/org-elite-class/index',
+    // 总后台牛师班管理
+    'pages/admin-elite-class/index',
   ],
   window: {
     backgroundTextStyle: 'light',

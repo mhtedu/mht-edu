@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { autoLockOnPageLoad } from '@/utils/referral-lock'
 import { 
   Calendar, Clock, MapPin, Users, Phone
 } from 'lucide-react-taro'
@@ -40,6 +41,10 @@ export default function ActivityDetailPage() {
   const [isRegistered, setIsRegistered] = useState(false)
 
   useDidShow(() => {
+    // 尝试通过分享链接锁定分销关系
+    autoLockOnPageLoad(router.params).then(() => {
+      console.log('[活动详情] 分销锁定处理完成')
+    })
     loadActivity()
     checkRegistration()
   })

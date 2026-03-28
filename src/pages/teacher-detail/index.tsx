@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { autoLockOnPageLoad } from '@/utils/referral-lock'
 import {
   MapPin, Star, MessageSquare, ThumbsUp, Video, Image as ImageIcon,
   Phone, MessageCircle, Award, Clock, GraduationCap,
@@ -73,6 +74,10 @@ export default function TeacherDetailPage() {
 
   // 获取教师信息
   useDidShow(() => {
+    // 尝试通过分享链接锁定分销关系
+    autoLockOnPageLoad(router.params).then(() => {
+      console.log('[教师详情] 分销锁定处理完成')
+    })
     fetchTeacherInfo()
   })
 

@@ -5,6 +5,7 @@ import { Network } from '@/network'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { autoLockOnPageLoad } from '@/utils/referral-lock'
 import { 
   Clock, MapPin, Users, GraduationCap, Star, MessageCircle,
   BookOpen, Award
@@ -19,6 +20,10 @@ export default function EliteClassDetail() {
 
   useEffect(() => {
     if (classId) {
+      // 尝试通过分享链接锁定分销关系
+      autoLockOnPageLoad(router.params).then(() => {
+        console.log('[牛师班详情] 分销锁定处理完成')
+      })
       loadDetail()
       checkSuperMember()
     }

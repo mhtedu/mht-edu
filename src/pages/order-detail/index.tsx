@@ -2,6 +2,7 @@ import { View, Text, Image } from '@tarojs/components';
 import Taro, { useLoad, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { autoLockOnPageLoad } from '@/utils/referral-lock';
 import { Share2, MapPin, Phone, Lock, Eye, Gift, Clock, MessageCircle } from 'lucide-react-taro';
 import './index.css';
 
@@ -59,6 +60,11 @@ const OrderDetailPage = () => {
   useEffect(() => {
     const id = router.params.id;
     const from = router.params.from;
+    
+    // 尝试通过分享链接锁定分销关系
+    autoLockOnPageLoad(router.params).then(() => {
+      console.log('[订单详情] 分销锁定处理完成')
+    })
     
     // 检查会员状态
     const memberExpire = Taro.getStorageSync('member_expire');
