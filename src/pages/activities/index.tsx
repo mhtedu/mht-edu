@@ -76,9 +76,9 @@ export default function ActivitiesPage() {
       },
       {
         id: 3,
-        title: '教师教学技能提升培训',
+        title: '教师教学技能提升研修',
         type: 'training',
-        cover_image: 'https://placehold.co/400x200/EC4899/white?text=教师培训',
+        cover_image: 'https://placehold.co/400x200/EC4899/white?text=教师研修',
         start_time: '2024-04-25 09:00',
         end_time: '2024-04-26 17:00',
         address: '海淀区教师进修学校',
@@ -116,7 +116,7 @@ export default function ActivitiesPage() {
   const getTypeTag = (type: Activity['type']) => {
     const typeMap = {
       visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
-      training: { label: '培训', color: 'bg-green-100 text-green-600' },
+      training: { label: '研修', color: 'bg-green-100 text-green-600' },
       lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
       other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
     }

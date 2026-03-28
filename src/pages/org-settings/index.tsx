@@ -18,7 +18,7 @@ import './index.css'
 export default function OrgSettingsPage() {
   const [editing, setEditing] = useState(false)
   const [orgInfo, setOrgInfo] = useState({
-    name: '阳光教育培训中心',
+    name: '阳光教育研修中心',
     logo: 'https://placehold.co/200/7C3AED/white?text=阳光',
     description: '专注中小学全科辅导，拥有资深教师团队，累计服务学生超过1000人。',
     address: '北京市朝阳区望京SOHO T1-1001',

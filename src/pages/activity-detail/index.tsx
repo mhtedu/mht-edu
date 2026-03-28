@@ -77,7 +77,7 @@ export default function ActivityDetailPage() {
   const getTypeTag = (type: Activity['type']) => {
     const typeMap = {
       visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
-      training: { label: '培训', color: 'bg-green-100 text-green-600' },
+      training: { label: '研修', color: 'bg-green-100 text-green-600' },
       lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
       other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
     }

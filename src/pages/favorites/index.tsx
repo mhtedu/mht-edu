@@ -81,7 +81,7 @@ export default function FavoritesPage() {
         distance: 3.8,
         price_range: '180-250',
         education: '清华大学硕士',
-        labels: ['重点高中教师', '竞赛辅导'],
+        labels: ['重点高中教师', '竞赛指导'],
         is_member: false,
         favorited_at: '2024-03-08'
       }

@@ -99,7 +99,7 @@ const PublishPage = () => {
           <CardHeader className="pb-2">
             <View className="flex flex-row items-center">
               <BookOpen size={18} color="#2563EB" className="mr-2" />
-              <CardTitle>辅导科目</CardTitle>
+              <CardTitle>指导科目</CardTitle>
             </View>
           </CardHeader>
           <CardContent>

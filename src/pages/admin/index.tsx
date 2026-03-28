@@ -1081,10 +1081,10 @@ const AdminPage = () => {
             <Text className="admin-table-cell w-24">操作</Text>
           </View>
           {[
-            { id: 1, order_no: 'O20240321001', parent_name: '王家长', teacher_name: '张老师', subject: '高中数学', status: 'pending', amount: 200, created_at: '2024-03-21', address: '朝阳区', description: '需要高中数学辅导' },
+            { id: 1, order_no: 'O20240321001', parent_name: '王家长', teacher_name: '张老师', subject: '高中数学', status: 'pending', amount: 200, created_at: '2024-03-21', address: '朝阳区', description: '需要高中数学指导' },
             { id: 2, order_no: 'O20240320002', parent_name: '李家长', teacher_name: '李老师', subject: '初中英语', status: 'matched', amount: 150, created_at: '2024-03-20', address: '海淀区', description: '英语口语提升' },
-            { id: 3, order_no: 'O20240319003', parent_name: '张家长', teacher_name: '王老师', subject: '高中物理', status: 'trial', amount: 180, created_at: '2024-03-19', address: '西城区', description: '物理竞赛辅导' },
-            { id: 4, order_no: 'O20240315004', parent_name: '赵家长', teacher_name: '刘老师', subject: '钢琴', status: 'signed', amount: 300, created_at: '2024-03-15', address: '东城区', description: '钢琴考级辅导' },
+            { id: 3, order_no: 'O20240319003', parent_name: '张家长', teacher_name: '王老师', subject: '高中物理', status: 'trial', amount: 180, created_at: '2024-03-19', address: '西城区', description: '物理竞赛指导' },
+            { id: 4, order_no: 'O20240315004', parent_name: '赵家长', teacher_name: '刘老师', subject: '钢琴', status: 'signed', amount: 300, created_at: '2024-03-15', address: '东城区', description: '钢琴考级指导' },
           ].filter(o => orderStatus === 'all' || o.status === orderStatus).map((order) => {
             const statusMap: Record<string, { label: string; className: string }> = {
               pending: { label: '待抢单', className: 'bg-orange-100 text-orange-700' },

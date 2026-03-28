@@ -500,4 +500,165 @@ export class UserService {
 
     return { success: true };
   }
+
+  /**
+   * 获取教师列表（支持LBS距离计算）
+   */
+  async getTeachersList(params: {
+    latitude?: number;
+    longitude?: number;
+    subject?: string;
+    grade?: string;
+    keyword?: string;
+    city?: string;
+    page: number;
+    pageSize: number;
+  }) {
+    const offset = (params.page - 1) * params.pageSize;
+    const conditions: string[] = ['u.role = 1', 'u.status = 1', 'tp.verify_status = 2'];
+    const sqlParams: any[] = [];
+
+    // 科目筛选
+    if (params.subject && params.subject !== '全部') {
+      conditions.push('FIND_IN_SET(?, tp.subjects) > 0');
+      sqlParams.push(params.subject);
+    }
+
+    // 年级筛选
+    if (params.grade) {
+      conditions.push('FIND_IN_SET(?, tp.grades) > 0');
+      sqlParams.push(params.grade);
+    }
+
+    // 关键词搜索
+    if (params.keyword) {
+      conditions.push('(u.nickname LIKE ? OR tp.real_name LIKE ? OR tp.intro LIKE ?)');
+      sqlParams.push(`%${params.keyword}%`, `%${params.keyword}%`, `%${params.keyword}%`);
+    }
+
+    // 城市筛选
+    if (params.city && params.city !== '定位中...') {
+      conditions.push('u.city_name LIKE ?');
+      sqlParams.push(`%${params.city}%`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    // LBS距离计算
+    let distanceSelect = 'NULL as distance';
+    let distanceOrder = '';
+    if (params.latitude && params.longitude) {
+      distanceSelect = `
+        ROUND(
+          6371 * acos(
+            cos(radians(?)) * cos(radians(u.latitude)) *
+            cos(radians(u.longitude) - radians(?)) +
+            sin(radians(?)) * sin(radians(u.latitude))
+          ), 2
+        ) as distance
+      `;
+      sqlParams.unshift(params.latitude, params.longitude, params.latitude);
+      distanceOrder = 'ORDER BY distance ASC';
+    }
+
+    const teachers = await executeQuery(`
+      SELECT 
+        u.id, u.nickname, u.avatar, u.latitude, u.longitude, u.city_name,
+        tp.real_name, tp.gender, tp.education, tp.subjects, tp.grades, 
+        tp.teaching_years, tp.hourly_rate_min, tp.hourly_rate_max, tp.intro, tp.one_line_intro,
+        tp.rating, tp.review_count, tp.view_count, tp.success_count,
+        ${distanceSelect}
+      FROM users u
+      LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+      WHERE ${whereClause}
+      ${distanceOrder || 'ORDER BY tp.rating DESC, tp.view_count DESC, u.created_at DESC'}
+      LIMIT ? OFFSET ?
+    `, [...sqlParams, params.pageSize, offset]);
+
+    // 处理返回数据格式
+    const formattedTeachers = teachers.map((t: any) => ({
+      ...t,
+      distance_text: t.distance ? (t.distance < 1 ? `${Math.round(t.distance * 1000)}m` : `${t.distance.toFixed(1)}km`) : '',
+      subjects: t.subjects ? t.subjects.split(',').filter((s: string) => s) : [],
+    }));
+
+    // 获取总数
+    const countResult = await executeQuery(`
+      SELECT COUNT(*) as total 
+      FROM users u
+      LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+      WHERE ${whereClause}
+    `, sqlParams);
+
+    return formattedTeachers;
+  }
+
+  /**
+   * 获取订单列表（教师端抢单列表）
+   */
+  async getOrdersList(params: {
+    latitude?: number;
+    longitude?: number;
+    subject?: string;
+    city?: string;
+    page: number;
+    pageSize: number;
+  }) {
+    const offset = (params.page - 1) * params.pageSize;
+    const conditions: string[] = ['o.status = 0']; // 待抢单状态
+    const sqlParams: any[] = [];
+
+    // 科目筛选
+    if (params.subject && params.subject !== '全部') {
+      conditions.push('o.subject = ?');
+      sqlParams.push(params.subject);
+    }
+
+    // 城市筛选
+    if (params.city && params.city !== '定位中...') {
+      conditions.push('o.address LIKE ?');
+      sqlParams.push(`%${params.city}%`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    // LBS距离计算
+    let distanceSelect = 'NULL as distance';
+    let distanceOrder = '';
+    if (params.latitude && params.longitude) {
+      distanceSelect = `
+        ROUND(
+          6371 * acos(
+            cos(radians(?)) * cos(radians(o.latitude)) *
+            cos(radians(o.longitude) - radians(?)) +
+            sin(radians(?)) * sin(radians(o.latitude))
+          ), 2
+        ) as distance
+      `;
+      sqlParams.unshift(params.latitude, params.longitude, params.latitude);
+      distanceOrder = 'ORDER BY distance ASC';
+    }
+
+    const orders = await executeQuery(`
+      SELECT 
+        o.id, o.order_no, o.subject, o.hourly_rate, o.student_grade, o.student_gender,
+        o.address, o.description, o.status, o.view_count, o.created_at,
+        ${distanceSelect},
+        u.nickname as parent_nickname, u.avatar as parent_avatar
+      FROM orders o
+      LEFT JOIN users u ON o.parent_id = u.id
+      WHERE ${whereClause}
+      ${distanceOrder || 'ORDER BY o.created_at DESC'}
+      LIMIT ? OFFSET ?
+    `, [...sqlParams, params.pageSize, offset]);
+
+    // 处理返回数据格式
+    const formattedOrders = orders.map((o: any) => ({
+      ...o,
+      distance_text: o.distance ? (o.distance < 1 ? `${Math.round(o.distance * 1000)}m` : `${o.distance.toFixed(1)}km`) : '',
+      contact_hidden: true,
+    }));
+
+    return formattedOrders;
+  }
 }

@@ -377,7 +377,7 @@ const IndexPage = () => {
       student_grade: '初三',
       student_gender: 1,
       address: '朝阳区望京西园',
-      description: '需要数学辅导，目标中考110分以上',
+      description: '需要数学指导，目标中考110分以上',
       status: 0,
       created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       distance: 800,

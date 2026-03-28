@@ -11,6 +11,7 @@ import { TeacherProfileModule } from './modules/teacher-profile/teacher-profile.
 import { OrderCloseModule } from './modules/order-close/order-close.module';
 import { CityModule } from './modules/city/city.module';
 import { OrgModule } from './modules/org/org.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OrgModule } from './modules/org/org.module';
     OrderCloseModule,
     CityModule,
     OrgModule,
+    ActivityModule,
   ],
 })
 export class AppModule {}

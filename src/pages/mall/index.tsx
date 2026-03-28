@@ -164,14 +164,14 @@ const MallPage = () => {
       },
       {
         id: 6,
-        name: '一对一辅导课程（10课时）',
+        name: '一对一指导课程（10课时）',
         image: 'https://placehold.co/200/EF4444/white?text=课程',
         price: 29900,
         original_price: 49900,
         sales: 89,
         category: '课程包',
         tags: ['一对一', '名师'],
-        description: '名师一对一辅导，专属学习计划',
+        description: '名师一对一指导，专属学习计划',
         product_type: 'physical',
       },
     ];

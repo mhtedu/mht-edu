@@ -16,6 +16,54 @@ export class UserController {
   }
 
   /**
+   * 获取教师列表（支持LBS）
+   */
+  @Get('teachers/list')
+  async getTeachersList(
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    @Query('subject') subject?: string,
+    @Query('grade') grade?: string,
+    @Query('keyword') keyword?: string,
+    @Query('city') city?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    return this.userService.getTeachersList({
+      latitude: latitude ? parseFloat(latitude) : undefined,
+      longitude: longitude ? parseFloat(longitude) : undefined,
+      subject,
+      grade,
+      keyword,
+      city,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+    });
+  }
+
+  /**
+   * 获取订单列表（教师端）
+   */
+  @Get('orders/list')
+  async getOrdersList(
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    @Query('subject') subject?: string,
+    @Query('city') city?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    return this.userService.getOrdersList({
+      latitude: latitude ? parseFloat(latitude) : undefined,
+      longitude: longitude ? parseFloat(longitude) : undefined,
+      subject,
+      city,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+    });
+  }
+
+  /**
    * 更新用户信息
    */
   @Put('info')
