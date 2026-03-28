@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -7,8 +7,10 @@ import { AuthService } from './auth.service';
 import { LocalStrategy } from './strategies/local.strategy';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
+@Global()
 @Module({
   imports: [
+    ConfigModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -21,6 +23,6 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
   ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, LocalAuthGuard],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule, ConfigModule],
 })
 export class AuthModule {}

@@ -1,6 +1,5 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
@@ -9,17 +8,6 @@ export class LocalAuthGuard extends AuthGuard('local') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
-    // 检查是否标记为公开接口
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) {
-      return true;
-    }
-
-    return super.canActivate(context);
-  }
+  // LocalAuthGuard 始终需要执行护照验证来设置 req.user
+  // 不需要检查 @Public() 装饰器
 }
