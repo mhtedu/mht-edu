@@ -217,6 +217,7 @@ export class EliteClassService {
 
   /**
    * 报名牛师班（含试课）
+   * 同时锁定分销关系
    */
   async enrollClass(userId: number, classId: number, referrerId?: number) {
     // 检查班级是否存在且可报名
@@ -244,7 +245,7 @@ export class EliteClassService {
       throw new Error('您已报名该班级');
     }
 
-    // 锁定分销关系
+    // 锁定分销关系（核心逻辑：第一次点击即锁定）
     if (referrerId && referrerId !== userId) {
       await this.lockShareRelation(userId, referrerId, 'elite_class', classId);
     }
@@ -264,22 +265,43 @@ export class EliteClassService {
   }
 
   /**
-   * 锁定分享关系
+   * 锁定分享关系（核心方法）
+   * 规则：第一次点击即锁定，永久有效，不可覆盖
    */
   async lockShareRelation(userId: number, lockerId: number, lockType: string, sourceId?: number) {
     // 检查是否已有锁定关系
     const existing = await executeQuery(`
-      SELECT * FROM share_locks WHERE user_id = ?
+      SELECT * FROM referral_locks WHERE user_id = ?
     `, [userId]);
 
     if (existing.length > 0) {
-      return; // 已有锁定关系，不覆盖
+      // 已有锁定关系，不覆盖
+      console.log(`用户 ${userId} 已被锁定，跳过`);
+      return;
     }
 
+    // 创建锁定关系
     await executeQuery(`
-      INSERT INTO share_locks (user_id, locker_id, lock_type, lock_source_id)
+      INSERT INTO referral_locks (user_id, locker_id, lock_type, lock_source_id)
       VALUES (?, ?, ?, ?)
     `, [userId, lockerId, lockType, sourceId]);
+
+    // 同时更新用户表的邀请关系
+    await executeQuery(`
+      UPDATE users 
+      SET inviter_id = ?, 
+          inviter_2nd_id = (SELECT inviter_id FROM users WHERE id = ?),
+          updated_at = NOW()
+      WHERE id = ? AND inviter_id IS NULL
+    `, [lockerId, lockerId, userId]);
+
+    // 记录锁定日志
+    await executeQuery(`
+      INSERT INTO referral_lock_logs (user_id, locker_id, lock_type, lock_source_id)
+      VALUES (?, ?, ?, ?)
+    `, [userId, lockerId, lockType, sourceId]);
+
+    console.log(`分销关系锁定成功: 用户 ${userId} -> 推荐人 ${lockerId}`);
   }
 
   /**

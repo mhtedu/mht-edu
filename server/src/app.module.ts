@@ -14,6 +14,7 @@ import { OrgModule } from './modules/org/org.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { ShareModule } from './modules/share/share.module';
 import { EliteClassModule } from './modules/elite-class/elite-class.module';
+import { ReferralLockModule } from './modules/referral-lock/referral-lock.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EliteClassModule } from './modules/elite-class/elite-class.module';
     ActivityModule,
     ShareModule,
     EliteClassModule,
+    ReferralLockModule,
   ],
 })
 export class AppModule {}
