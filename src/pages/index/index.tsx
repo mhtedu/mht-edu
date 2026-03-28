@@ -1,11 +1,11 @@
-import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components';
+import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components';
 import Taro, { useLoad, useDidShow } from '@tarojs/taro';
 import { useState, useEffect } from 'react';
 import { Network } from '@/network';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Lock, Building2, ChevronDown } from 'lucide-react-taro';
+import { MapPin, Lock, Building2, ChevronDown, Users, Clock, MapPin as LocationIcon } from 'lucide-react-taro';
 import CitySelector from '@/components/city-selector';
 import './index.css';
 
@@ -58,6 +58,24 @@ interface FeedAd {
   ad_type: number;
 }
 
+// 活动类型
+interface Activity {
+  id: number;
+  title: string;
+  type: 'visit' | 'training' | 'lecture' | 'other'; // 探校、培训、讲座、其他
+  cover_image: string;
+  start_time: string;
+  end_time: string;
+  address: string;
+  online_price: number;
+  offline_price: number;
+  max_participants: number;
+  current_participants: number;
+  target_roles: number[]; // 0-家长, 1-教师, 2-机构
+  status: 'upcoming' | 'ongoing' | 'ended';
+  is_online: boolean; // 是否线上活动
+}
+
 // 城市类型
 interface City {
   id: number;
@@ -88,6 +106,7 @@ const IndexPage = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [feedAds, setFeedAds] = useState<FeedAd[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState('全部');
 
@@ -239,6 +258,8 @@ const IndexPage = () => {
       // 机构：加载待审核教师/订单
       setLoading(false);
     }
+    // 所有角色都加载活动
+    await loadActivities();
   };
 
   // 加载教师列表
@@ -377,6 +398,81 @@ const IndexPage = () => {
     },
   ];
 
+  // 加载活动列表
+  const loadActivities = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/activities/list',
+        method: 'GET',
+        data: {
+          role: userRole,
+          page: 1,
+          pageSize: 5,
+        },
+      });
+
+      if (res.data && Array.isArray(res.data)) {
+        setActivities(res.data);
+      }
+    } catch (error) {
+      console.error('加载活动失败:', error);
+      // 使用模拟数据
+      setActivities(getMockActivities());
+    }
+  };
+
+  // 模拟活动数据
+  const getMockActivities = (): Activity[] => [
+    {
+      id: 1,
+      title: '北京四中探校活动',
+      type: 'visit',
+      cover_image: 'https://placehold.co/400x200/2563EB/white?text=探校活动',
+      start_time: '2024-04-15 09:00',
+      end_time: '2024-04-15 12:00',
+      address: '北京市西城区北京四中',
+      online_price: 0,
+      offline_price: 99,
+      max_participants: 50,
+      current_participants: 32,
+      target_roles: [0], // 仅家长可见
+      status: 'upcoming',
+      is_online: false,
+    },
+    {
+      id: 2,
+      title: '新高考政策解读讲座',
+      type: 'lecture',
+      cover_image: 'https://placehold.co/400x200/10B981/white?text=政策讲座',
+      start_time: '2024-04-20 14:00',
+      end_time: '2024-04-20 16:00',
+      address: '线上直播',
+      online_price: 29,
+      offline_price: 0,
+      max_participants: 200,
+      current_participants: 156,
+      target_roles: [0, 1], // 家长和教师可见
+      status: 'upcoming',
+      is_online: true,
+    },
+    {
+      id: 3,
+      title: '教师教学技能提升培训',
+      type: 'training',
+      cover_image: 'https://placehold.co/400x200/EC4899/white?text=教师培训',
+      start_time: '2024-04-25 09:00',
+      end_time: '2024-04-26 17:00',
+      address: '海淀区教师进修学校',
+      online_price: 0,
+      offline_price: 299,
+      max_participants: 30,
+      current_participants: 28,
+      target_roles: [1], // 仅教师可见
+      status: 'upcoming',
+      is_online: false,
+    },
+  ];
+
   // 格式化时间
   const formatTime = (timeStr: string) => {
     const date = new Date(timeStr);
@@ -450,6 +546,25 @@ const IndexPage = () => {
     }
     Taro.navigateTo({ url: `/pages/order-detail/index?id=${orderId}` });
   };
+
+  // 获取活动类型标签
+  const getActivityTypeTag = (type: Activity['type']) => {
+    const typeMap = {
+      visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
+      training: { label: '培训', color: 'bg-green-100 text-green-600' },
+      lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
+      other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
+    };
+    return typeMap[type];
+  };
+
+  // 活动报名
+  const handleActivitySignUp = (activity: Activity) => {
+    Taro.navigateTo({ url: `/pages/activity-detail/index?id=${activity.id}` });
+  };
+
+  // 过滤当前角色可见的活动
+  const visibleActivities = activities.filter(a => a.target_roles.includes(userRole));
 
   return (
     <View className="min-h-screen bg-gray-50">
@@ -786,6 +901,72 @@ const IndexPage = () => {
           </View>
         )}
       </View>
+
+      {/* 活动报名列表 */}
+      {visibleActivities.length > 0 && (
+        <View className="px-4 mt-4">
+          <View className="flex flex-row items-center justify-between mb-3">
+            <Text className="text-lg font-semibold text-gray-800">活动报名</Text>
+            <View 
+              className="flex flex-row items-center"
+              onClick={() => Taro.navigateTo({ url: '/pages/activities/index' })}
+            >
+              <Text className="text-sm text-gray-500">全部活动</Text>
+              <ChevronDown size={14} color="#9CA3AF" className="rotate-[-90deg]" />
+            </View>
+          </View>
+          <ScrollView scrollX className="flex flex-row gap-3 overflow-x-auto pb-2">
+            {visibleActivities.map((activity) => {
+              const typeTag = getActivityTypeTag(activity.type);
+              return (
+                <View 
+                  key={activity.id}
+                  className="min-w-[280px] bg-white rounded-xl overflow-hidden shadow-sm"
+                  onClick={() => handleActivitySignUp(activity)}
+                >
+                  <Image 
+                    src={activity.cover_image}
+                    className="w-full h-32"
+                    mode="aspectFill"
+                  />
+                  <View className="p-3">
+                    <View className="flex flex-row items-center gap-2 mb-2">
+                      <Badge className={typeTag.color}>
+                        <Text className="text-xs">{typeTag.label}</Text>
+                      </Badge>
+                      {activity.is_online && (
+                        <Badge className="bg-blue-100 text-blue-600">
+                          <Text className="text-xs">线上</Text>
+                        </Badge>
+                      )}
+                    </View>
+                    <Text className="font-semibold text-gray-800 line-clamp-1">{activity.title}</Text>
+                    <View className="flex flex-row items-center gap-1 mt-2">
+                      <Clock size={12} color="#6B7280" />
+                      <Text className="text-xs text-gray-500">{activity.start_time}</Text>
+                    </View>
+                    <View className="flex flex-row items-center gap-1 mt-1">
+                      <LocationIcon size={12} color="#6B7280" />
+                      <Text className="text-xs text-gray-500 line-clamp-1">{activity.address}</Text>
+                    </View>
+                    <View className="flex flex-row items-center justify-between mt-3">
+                      <View className="flex flex-row items-center gap-1">
+                        <Users size={12} color="#6B7280" />
+                        <Text className="text-xs text-gray-500">
+                          {activity.current_participants}/{activity.max_participants}
+                        </Text>
+                      </View>
+                      <Text className="text-orange-500 font-semibold">
+                        {activity.is_online ? (activity.online_price > 0 ? `¥${activity.online_price}` : '免费') : (activity.offline_price > 0 ? `¥${activity.offline_price}` : '免费')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* 底部发布按钮 - 仅家长端显示 */}
       {userRole === 0 && (

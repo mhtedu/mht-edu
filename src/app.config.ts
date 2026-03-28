@@ -36,6 +36,10 @@ export default defineAppConfig({
     'pages/course-manage/index',
     // 家长主页
     'pages/parent-profile/index',
+    // 活动详情
+    'pages/activity-detail/index',
+    // 活动列表
+    'pages/activities/index',
   ],
   window: {
     backgroundTextStyle: 'light',

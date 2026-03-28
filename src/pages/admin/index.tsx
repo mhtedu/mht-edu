@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
   Settings, LogOut, DollarSign, UserPlus, Bell, BookOpen, Gift, Percent,
-  ShoppingBag
+  ShoppingBag, Calendar
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -53,10 +53,47 @@ interface MembershipPlan {
   id: number;
   name: string;
   role: number;
+  type: 'month' | 'quarter' | 'year'; // 月卡、季卡、年卡
   price: number;
   original_price: number;
   duration_days: number;
   features: string[];
+  is_active: number;
+}
+
+// 虚拟产品（资料）类型
+interface VirtualProduct {
+  id: number;
+  name: string;
+  cover: string;
+  price: number;
+  original_price: number;
+  category: string;
+  file_type: 'download' | 'link'; // 文件下载或百度网盘链接
+  file_url: string;
+  file_size: string;
+  description: string;
+  sales: number;
+  is_active: number;
+}
+
+// 活动类型
+interface Activity {
+  id: number;
+  title: string;
+  type: 'visit' | 'training' | 'lecture' | 'other';
+  cover_image: string;
+  start_time: string;
+  end_time: string;
+  address: string;
+  is_online: boolean;
+  online_price: number;
+  offline_price: number;
+  max_participants: number;
+  current_participants: number;
+  target_roles: number[];
+  description: string;
+  status: 'upcoming' | 'ongoing' | 'ended';
   is_active: number;
 }
 
@@ -125,6 +162,12 @@ const AdminPage = () => {
   
   // 广告列表
   const [banners, setBanners] = useState<Banner[]>([]);
+  
+  // 虚拟产品（资料）列表
+  const [virtualProducts, setVirtualProducts] = useState<VirtualProduct[]>([]);
+  
+  // 活动列表
+  const [activities, setActivities] = useState<Activity[]>([]);
 
   // 菜单配置
   const menus: MenuItem[] = [
@@ -135,6 +178,8 @@ const AdminPage = () => {
     { id: 'orgs', label: '机构管理', icon: Building },
     { id: 'agents', label: '代理商管理', icon: MapPin },
     { id: 'products', label: '商品管理', icon: ShoppingBag },
+    { id: 'virtual', label: '资料管理', icon: BookOpen },
+    { id: 'activities', label: '活动管理', icon: Calendar },
     { id: 'banners', label: '广告位管理', icon: ImageIcon },
     { id: 'subjects', label: '科目管理', icon: BookOpen },
     { id: 'membership', label: '会员套餐', icon: Gift },
@@ -167,6 +212,12 @@ const AdminPage = () => {
           break;
         case 'products':
           await loadProducts();
+          break;
+        case 'virtual':
+          await loadVirtualProducts();
+          break;
+        case 'activities':
+          await loadActivities();
           break;
         case 'banners':
           await loadBanners();
@@ -266,11 +317,19 @@ const AdminPage = () => {
       }
     } catch (error) {
       console.error('加载会员套餐失败:', error);
-      // 模拟数据
+      // 模拟数据 - 包含月卡、季卡、年卡
       setMembershipPlans([
-        { id: 1, name: '家长月卡', role: 0, price: 29.9, original_price: 59, duration_days: 30, features: ['查看教师联系方式', '无限发布需求', '优先匹配'], is_active: 1 },
-        { id: 2, name: '家长季卡', role: 0, price: 79, original_price: 177, duration_days: 90, features: ['查看教师联系方式', '无限发布需求', '优先匹配', '专属客服'], is_active: 1 },
-        { id: 3, name: '教师月卡', role: 1, price: 39.9, original_price: 79, duration_days: 30, features: ['查看家长联系方式', '无限抢单', '优先展示'], is_active: 1 },
+        // 家长套餐
+        { id: 1, name: '家长月卡', role: 0, type: 'month', price: 29.9, original_price: 59, duration_days: 30, features: ['查看教师联系方式', '无限发布需求', '优先匹配'], is_active: 1 },
+        { id: 2, name: '家长季卡', role: 0, type: 'quarter', price: 79, original_price: 177, duration_days: 90, features: ['查看教师联系方式', '无限发布需求', '优先匹配', '专属客服'], is_active: 1 },
+        { id: 3, name: '家长年卡', role: 0, type: 'year', price: 199, original_price: 708, duration_days: 365, features: ['查看教师联系方式', '无限发布需求', '优先匹配', '专属客服', '年度报告'], is_active: 1 },
+        // 教师套餐
+        { id: 4, name: '教师月卡', role: 1, type: 'month', price: 39.9, original_price: 79, duration_days: 30, features: ['查看家长联系方式', '无限抢单', '优先展示'], is_active: 1 },
+        { id: 5, name: '教师季卡', role: 1, type: 'quarter', price: 99, original_price: 237, duration_days: 90, features: ['查看家长联系方式', '无限抢单', '优先展示', '专属客服'], is_active: 1 },
+        { id: 6, name: '教师年卡', role: 1, type: 'year', price: 299, original_price: 948, duration_days: 365, features: ['查看家长联系方式', '无限抢单', '优先展示', '专属客服', '年度报告'], is_active: 1 },
+        // 机构套餐
+        { id: 7, name: '机构月卡', role: 2, type: 'month', price: 99, original_price: 199, duration_days: 30, features: ['无限发布教师', '优先展示', '数据分析'], is_active: 1 },
+        { id: 8, name: '机构年卡', role: 2, type: 'year', price: 999, original_price: 2388, duration_days: 365, features: ['无限发布教师', '优先展示', '数据分析', '专属客服'], is_active: 1 },
       ]);
     }
   };
@@ -309,6 +368,46 @@ const AdminPage = () => {
       setBanners([
         { id: 1, position: 'home_top', title: '新用户福利', image_url: '', link_url: '/pages/membership/index', sort_order: 1, is_active: 1 },
         { id: 2, position: 'home_middle', title: '邀请有礼', image_url: '', link_url: '/pages/distribution/index', sort_order: 2, is_active: 1 },
+      ]);
+    }
+  };
+
+  const loadVirtualProducts = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/virtual-products',
+        method: 'GET',
+      });
+      if (res.data?.list) {
+        setVirtualProducts(res.data.list);
+      }
+    } catch (error) {
+      console.error('加载虚拟产品失败:', error);
+      // 模拟数据
+      setVirtualProducts([
+        { id: 1, name: '高考数学压轴题解析', cover: '', price: 29.9, original_price: 59, category: '数学', file_type: 'download', file_url: '', file_size: '15.2MB', description: '精选近5年高考数学压轴题详细解析', sales: 356, is_active: 1 },
+        { id: 2, name: '英语语法大全PDF', cover: '', price: 19.9, original_price: 39, category: '英语', file_type: 'link', file_url: 'https://pan.baidu.com/s/xxxxx', file_size: '', description: '完整英语语法知识点汇总', sales: 528, is_active: 1 },
+        { id: 3, name: '初中物理实验视频合集', cover: '', price: 49.9, original_price: 99, category: '物理', file_type: 'link', file_url: 'https://pan.baidu.com/s/yyyyy', file_size: '', description: '包含50+物理实验演示视频', sales: 189, is_active: 1 },
+      ]);
+    }
+  };
+
+  const loadActivities = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/activities',
+        method: 'GET',
+      });
+      if (res.data?.list) {
+        setActivities(res.data.list);
+      }
+    } catch (error) {
+      console.error('加载活动失败:', error);
+      // 模拟数据
+      setActivities([
+        { id: 1, title: '北京四中探校活动', type: 'visit', cover_image: '', start_time: '2024-04-15 09:00', end_time: '2024-04-15 12:00', address: '北京市西城区北京四中', is_online: false, online_price: 0, offline_price: 99, max_participants: 50, current_participants: 32, target_roles: [0], description: '带领家长参观学校环境', status: 'upcoming', is_active: 1 },
+        { id: 2, title: '教师教学技能提升培训', type: 'training', cover_image: '', start_time: '2024-04-20 09:00', end_time: '2024-04-21 17:00', address: '海淀区教师进修学校', is_online: false, online_price: 0, offline_price: 299, max_participants: 30, current_participants: 28, target_roles: [1], description: '提升教师教学技能', status: 'upcoming', is_active: 1 },
+        { id: 3, title: '新高考政策解读讲座', type: 'lecture', cover_image: '', start_time: '2024-04-25 14:00', end_time: '2024-04-25 16:00', address: '线上直播', is_online: true, online_price: 29, offline_price: 0, max_participants: 200, current_participants: 156, target_roles: [0, 1], description: '解读新高考政策变化', status: 'upcoming', is_active: 1 },
       ]);
     }
   };
@@ -665,6 +764,7 @@ const AdminPage = () => {
             <Text className="admin-table-cell w-16">ID</Text>
             <Text className="admin-table-cell flex-1">套餐名称</Text>
             <Text className="admin-table-cell w-20">角色</Text>
+            <Text className="admin-table-cell w-16">类型</Text>
             <Text className="admin-table-cell w-24">价格</Text>
             <Text className="admin-table-cell w-24">原价</Text>
             <Text className="admin-table-cell w-20">天数</Text>
@@ -676,6 +776,7 @@ const AdminPage = () => {
               <Text className="admin-table-cell w-16">{plan.id}</Text>
               <Text className="admin-table-cell flex-1">{plan.name}</Text>
               <Text className="admin-table-cell w-20">{['家长', '教师', '机构'][plan.role]}</Text>
+              <Text className="admin-table-cell w-16">{plan.type === 'month' ? '月卡' : plan.type === 'quarter' ? '季卡' : '年卡'}</Text>
               <Text className="admin-table-cell w-24">¥{plan.price}</Text>
               <Text className="admin-table-cell w-24 text-gray-400 line-through">¥{plan.original_price}</Text>
               <Text className="admin-table-cell w-20">{plan.duration_days}天</Text>
@@ -689,6 +790,17 @@ const AdminPage = () => {
               </View>
             </View>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>套餐类型说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 月卡：30天有效期，适合体验用户</Text>
+            <Text>• 季卡：90天有效期，价格优惠约40%</Text>
+            <Text>• 年卡：365天有效期，价格优惠约70%，性价比最高</Text>
+          </View>
         </CardContent>
       </Card>
     </View>
@@ -778,6 +890,130 @@ const AdminPage = () => {
     </View>
   );
 
+  // 渲染虚拟产品（资料）管理
+  const renderVirtualProducts = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>资料管理</CardTitle>
+            <Button size="sm">添加资料</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">资料名称</Text>
+            <Text className="admin-table-cell w-20">分类</Text>
+            <Text className="admin-table-cell w-20">类型</Text>
+            <Text className="admin-table-cell w-24">价格</Text>
+            <Text className="admin-table-cell w-20">销量</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-28">操作</Text>
+          </View>
+          {virtualProducts.map((product) => (
+            <View key={product.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{product.id}</Text>
+              <Text className="admin-table-cell flex-1">{product.name}</Text>
+              <Text className="admin-table-cell w-20">{product.category}</Text>
+              <Text className="admin-table-cell w-20">{product.file_type === 'download' ? '文件' : '链接'}</Text>
+              <Text className="admin-table-cell w-24">¥{product.price}</Text>
+              <Text className="admin-table-cell w-20">{product.sales}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge variant={product.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{product.is_active ? '上架' : '下架'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-28 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+                <Button size="sm" variant="outline" onClick={() => Taro.showToast({ title: '复制链接成功', icon: 'success' })}>链接</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>上传说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 文件类型：支持上传PDF、Word、视频等文件，用户付费后可直接下载</Text>
+            <Text>• 链接类型：填写百度网盘链接和提取码，系统自动发送给付费用户</Text>
+            <Text>• 价格设置：可设置原价和优惠价，优惠价即为实际售价</Text>
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染活动管理
+  const renderActivities = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>活动管理</CardTitle>
+            <Button size="sm">创建活动</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">活动名称</Text>
+            <Text className="admin-table-cell w-16">类型</Text>
+            <Text className="admin-table-cell w-28">时间</Text>
+            <Text className="admin-table-cell w-20">形式</Text>
+            <Text className="admin-table-cell w-20">价格</Text>
+            <Text className="admin-table-cell w-24">报名/限额</Text>
+            <Text className="admin-table-cell w-28">可见角色</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {activities.map((activity) => (
+            <View key={activity.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{activity.id}</Text>
+              <Text className="admin-table-cell flex-1">{activity.title}</Text>
+              <Text className="admin-table-cell w-16">{activity.type === 'visit' ? '探校' : activity.type === 'training' ? '培训' : activity.type === 'lecture' ? '讲座' : '其他'}</Text>
+              <Text className="admin-table-cell w-28">{activity.start_time.split(' ')[0]}</Text>
+              <Text className="admin-table-cell w-20">{activity.is_online ? '线上' : '线下'}</Text>
+              <Text className="admin-table-cell w-20">
+                {(() => {
+                  const price = activity.is_online ? activity.online_price : activity.offline_price;
+                  return price === 0 ? '免费' : `¥${price}`;
+                })()}
+              </Text>
+              <Text className="admin-table-cell w-24">{activity.current_participants}/{activity.max_participants}</Text>
+              <Text className="admin-table-cell w-28">
+                {activity.target_roles.includes(0) ? '家长 ' : ''}{activity.target_roles.includes(1) ? '教师 ' : ''}{activity.target_roles.includes(2) ? '机构' : ''}
+              </Text>
+              <View className="admin-table-cell w-20">
+                <Badge variant={activity.is_active ? 'default' : 'secondary'}>
+                  <Text className="text-xs">{activity.is_active ? '启用' : '禁用'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>活动类型说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 探校活动：组织家长参观学校，适合家长参与</Text>
+            <Text>• 教研培训：教师技能提升培训，适合教师参与</Text>
+            <Text>• 讲座活动：政策解读、教育分享等，可设置线上/线下</Text>
+            <Text>• 可见角色：选择后仅对应角色用户可在首页看到该活动</Text>
+            <Text>• 线上活动：用户付费后获得直播链接；线下活动：用户付费后签到入场</Text>
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
   // 渲染占位符
   const renderPlaceholder = (title: string) => (
     <View className="admin-content flex items-center justify-center h-96">
@@ -850,6 +1086,8 @@ const AdminPage = () => {
             {currentMenu === 'subjects' && renderSubjects()}
             {currentMenu === 'membership' && renderMembership()}
             {currentMenu === 'products' && renderProducts()}
+            {currentMenu === 'virtual' && renderVirtualProducts()}
+            {currentMenu === 'activities' && renderActivities()}
             {currentMenu === 'banners' && renderBanners()}
             {currentMenu === 'orders' && renderPlaceholder('订单管理')}
             {currentMenu === 'users' && renderPlaceholder('用户管理')}

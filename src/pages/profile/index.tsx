@@ -99,6 +99,9 @@ const ProfilePage = () => {
           const memberKey = `member_expire_role_${role}`;
           const memberExpire = Taro.getStorageSync(memberKey);
           setIsMember(!!memberExpire && new Date(memberExpire) > new Date());
+          
+          // 切换角色后跳转首页
+          Taro.switchTab({ url: '/pages/index/index' });
         }
       },
     });
@@ -167,7 +170,7 @@ const ProfilePage = () => {
   }
 
   return (
-    <View className="min-h-screen bg-gray-50">
+    <View className="min-h-screen bg-gray-50 pb-32">
       {/* 头部用户信息 */}
       <View className="bg-gradient-to-br from-blue-500 to-blue-600 px-4 pt-8 pb-12">
         <View className="flex flex-row items-center justify-between mb-4">
@@ -195,31 +198,6 @@ const ProfilePage = () => {
             </View>
           </View>
           <Settings size={24} color="white" onClick={() => navigateTo('/pages/settings/index')} />
-        </View>
-
-        {/* 角色切换 */}
-        <View className="bg-white bg-opacity-20 rounded-lg p-3">
-          <Text className="text-white text-xs mb-2">当前身份：{roleInfo.name}</Text>
-          <View className="flex flex-row gap-2">
-            {[0, 1, 2].map((role) => {
-              const RoleIcon = roleConfig[role].icon;
-              const isActive = currentRole === role;
-              return (
-                <View
-                  key={role}
-                  className={`flex-1 px-3 py-2 rounded-lg flex flex-row items-center justify-center ${
-                    isActive ? 'bg-white' : 'bg-blue-400'
-                  }`}
-                  onClick={() => switchRole(role)}
-                >
-                  <RoleIcon size={16} color={isActive ? '#2563EB' : '#ffffff'} />
-                  <Text className={`ml-1 text-sm ${isActive ? 'text-blue-500 font-semibold' : 'text-white'}`}>
-                    {roleConfig[role].name}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
         </View>
       </View>
 
@@ -324,7 +302,7 @@ const ProfilePage = () => {
         </Card>
 
         {/* 退出登录 */}
-        <View className="mt-6 mb-8">
+        <View className="mt-6 mb-4">
           <Button 
             variant="outline" 
             className="w-full"
@@ -332,6 +310,34 @@ const ProfilePage = () => {
           >
             <Text className="text-red-500">退出登录</Text>
           </Button>
+        </View>
+      </View>
+
+      {/* 底部角色切换（固定） */}
+      <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+        <View className="flex flex-row items-center justify-between mb-2">
+          <Text className="text-gray-500 text-xs">切换身份</Text>
+          <Text className="text-blue-500 text-xs">当前：{roleInfo.name}</Text>
+        </View>
+        <View className="flex flex-row gap-2">
+          {[0, 1, 2].map((role) => {
+            const RoleIcon = roleConfig[role].icon;
+            const isActive = currentRole === role;
+            return (
+              <View
+                key={role}
+                className={`flex-1 px-3 py-2 rounded-lg flex flex-row items-center justify-center ${
+                  isActive ? 'bg-blue-500' : 'bg-gray-100'
+                }`}
+                onClick={() => switchRole(role)}
+              >
+                <RoleIcon size={16} color={isActive ? '#ffffff' : '#6B7280'} />
+                <Text className={`ml-1 text-sm ${isActive ? 'text-white font-semibold' : 'text-gray-600'}`}>
+                  {roleConfig[role].name}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       </View>
     </View>

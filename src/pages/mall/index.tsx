@@ -18,10 +18,14 @@ interface Product {
   category: string;
   tags: string[];
   description: string;
+  product_type: 'physical' | 'virtual'; // 实体商品或虚拟商品
+  file_type?: 'download' | 'link'; // 虚拟商品类型
+  file_size?: string;
+  file_url?: string; // 文件下载地址或网盘链接
 }
 
 // 分类
-const categories = ['全部', '教辅书籍', '学习用品', '文具', '电子产品', '课程包'];
+const categories = ['全部', '资料下载', '教辅书籍', '学习用品', '文具', '电子产品', '课程包'];
 
 /**
  * 商城页面
@@ -38,8 +42,66 @@ const MallPage = () => {
 
   const loadProducts = async () => {
     setLoading(true);
-    // 模拟数据
+    // 模拟数据 - 包含实体商品和虚拟商品
     const mockProducts: Product[] = [
+      // 虚拟商品 - 资料下载
+      {
+        id: 101,
+        name: '高考数学压轴题解析',
+        image: 'https://placehold.co/200/2563EB/white?text=数学',
+        price: 2990,
+        original_price: 5900,
+        sales: 1256,
+        category: '资料下载',
+        tags: ['高考', '数学', 'PDF'],
+        description: '精选近5年高考数学压轴题详细解析，含解题思路',
+        product_type: 'virtual',
+        file_type: 'download',
+        file_size: '15.2MB',
+      },
+      {
+        id: 102,
+        name: '英语语法大全PDF',
+        image: 'https://placehold.co/200/10B981/white?text=英语',
+        price: 1990,
+        original_price: 3900,
+        sales: 892,
+        category: '资料下载',
+        tags: ['英语', '语法', 'PDF'],
+        description: '完整英语语法知识点汇总，例句丰富',
+        product_type: 'virtual',
+        file_type: 'download',
+        file_size: '8.5MB',
+      },
+      {
+        id: 103,
+        name: '初中物理实验视频合集',
+        image: 'https://placehold.co/200/F59E0B/white?text=物理',
+        price: 4990,
+        original_price: 9900,
+        sales: 567,
+        category: '资料下载',
+        tags: ['物理', '实验', '视频'],
+        description: '包含50+物理实验演示视频，百度网盘链接',
+        product_type: 'virtual',
+        file_type: 'link',
+        file_size: '',
+      },
+      {
+        id: 104,
+        name: '高考语文作文素材库',
+        image: 'https://placehold.co/200/EC4899/white?text=语文',
+        price: 990,
+        original_price: 1900,
+        sales: 2341,
+        category: '资料下载',
+        tags: ['高考', '语文', '作文'],
+        description: '1000+作文素材，分类整理',
+        product_type: 'virtual',
+        file_type: 'download',
+        file_size: '3.2MB',
+      },
+      // 实体商品
       {
         id: 1,
         name: '高考数学必刷题1000道',
@@ -50,6 +112,7 @@ const MallPage = () => {
         category: '教辅书籍',
         tags: ['高考', '数学'],
         description: '覆盖高考数学所有考点，精选真题',
+        product_type: 'physical',
       },
       {
         id: 2,
@@ -61,6 +124,7 @@ const MallPage = () => {
         category: '教辅书籍',
         tags: ['高考', '英语'],
         description: '词根词缀记忆法，高效背单词',
+        product_type: 'physical',
       },
       {
         id: 3,
@@ -72,6 +136,7 @@ const MallPage = () => {
         category: '电子产品',
         tags: ['考试专用', '函数计算'],
         description: '符合高考规定，功能齐全',
+        product_type: 'physical',
       },
       {
         id: 4,
@@ -83,6 +148,7 @@ const MallPage = () => {
         category: '文具',
         tags: ['错题整理', '复习神器'],
         description: '高效整理错题，提升学习效率',
+        product_type: 'physical',
       },
       {
         id: 5,
@@ -94,6 +160,7 @@ const MallPage = () => {
         category: '学习用品',
         tags: ['物理', '实验'],
         description: '家庭实验必备，培养动手能力',
+        product_type: 'physical',
       },
       {
         id: 6,
@@ -105,6 +172,7 @@ const MallPage = () => {
         category: '课程包',
         tags: ['一对一', '名师'],
         description: '名师一对一辅导，专属学习计划',
+        product_type: 'physical',
       },
     ];
 
@@ -124,6 +192,49 @@ const MallPage = () => {
     e.stopPropagation();
     setCartCount(prev => prev + 1);
     Taro.showToast({ title: '已加入购物车', icon: 'success' });
+  };
+
+  // 虚拟商品立即购买
+  const handleBuyVirtual = (product: Product, e: any) => {
+    e.stopPropagation();
+    Taro.showModal({
+      title: '确认购买',
+      content: `确定购买《${product.name}》？价格：¥${formatPrice(product.price)}`,
+      success: (res) => {
+        if (res.confirm) {
+          // 模拟支付成功
+          Taro.showToast({ title: '购买成功', icon: 'success' });
+          // 如果是文件下载类型，直接下载
+          if (product.file_type === 'download') {
+            setTimeout(() => {
+              Taro.showModal({
+                title: '下载资料',
+                content: '资料已准备好，点击确认开始下载',
+                success: (downloadRes) => {
+                  if (downloadRes.confirm) {
+                    Taro.showToast({ title: '下载中...', icon: 'loading' });
+                  }
+                },
+              });
+            }, 1000);
+          } else {
+            // 百度网盘链接类型
+            setTimeout(() => {
+              Taro.showModal({
+                title: '获取链接',
+                content: `链接: ${product.file_url || 'https://pan.baidu.com/s/xxxxx'}\n提取码: abcd`,
+                confirmText: '复制链接',
+                success: (linkRes) => {
+                  if (linkRes.confirm) {
+                    Taro.setClipboardData({ data: 'https://pan.baidu.com/s/xxxxx 提取码: abcd' });
+                  }
+                },
+              });
+            }, 1000);
+          }
+        }
+      },
+    });
   };
 
   const formatPrice = (price: number) => {
@@ -193,7 +304,14 @@ const MallPage = () => {
                   mode="aspectFill"
                 />
                 <CardContent className="p-3">
-                  <Text className="text-sm font-medium line-clamp-2 h-10">{product.name}</Text>
+                  <View className="flex flex-row items-center gap-1">
+                    <Text className="text-sm font-medium line-clamp-1 flex-1">{product.name}</Text>
+                    {product.product_type === 'virtual' && (
+                      <Badge className="bg-purple-100 text-purple-600">
+                        <Text className="text-xs">资料</Text>
+                      </Badge>
+                    )}
+                  </View>
                   
                   <View className="flex flex-row gap-1 mt-2">
                     {product.tags.slice(0, 2).map((tag) => (
@@ -212,17 +330,30 @@ const MallPage = () => {
                         </Text>
                       )}
                     </View>
+                    {product.file_size && (
+                      <Text className="text-gray-400 text-xs">{product.file_size}</Text>
+                    )}
                   </View>
                   
                   <View className="flex flex-row items-center justify-between mt-2">
                     <Text className="text-gray-400 text-xs">已售 {product.sales}</Text>
-                    <Button 
-                      size="sm" 
-                      className="bg-blue-500 px-3"
-                      onClick={(e) => handleAddToCart(product.id, e)}
-                    >
-                      <Text className="text-white text-xs">加购</Text>
-                    </Button>
+                    {product.product_type === 'virtual' ? (
+                      <Button 
+                        size="sm" 
+                        className="bg-purple-500 px-3"
+                        onClick={(e) => handleBuyVirtual(product, e)}
+                      >
+                        <Text className="text-white text-xs">立即购买</Text>
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-500 px-3"
+                        onClick={(e) => handleAddToCart(product.id, e)}
+                      >
+                        <Text className="text-white text-xs">加购</Text>
+                      </Button>
+                    )}
                   </View>
                 </CardContent>
               </Card>
