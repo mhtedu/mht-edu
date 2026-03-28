@@ -89,7 +89,6 @@ CREATE TABLE `teacher_profiles` (
     `verify_time` DATETIME COMMENT '认证时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_subjects` ((CAST(`subjects` AS CHAR(500))),
     INDEX `idx_rating` (`rating`),
     INDEX `idx_teaching_years` (`teaching_years`),
     CONSTRAINT `fk_teacher_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
