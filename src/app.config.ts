@@ -67,6 +67,8 @@ export default defineAppConfig({
     'pages/org-elite-class/index',
     // 总后台牛师班管理
     'pages/admin-elite-class/index',
+    // 管理后台配置
+    'pages/admin-config/index',
   ],
   window: {
     backgroundTextStyle: 'light',

@@ -17,6 +17,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { ShareModule } from './modules/share/share.module';
 import { EliteClassModule } from './modules/elite-class/elite-class.module';
 import { ReferralLockModule } from './modules/referral-lock/referral-lock.module';
+import { ConfigModule } from './modules/config/config.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ReferralLockModule } from './modules/referral-lock/referral-lock.module
     ShareModule,
     EliteClassModule,
     ReferralLockModule,
+    ConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],

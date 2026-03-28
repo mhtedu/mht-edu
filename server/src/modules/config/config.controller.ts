@@ -1,122 +1,49 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ConfigService } from './config.service';
+import { AdminGuard } from '@/common/guards/admin.guard';
 
-@Controller('config')
+@Controller('admin/config')
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
-  // ==================== 系统配置 ====================
-
-  @Get('system')
-  async getAllConfigs() {
-    return this.configService.getAllConfigs();
+  // 获取公开配置（不需要管理员权限）
+  @Get('public/site')
+  async getPublicSiteConfig() {
+    return this.configService.getPublicSiteConfig();
   }
 
-  @Get('system/:key')
+  // 获取所有配置（需要管理员权限）
+  @Get()
+  @UseGuards(AdminGuard)
+  async getAllConfig() {
+    return this.configService.getAllConfig();
+  }
+
+  // 按分组获取配置
+  @Get('group/:group')
+  @UseGuards(AdminGuard)
+  async getConfigByGroup(@Param('group') group: string) {
+    return this.configService.getConfigByGroup(group);
+  }
+
+  // 获取单个配置
+  @Get(':key')
+  @UseGuards(AdminGuard)
   async getConfig(@Param('key') key: string) {
     return this.configService.getConfig(key);
   }
 
-  @Post('system')
-  async setConfig(
-    @Body() body: { key: string; value: any; description?: string },
-  ) {
-    return this.configService.setConfig(body.key, body.value, body.description);
+  // 更新单个配置
+  @Post('update')
+  @UseGuards(AdminGuard)
+  async updateConfig(@Body() body: { key: string; value: string }) {
+    return this.configService.updateConfig(body.key, body.value);
   }
 
-  @Post('system/batch')
-  async setConfigs(@Body() body: Record<string, any>) {
-    return this.configService.setConfigs(body);
-  }
-
-  // ==================== 分销配置 ====================
-
-  @Get('distribution')
-  async getDistributionConfigs() {
-    return this.configService.getDistributionConfigs();
-  }
-
-  @Put('distribution/:level')
-  async updateDistributionConfig(
-    @Param('level') level: string,
-    @Body() body: { rate: number },
-  ) {
-    return this.configService.updateDistributionConfig(parseInt(level), body.rate);
-  }
-
-  // ==================== 科目管理 ====================
-
-  @Get('subjects')
-  async getSubjects(@Query('category') category?: string) {
-    return this.configService.getSubjects(category);
-  }
-
-  @Post('subjects')
-  async addSubject(
-    @Body() body: { name: string; category: string; icon?: string; sortOrder?: number },
-  ) {
-    return this.configService.addSubject(body);
-  }
-
-  @Put('subjects/:id')
-  async updateSubject(
-    @Param('id') id: string,
-    @Body() body: Partial<{ name: string; category: string; icon: string; sortOrder: number; isActive: number }>,
-  ) {
-    return this.configService.updateSubject(parseInt(id), body);
-  }
-
-  @Delete('subjects/:id')
-  async deleteSubject(@Param('id') id: string) {
-    return this.configService.deleteSubject(parseInt(id));
-  }
-
-  // ==================== 年级管理 ====================
-
-  @Get('grades')
-  async getGrades(@Query('stage') stage?: string) {
-    return this.configService.getGrades(stage);
-  }
-
-  // ==================== 会员权益管理 ====================
-
-  @Get('membership-plans')
-  async getMembershipPlans(@Query('role') role?: string) {
-    return this.configService.getMembershipPlans(role ? parseInt(role) : undefined);
-  }
-
-  @Post('membership-plans')
-  async createMembershipPlan(
-    @Body() body: {
-      name: string;
-      role: number;
-      price: number;
-      originalPrice: number;
-      durationDays: number;
-      features: string[];
-    },
-  ) {
-    return this.configService.createMembershipPlan(body);
-  }
-
-  @Put('membership-plans/:id')
-  async updateMembershipPlan(
-    @Param('id') id: string,
-    @Body() body: Partial<{
-      name: string;
-      price: number;
-      originalPrice: number;
-      durationDays: number;
-      features: string[];
-      isActive: number;
-      sortOrder: number;
-    }>,
-  ) {
-    return this.configService.updateMembershipPlan(parseInt(id), body);
-  }
-
-  @Delete('membership-plans/:id')
-  async deleteMembershipPlan(@Param('id') id: string) {
-    return this.configService.deleteMembershipPlan(parseInt(id));
+  // 批量更新配置
+  @Post('batch-update')
+  @UseGuards(AdminGuard)
+  async batchUpdateConfig(@Body() body: { configs: { key: string; value: string }[] }) {
+    return this.configService.batchUpdateConfig(body.configs);
   }
 }

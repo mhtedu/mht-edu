@@ -1,266 +1,152 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
-
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
+import { InjectConnection } from '@nestjs/typeorm';
+import { Connection } from 'mysql2/promise';
 
 @Injectable()
 export class ConfigService {
-  // ==================== 系统配置 ====================
+  private configCache: Map<string, string> = new Map();
+  private cacheTime: number = 0;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
 
-  /**
-   * 获取所有系统配置
-   */
-  async getAllConfigs() {
-    const configs = await executeQuery(`
-      SELECT * FROM system_configs ORDER BY id
-    `);
+  constructor(@InjectConnection() private connection: Connection) {}
 
-    // 转换为键值对格式
-    const result: Record<string, any> = {};
-    configs.forEach((config: any) => {
-      let value = config.config_value;
-      if (config.config_type === 'number') {
-        value = parseFloat(value);
-      } else if (config.config_type === 'boolean') {
-        value = value === 'true';
-      } else if (config.config_type === 'json') {
-        try {
-          value = JSON.parse(value);
-        } catch (e) {
-          // 保持原值
-        }
+  // 获取所有配置
+  async getAllConfig() {
+    const [rows] = await this.connection.execute(
+      'SELECT * FROM site_config ORDER BY config_group, sort_order'
+    );
+    return rows;
+  }
+
+  // 按分组获取配置
+  async getConfigByGroup(group: string) {
+    const [rows] = await this.connection.execute(
+      'SELECT * FROM site_config WHERE config_group = ? ORDER BY sort_order',
+      [group]
+    );
+    return rows;
+  }
+
+  // 获取单个配置
+  async getConfig(key: string) {
+    // 先从缓存读取
+    if (this.configCache.has(key) && Date.now() - this.cacheTime < this.CACHE_TTL) {
+      return { key, value: this.configCache.get(key) };
+    }
+
+    const [rows]: any = await this.connection.execute(
+      'SELECT config_value FROM site_config WHERE config_key = ?',
+      [key]
+    );
+
+    if (rows.length === 0) {
+      return { key, value: null };
+    }
+
+    const value = rows[0].config_value;
+    this.configCache.set(key, value);
+    this.cacheTime = Date.now();
+
+    return { key, value };
+  }
+
+  // 获取配置值（供其他服务调用）
+  async getConfigValue(key: string, defaultValue: string = ''): Promise<string> {
+    const config = await this.getConfig(key);
+    return config.value || defaultValue;
+  }
+
+  // 获取数值配置
+  async getConfigNumber(key: string, defaultValue: number = 0): Promise<number> {
+    const value = await this.getConfigValue(key);
+    return value ? parseFloat(value) : defaultValue;
+  }
+
+  // 更新单个配置
+  async updateConfig(key: string, value: string) {
+    await this.connection.execute(
+      'UPDATE site_config SET config_value = ? WHERE config_key = ?',
+      [value, key]
+    );
+
+    // 清除缓存
+    this.configCache.delete(key);
+
+    return { success: true, message: '配置更新成功' };
+  }
+
+  // 批量更新配置
+  async batchUpdateConfig(configs: { key: string; value: string }[]) {
+    const conn = await this.connection;
+    await conn.beginTransaction();
+
+    try {
+      for (const config of configs) {
+        await conn.execute(
+          'UPDATE site_config SET config_value = ? WHERE config_key = ?',
+          [config.value, config.key]
+        );
       }
-      result[config.config_key] = value;
-    });
+      await conn.commit();
+
+      // 清除缓存
+      this.configCache.clear();
+
+      return { success: true, message: '配置批量更新成功' };
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    }
+  }
+
+  // 获取公开的站点配置（不需要登录）
+  async getPublicSiteConfig() {
+    const publicKeys = [
+      'site_name',
+      'site_domain',
+      'site_logo',
+      'site_description',
+      'contact_phone',
+      'contact_wechat',
+    ];
+
+    const [rows]: any = await this.connection.execute(
+      `SELECT config_key, config_value FROM site_config WHERE config_key IN (${publicKeys.map(() => '?').join(',')})`,
+      publicKeys
+    );
+
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.config_key] = row.config_value;
+    }
 
     return result;
   }
 
-  /**
-   * 获取单个配置
-   */
-  async getConfig(key: string) {
-    const configs = await executeQuery(`
-      SELECT * FROM system_configs WHERE config_key = ?
-    `, [key]);
+  // 获取微信支付配置
+  async getWechatPayConfig() {
+    const [rows]: any = await this.connection.execute(
+      `SELECT config_key, config_value FROM site_config 
+       WHERE config_key IN ('wechat_appid', 'wechat_mch_id', 'wechat_pay_key', 'wechat_pay_cert', 'wechat_pay_key_pem')`
+    );
 
-    if (configs.length === 0) {
-      return null;
+    const config: Record<string, string> = {};
+    for (const row of rows) {
+      config[row.config_key] = row.config_value;
     }
 
-    const config = configs[0] as any;
-    let value = config.config_value;
-
-    if (config.config_type === 'number') {
-      value = parseFloat(value);
-    } else if (config.config_type === 'boolean') {
-      value = value === 'true';
-    } else if (config.config_type === 'json') {
-      try {
-        value = JSON.parse(value);
-      } catch (e) {
-        // 保持原值
-      }
-    }
-
-    return value;
+    return {
+      appId: config.wechat_appid || '',
+      mchId: config.wechat_mch_id || '',
+      apiKey: config.wechat_pay_key || '',
+      cert: config.wechat_pay_cert || '',
+      key: config.wechat_pay_key_pem || '',
+    };
   }
 
-  /**
-   * 设置配置
-   */
-  async setConfig(key: string, value: any, description?: string) {
-    const configType = typeof value === 'number' ? 'number' 
-      : typeof value === 'boolean' ? 'boolean'
-      : typeof value === 'object' ? 'json'
-      : 'string';
-
-    const configValue = configType === 'json' ? JSON.stringify(value) : String(value);
-
-    await executeQuery(`
-      INSERT INTO system_configs (config_key, config_value, config_type, description)
-      VALUES (?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE config_value = ?, config_type = ?, description = COALESCE(?, description)
-    `, [key, configValue, configType, description || '', configValue, configType, description]);
-
-    return { success: true };
-  }
-
-  /**
-   * 批量设置配置
-   */
-  async setConfigs(configs: Record<string, any>) {
-    for (const [key, value] of Object.entries(configs)) {
-      await this.setConfig(key, value);
-    }
-    return { success: true };
-  }
-
-  // ==================== 分销配置 ====================
-
-  /**
-   * 获取分销配置
-   */
-  async getDistributionConfigs() {
-    return executeQuery(`
-      SELECT * FROM distribution_configs WHERE is_active = 1 ORDER BY level
-    `);
-  }
-
-  /**
-   * 更新分销比例
-   */
-  async updateDistributionConfig(level: number, rate: number) {
-    await executeQuery(`
-      UPDATE distribution_configs SET rate = ? WHERE level = ?
-    `, [rate, level]);
-
-    return { success: true };
-  }
-
-  // ==================== 科目管理 ====================
-
-  /**
-   * 获取科目列表
-   */
-  async getSubjects(category?: string) {
-    const conditions = category ? `WHERE category = ?` : '';
-    const params = category ? [category] : [];
-
-    return executeQuery(`
-      SELECT * FROM subjects ${conditions} ORDER BY sort_order, id
-    `, params);
-  }
-
-  /**
-   * 添加科目
-   */
-  async addSubject(data: { name: string; category: string; icon?: string; sortOrder?: number }) {
-    const result = await executeQuery(`
-      INSERT INTO subjects (name, category, icon, sort_order)
-      VALUES (?, ?, ?, ?)
-    `, [data.name, data.category, data.icon || '', data.sortOrder || 0]);
-
-    return { id: (result as any).insertId, ...data };
-  }
-
-  /**
-   * 更新科目
-   */
-  async updateSubject(id: number, data: Partial<{ name: string; category: string; icon: string; sortOrder: number; isActive: number }>) {
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (data.name) { updates.push('name = ?'); values.push(data.name); }
-    if (data.category) { updates.push('category = ?'); values.push(data.category); }
-    if (data.icon !== undefined) { updates.push('icon = ?'); values.push(data.icon); }
-    if (data.sortOrder !== undefined) { updates.push('sort_order = ?'); values.push(data.sortOrder); }
-    if (data.isActive !== undefined) { updates.push('is_active = ?'); values.push(data.isActive); }
-
-    if (updates.length > 0) {
-      await executeQuery(`
-        UPDATE subjects SET ${updates.join(', ')} WHERE id = ?
-      `, [...values, id]);
-    }
-
-    return { success: true };
-  }
-
-  /**
-   * 删除科目
-   */
-  async deleteSubject(id: number) {
-    await executeQuery(`DELETE FROM subjects WHERE id = ?`, [id]);
-    return { success: true };
-  }
-
-  // ==================== 年级管理 ====================
-
-  /**
-   * 获取年级列表
-   */
-  async getGrades(stage?: string) {
-    const conditions = stage ? `WHERE stage = ?` : '';
-    const params = stage ? [stage] : [];
-
-    return executeQuery(`
-      SELECT * FROM grades ${conditions} ORDER BY sort_order, id
-    `, params);
-  }
-
-  // ==================== 会员权益管理 ====================
-
-  /**
-   * 获取会员套餐
-   */
-  async getMembershipPlans(role?: number) {
-    const conditions = role !== undefined ? `WHERE role = ?` : '';
-    const params = role !== undefined ? [role] : [];
-
-    return executeQuery(`
-      SELECT * FROM membership_plans ${conditions} ORDER BY role, sort_order
-    `, params);
-  }
-
-  /**
-   * 创建会员套餐
-   */
-  async createMembershipPlan(data: {
-    name: string;
-    role: number;
-    price: number;
-    originalPrice: number;
-    durationDays: number;
-    features: string[];
-  }) {
-    const result = await executeQuery(`
-      INSERT INTO membership_plans (name, role, price, original_price, duration_days, features)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [data.name, data.role, data.price, data.originalPrice, data.durationDays, JSON.stringify(data.features)]);
-
-    return { id: (result as any).insertId, ...data };
-  }
-
-  /**
-   * 更新会员套餐
-   */
-  async updateMembershipPlan(id: number, data: Partial<{
-    name: string;
-    price: number;
-    originalPrice: number;
-    durationDays: number;
-    features: string[];
-    isActive: number;
-    sortOrder: number;
-  }>) {
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (data.name) { updates.push('name = ?'); values.push(data.name); }
-    if (data.price !== undefined) { updates.push('price = ?'); values.push(data.price); }
-    if (data.originalPrice !== undefined) { updates.push('original_price = ?'); values.push(data.originalPrice); }
-    if (data.durationDays) { updates.push('duration_days = ?'); values.push(data.durationDays); }
-    if (data.features) { updates.push('features = ?'); values.push(JSON.stringify(data.features)); }
-    if (data.isActive !== undefined) { updates.push('is_active = ?'); values.push(data.isActive); }
-    if (data.sortOrder !== undefined) { updates.push('sort_order = ?'); values.push(data.sortOrder); }
-
-    if (updates.length > 0) {
-      await executeQuery(`
-        UPDATE membership_plans SET ${updates.join(', ')} WHERE id = ?
-      `, [...values, id]);
-    }
-
-    return { success: true };
-  }
-
-  /**
-   * 删除会员套餐
-   */
-  async deleteMembershipPlan(id: number) {
-    await executeQuery(`DELETE FROM membership_plans WHERE id = ?`, [id]);
-    return { success: true };
+  // 清除缓存
+  clearCache() {
+    this.configCache.clear();
+    this.cacheTime = 0;
   }
 }
