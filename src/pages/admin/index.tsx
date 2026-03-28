@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
   Settings, LogOut, DollarSign, UserPlus, Bell, BookOpen, Gift, Percent,
-  ShoppingBag, Calendar
+  ShoppingBag, Calendar, Shield
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -97,29 +97,42 @@ interface Activity {
   is_active: number;
 }
 
-// 商品类型
-interface Product {
+// 订单类型（渲染时使用内联类型）
+
+// 用户类型（渲染时使用内联类型）
+
+// 代理商类型（渲染时使用内联类型）
+interface Agent {
   id: number;
   name: string;
-  cover: string;
-  price: number;
-  original_price: number;
-  stock: number;
-  sales: number;
-  category: string;
-  is_active: number;
+  phone: string;
+  city: string;
+  rate: number;
+  total_orders: number;
+  total_commission: number;
+  settled_commission: number;
+  status: number;
+  created_at: string;
 }
 
-// 广告类型
-interface Banner {
-  id: number;
-  position: string;
-  title: string;
-  image_url: string;
-  link_url: string;
-  sort_order: number;
-  is_active: number;
+// 管理账号类型（渲染时使用内联类型）
+
+// 聊天消息类型（渲染时使用内联类型）
+
+// 支付配置类型
+interface PaymentConfig {
+  wechat_appid: string;
+  wechat_mchid: string;
+  wechat_secret: string;
+  wechat_api_key: string;
+  alipay_appid: string;
+  alipay_public_key: string;
+  alipay_private_key: string;
 }
+
+// 商品类型（渲染时使用内联类型）
+
+// 广告类型（渲染时使用内联类型）
 
 // 菜单项
 interface MenuItem {
@@ -157,26 +170,47 @@ const AdminPage = () => {
   // 会员套餐
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   
-  // 商品列表
-  const [products, setProducts] = useState<Product[]>([]);
-  
-  // 广告列表
-  const [banners, setBanners] = useState<Banner[]>([]);
-  
   // 虚拟产品（资料）列表
   const [virtualProducts, setVirtualProducts] = useState<VirtualProduct[]>([]);
   
   // 活动列表
   const [activities, setActivities] = useState<Activity[]>([]);
+  
+  // 订单列表
+  const [orderStatus, setOrderStatus] = useState<string>('all');
+  
+  // 用户列表
+  const [userRole, setUserRole] = useState<number | null>(null);
+  
+  // 代理商列表
+  const [] = useState<Agent[]>([]);
+  
+  // 管理账号列表
+  
+  // 聊天消息列表
+  
+  // 支付配置
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
+    wechat_appid: '',
+    wechat_mchid: '',
+    wechat_secret: '',
+    wechat_api_key: '',
+    alipay_appid: '',
+    alipay_public_key: '',
+    alipay_private_key: '',
+  });
 
   // 菜单配置
   const menus: MenuItem[] = [
     { id: 'dashboard', label: '数据概览', icon: LayoutDashboard },
-    { id: 'orders', label: '订单管理', icon: FileText },
+    { id: 'orders', label: '订单管理', icon: FileText, badge: stats?.orders?.pending_count || 0 },
     { id: 'users', label: '用户管理', icon: Users },
     { id: 'teachers', label: '教师管理', icon: UserPlus },
     { id: 'orgs', label: '机构管理', icon: Building },
     { id: 'agents', label: '代理商管理', icon: MapPin },
+    { id: 'messages', label: '消息管理', icon: Bell },
+    { id: 'payment', label: '支付配置', icon: DollarSign },
+    { id: 'permissions', label: '角色权限', icon: Shield },
     { id: 'products', label: '商品管理', icon: ShoppingBag },
     { id: 'virtual', label: '资料管理', icon: BookOpen },
     { id: 'activities', label: '活动管理', icon: Calendar },
@@ -335,41 +369,11 @@ const AdminPage = () => {
   };
 
   const loadProducts = async () => {
-    try {
-      const res = await Network.request({
-        url: '/api/admin/products',
-        method: 'GET',
-      });
-      if (res.data?.list) {
-        setProducts(res.data.list);
-      }
-    } catch (error) {
-      console.error('加载商品失败:', error);
-      // 模拟数据
-      setProducts([
-        { id: 1, name: '小学数学思维训练', cover: '', price: 68, original_price: 99, stock: 100, sales: 256, category: '教材', is_active: 1 },
-        { id: 2, name: '英语口语学习机', cover: '', price: 299, original_price: 399, stock: 50, sales: 128, category: '教具', is_active: 1 },
-      ]);
-    }
+    // 商品数据在渲染时使用本地模拟
   };
 
   const loadBanners = async () => {
-    try {
-      const res = await Network.request({
-        url: '/api/admin/banners',
-        method: 'GET',
-      });
-      if (res.data) {
-        setBanners(res.data);
-      }
-    } catch (error) {
-      console.error('加载广告失败:', error);
-      // 模拟数据
-      setBanners([
-        { id: 1, position: 'home_top', title: '新用户福利', image_url: '', link_url: '/pages/membership/index', sort_order: 1, is_active: 1 },
-        { id: 2, position: 'home_middle', title: '邀请有礼', image_url: '', link_url: '/pages/distribution/index', sort_order: 2, is_active: 1 },
-      ]);
-    }
+    // 广告数据在渲染时使用本地模拟
   };
 
   const loadVirtualProducts = async () => {
@@ -807,88 +811,100 @@ const AdminPage = () => {
   );
 
   // 渲染商品管理
-  const renderProducts = () => (
-    <View className="admin-content">
-      <Card>
-        <CardHeader>
-          <View className="flex justify-between items-center">
-            <CardTitle>商品列表</CardTitle>
-            <Button size="sm">添加商品</Button>
-          </View>
-        </CardHeader>
-        <CardContent>
-          <View className="admin-table-header">
-            <Text className="admin-table-cell w-16">ID</Text>
-            <Text className="admin-table-cell flex-1">商品名称</Text>
-            <Text className="admin-table-cell w-24">价格</Text>
-            <Text className="admin-table-cell w-20">库存</Text>
-            <Text className="admin-table-cell w-20">销量</Text>
-            <Text className="admin-table-cell w-20">分类</Text>
-            <Text className="admin-table-cell w-20">状态</Text>
-            <Text className="admin-table-cell w-24">操作</Text>
-          </View>
-          {products.map((product) => (
-            <View key={product.id} className="admin-table-row">
-              <Text className="admin-table-cell w-16">{product.id}</Text>
-              <Text className="admin-table-cell flex-1">{product.name}</Text>
-              <Text className="admin-table-cell w-24">¥{product.price}</Text>
-              <Text className="admin-table-cell w-20">{product.stock}</Text>
-              <Text className="admin-table-cell w-20">{product.sales}</Text>
-              <Text className="admin-table-cell w-20">{product.category}</Text>
-              <View className="admin-table-cell w-20">
-                <Badge variant={product.is_active ? 'default' : 'secondary'}>
-                  <Text className="text-xs">{product.is_active ? '上架' : '下架'}</Text>
-                </Badge>
-              </View>
-              <View className="admin-table-cell w-24 flex gap-1">
-                <Button size="sm" variant="outline">编辑</Button>
-              </View>
+  const renderProducts = () => {
+    const productsList = [
+      { id: 1, name: '小学数学思维训练', price: 68, stock: 100, sales: 256, category: '教材', is_active: 1 },
+      { id: 2, name: '英语口语学习机', price: 299, stock: 50, sales: 128, category: '教具', is_active: 1 },
+    ];
+    return (
+      <View className="admin-content">
+        <Card>
+          <CardHeader>
+            <View className="flex justify-between items-center">
+              <CardTitle>商品列表</CardTitle>
+              <Button size="sm">添加商品</Button>
             </View>
-          ))}
-        </CardContent>
-      </Card>
-    </View>
-  );
+          </CardHeader>
+          <CardContent>
+            <View className="admin-table-header">
+              <Text className="admin-table-cell w-16">ID</Text>
+              <Text className="admin-table-cell flex-1">商品名称</Text>
+              <Text className="admin-table-cell w-24">价格</Text>
+              <Text className="admin-table-cell w-20">库存</Text>
+              <Text className="admin-table-cell w-20">销量</Text>
+              <Text className="admin-table-cell w-20">分类</Text>
+              <Text className="admin-table-cell w-20">状态</Text>
+              <Text className="admin-table-cell w-24">操作</Text>
+            </View>
+            {productsList.map((product) => (
+              <View key={product.id} className="admin-table-row">
+                <Text className="admin-table-cell w-16">{product.id}</Text>
+                <Text className="admin-table-cell flex-1">{product.name}</Text>
+                <Text className="admin-table-cell w-24">¥{product.price}</Text>
+                <Text className="admin-table-cell w-20">{product.stock}</Text>
+                <Text className="admin-table-cell w-20">{product.sales}</Text>
+                <Text className="admin-table-cell w-20">{product.category}</Text>
+                <View className="admin-table-cell w-20">
+                  <Badge variant={product.is_active ? 'default' : 'secondary'}>
+                    <Text className="text-xs">{product.is_active ? '上架' : '下架'}</Text>
+                  </Badge>
+                </View>
+                <View className="admin-table-cell w-24 flex gap-1">
+                  <Button size="sm" variant="outline">编辑</Button>
+                </View>
+              </View>
+            ))}
+          </CardContent>
+        </Card>
+      </View>
+    );
+  };
 
   // 渲染广告位管理
-  const renderBanners = () => (
-    <View className="admin-content">
-      <Card>
-        <CardHeader>
-          <View className="flex justify-between items-center">
-            <CardTitle>广告位管理</CardTitle>
-            <Button size="sm">添加广告</Button>
-          </View>
-        </CardHeader>
-        <CardContent>
-          <View className="admin-table-header">
-            <Text className="admin-table-cell w-16">ID</Text>
-            <Text className="admin-table-cell flex-1">标题</Text>
-            <Text className="admin-table-cell w-28">位置</Text>
-            <Text className="admin-table-cell w-20">排序</Text>
-            <Text className="admin-table-cell w-20">状态</Text>
-            <Text className="admin-table-cell w-24">操作</Text>
-          </View>
-          {banners.map((banner) => (
-            <View key={banner.id} className="admin-table-row">
-              <Text className="admin-table-cell w-16">{banner.id}</Text>
-              <Text className="admin-table-cell flex-1">{banner.title}</Text>
-              <Text className="admin-table-cell w-28">{banner.position === 'home_top' ? '首页顶部' : '首页中部'}</Text>
-              <Text className="admin-table-cell w-20">{banner.sort_order}</Text>
-              <View className="admin-table-cell w-20">
-                <Badge variant={banner.is_active ? 'default' : 'secondary'}>
-                  <Text className="text-xs">{banner.is_active ? '启用' : '禁用'}</Text>
-                </Badge>
-              </View>
-              <View className="admin-table-cell w-24 flex gap-1">
-                <Button size="sm" variant="outline">编辑</Button>
-              </View>
+  const renderBanners = () => {
+    const bannersList = [
+      { id: 1, position: 'home_top', title: '新用户福利', sort_order: 1, is_active: 1 },
+      { id: 2, position: 'home_middle', title: '邀请有礼', sort_order: 2, is_active: 1 },
+    ];
+    return (
+      <View className="admin-content">
+        <Card>
+          <CardHeader>
+            <View className="flex justify-between items-center">
+              <CardTitle>广告位管理</CardTitle>
+              <Button size="sm">添加广告</Button>
             </View>
-          ))}
-        </CardContent>
-      </Card>
-    </View>
-  );
+          </CardHeader>
+          <CardContent>
+            <View className="admin-table-header">
+              <Text className="admin-table-cell w-16">ID</Text>
+              <Text className="admin-table-cell flex-1">标题</Text>
+              <Text className="admin-table-cell w-28">位置</Text>
+              <Text className="admin-table-cell w-20">排序</Text>
+              <Text className="admin-table-cell w-20">状态</Text>
+              <Text className="admin-table-cell w-24">操作</Text>
+            </View>
+            {bannersList.map((banner) => (
+              <View key={banner.id} className="admin-table-row">
+                <Text className="admin-table-cell w-16">{banner.id}</Text>
+                <Text className="admin-table-cell flex-1">{banner.title}</Text>
+                <Text className="admin-table-cell w-28">{banner.position === 'home_top' ? '首页顶部' : '首页中部'}</Text>
+                <Text className="admin-table-cell w-20">{banner.sort_order}</Text>
+                <View className="admin-table-cell w-20">
+                  <Badge variant={banner.is_active ? 'default' : 'secondary'}>
+                    <Text className="text-xs">{banner.is_active ? '启用' : '禁用'}</Text>
+                  </Badge>
+                </View>
+                <View className="admin-table-cell w-24 flex gap-1">
+                  <Button size="sm" variant="outline">编辑</Button>
+                </View>
+              </View>
+            ))}
+          </CardContent>
+        </Card>
+      </View>
+    );
+  };
 
   // 渲染虚拟产品（资料）管理
   const renderVirtualProducts = () => (
@@ -1024,6 +1040,456 @@ const AdminPage = () => {
     </View>
   );
 
+  // 渲染订单管理
+  const renderOrders = () => (
+    <View className="admin-content">
+      {/* 筛选栏 */}
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <View className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: '全部' },
+              { key: 'pending', label: '待抢单' },
+              { key: 'matched', label: '已匹配' },
+              { key: 'trial', label: '试课中' },
+              { key: 'signed', label: '已签约' },
+              { key: 'completed', label: '已完成' },
+              { key: 'cancelled', label: '已取消' },
+            ].map((tab) => (
+              <View
+                key={tab.key}
+                className={`px-3 py-1 rounded-full ${orderStatus === tab.key ? 'bg-blue-500' : 'bg-gray-100'}`}
+                onClick={() => setOrderStatus(tab.key)}
+              >
+                <Text className={orderStatus === tab.key ? 'text-white' : 'text-gray-600'}>{tab.label}</Text>
+              </View>
+            ))}
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>订单列表</CardTitle></CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-24">订单号</Text>
+            <Text className="admin-table-cell flex-1">需求描述</Text>
+            <Text className="admin-table-cell w-20">家长</Text>
+            <Text className="admin-table-cell w-20">教师</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">创建时间</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {[
+            { id: 1, order_no: 'O20240321001', parent_name: '王家长', teacher_name: '张老师', subject: '高中数学', status: 'pending', amount: 200, created_at: '2024-03-21', address: '朝阳区', description: '需要高中数学辅导' },
+            { id: 2, order_no: 'O20240320002', parent_name: '李家长', teacher_name: '李老师', subject: '初中英语', status: 'matched', amount: 150, created_at: '2024-03-20', address: '海淀区', description: '英语口语提升' },
+            { id: 3, order_no: 'O20240319003', parent_name: '张家长', teacher_name: '王老师', subject: '高中物理', status: 'trial', amount: 180, created_at: '2024-03-19', address: '西城区', description: '物理竞赛辅导' },
+            { id: 4, order_no: 'O20240315004', parent_name: '赵家长', teacher_name: '刘老师', subject: '钢琴', status: 'signed', amount: 300, created_at: '2024-03-15', address: '东城区', description: '钢琴考级辅导' },
+          ].filter(o => orderStatus === 'all' || o.status === orderStatus).map((order) => {
+            const statusMap: Record<string, { label: string; className: string }> = {
+              pending: { label: '待抢单', className: 'bg-orange-100 text-orange-700' },
+              matched: { label: '已匹配', className: 'bg-blue-100 text-blue-700' },
+              trial: { label: '试课中', className: 'bg-purple-100 text-purple-700' },
+              signed: { label: '已签约', className: 'bg-green-100 text-green-700' },
+              completed: { label: '已完成', className: 'bg-gray-100 text-gray-600' },
+              cancelled: { label: '已取消', className: 'bg-red-100 text-red-600' },
+            };
+            const statusConfig = statusMap[order.status];
+            return (
+              <View key={order.id} className="admin-table-row">
+                <Text className="admin-table-cell w-24 text-xs">{order.order_no}</Text>
+                <Text className="admin-table-cell flex-1">{order.subject} - {order.description}</Text>
+                <Text className="admin-table-cell w-20">{order.parent_name}</Text>
+                <Text className="admin-table-cell w-20">{order.teacher_name || '-'}</Text>
+                <View className="admin-table-cell w-20">
+                  <Badge className={statusConfig.className}><Text className="text-xs">{statusConfig.label}</Text></Badge>
+                </View>
+                <Text className="admin-table-cell w-24 text-xs">{order.created_at}</Text>
+                <View className="admin-table-cell w-24">
+                  <Button size="sm" variant="outline">详情</Button>
+                </View>
+              </View>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>订单状态说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 待抢单：家长发布需求，等待教师抢单</Text>
+            <Text>• 已匹配：教师接单，双方建立联系</Text>
+            <Text>• 试课中：双方进行试课阶段</Text>
+            <Text>• 已签约：试课成功，正式签约合作</Text>
+            <Text>• 已完成：课程结束，订单完成</Text>
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染用户管理
+  const renderUsers = () => (
+    <View className="admin-content">
+      {/* 筛选栏 */}
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <View className="flex flex-wrap gap-2">
+            {[
+              { key: null, label: '全部' },
+              { key: 0, label: '家长' },
+              { key: 1, label: '教师' },
+              { key: 2, label: '机构' },
+            ].map((tab) => (
+              <View
+                key={tab.key ?? 'all'}
+                className={`px-3 py-1 rounded-full ${userRole === tab.key ? 'bg-blue-500' : 'bg-gray-100'}`}
+                onClick={() => setUserRole(tab.key)}
+              >
+                <Text className={userRole === tab.key ? 'text-white' : 'text-gray-600'}>{tab.label}</Text>
+              </View>
+            ))}
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>用户列表</CardTitle>
+            <Button size="sm">导出数据</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">昵称/手机</Text>
+            <Text className="admin-table-cell w-16">角色</Text>
+            <Text className="admin-table-cell w-20">会员状态</Text>
+            <Text className="admin-table-cell w-24">注册时间</Text>
+            <Text className="admin-table-cell w-24">最后登录</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {[
+            { id: 1, nickname: '张三', phone: '138****8888', role: 0, is_member: true, member_expire: '2024-06-15', created_at: '2024-01-15', last_login: '2024-03-21', status: 1 },
+            { id: 2, nickname: '李老师', phone: '139****9999', role: 1, is_member: true, member_expire: '2024-12-31', created_at: '2024-02-20', last_login: '2024-03-21', status: 1 },
+            { id: 3, nickname: '王教育', phone: '137****7777', role: 2, is_member: false, created_at: '2024-03-01', last_login: '2024-03-20', status: 1 },
+            { id: 4, nickname: '赵家长', phone: '136****6666', role: 0, is_member: false, created_at: '2024-03-10', last_login: '2024-03-19', status: 1 },
+          ].filter(u => userRole === null || u.role === userRole).map((user) => (
+            <View key={user.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{user.id}</Text>
+              <View className="admin-table-cell flex-1">
+                <Text>{user.nickname}</Text>
+                <Text className="text-xs text-gray-400">{user.phone}</Text>
+              </View>
+              <Text className="admin-table-cell w-16">{['家长', '教师', '机构'][user.role]}</Text>
+              <View className="admin-table-cell w-20">
+                {user.is_member ? (
+                  <Badge className="bg-yellow-100 text-yellow-700"><Text className="text-xs">会员</Text></Badge>
+                ) : (
+                  <Text className="text-xs text-gray-400">普通</Text>
+                )}
+              </View>
+              <Text className="admin-table-cell w-24 text-xs">{user.created_at}</Text>
+              <Text className="admin-table-cell w-24 text-xs">{user.last_login}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge className={user.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}>
+                  <Text className="text-xs">{user.status ? '正常' : '禁用'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">详情</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <View className="grid grid-cols-3 gap-4 mt-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-gray-500">家长总数</Text>
+            <Text className="text-2xl font-bold mt-2">2,158</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-gray-500">教师总数</Text>
+            <Text className="text-2xl font-bold mt-2">328</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-gray-500">会员用户</Text>
+            <Text className="text-2xl font-bold mt-2 text-blue-500">856</Text>
+          </CardContent>
+        </Card>
+      </View>
+    </View>
+  );
+
+  // 渲染代理商管理
+  const renderAgents = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>代理商列表</CardTitle>
+            <Button size="sm">添加代理商</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">姓名/手机</Text>
+            <Text className="admin-table-cell w-20">代理城市</Text>
+            <Text className="admin-table-cell w-16">分佣比例</Text>
+            <Text className="admin-table-cell w-20">订单数</Text>
+            <Text className="admin-table-cell w-24">累计佣金</Text>
+            <Text className="admin-table-cell w-24">已结算</Text>
+            <Text className="admin-table-cell w-20">状态</Text>
+            <Text className="admin-table-cell w-24">操作</Text>
+          </View>
+          {[
+            { id: 1, name: '张代理', phone: '138****8888', city: '北京', rate: 5, total_orders: 156, total_commission: 12500, settled_commission: 10000, status: 1, created_at: '2024-01-01' },
+            { id: 2, name: '李代理', phone: '139****9999', city: '上海', rate: 5, total_orders: 98, total_commission: 8600, settled_commission: 7200, status: 1, created_at: '2024-02-01' },
+            { id: 3, name: '王代理', phone: '137****7777', city: '广州', rate: 5, total_orders: 67, total_commission: 5800, settled_commission: 4500, status: 1, created_at: '2024-02-15' },
+          ].map((agent) => (
+            <View key={agent.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{agent.id}</Text>
+              <View className="admin-table-cell flex-1">
+                <Text>{agent.name}</Text>
+                <Text className="text-xs text-gray-400">{agent.phone}</Text>
+              </View>
+              <Text className="admin-table-cell w-20">{agent.city}</Text>
+              <Text className="admin-table-cell w-16">{agent.rate}%</Text>
+              <Text className="admin-table-cell w-20">{agent.total_orders}</Text>
+              <Text className="admin-table-cell w-24 text-orange-500">¥{agent.total_commission}</Text>
+              <Text className="admin-table-cell w-24 text-green-600">¥{agent.settled_commission}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge className={agent.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}>
+                  <Text className="text-xs">{agent.status ? '正常' : '禁用'}</Text>
+                </Badge>
+              </View>
+              <View className="admin-table-cell w-24 flex gap-1">
+                <Button size="sm" variant="outline">编辑</Button>
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>代理商说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 代理商可获得其代理城市内所有订单的5%分佣</Text>
+            <Text>• 佣金在订单完成后自动结算到代理商账户</Text>
+            <Text>• 代理商可申请提现，审核后打款</Text>
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染支付配置
+  const renderPayment = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader><CardTitle>微信支付配置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">AppID</Text>
+              <View className="flex-1">
+                <Input placeholder="微信支付AppID" value={paymentConfig.wechat_appid} onInput={(e) => setPaymentConfig({ ...paymentConfig, wechat_appid: e.detail.value })} />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">商户号</Text>
+              <View className="flex-1">
+                <Input placeholder="微信支付商户号" value={paymentConfig.wechat_mchid} onInput={(e) => setPaymentConfig({ ...paymentConfig, wechat_mchid: e.detail.value })} />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">AppSecret</Text>
+              <View className="flex-1">
+                <Input placeholder="微信AppSecret" value={paymentConfig.wechat_secret} onInput={(e) => setPaymentConfig({ ...paymentConfig, wechat_secret: e.detail.value })} />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">API密钥</Text>
+              <View className="flex-1">
+                <Input placeholder="微信支付API密钥" value={paymentConfig.wechat_api_key} onInput={(e) => setPaymentConfig({ ...paymentConfig, wechat_api_key: e.detail.value })} />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>支付宝配置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">AppID</Text>
+              <View className="flex-1">
+                <Input placeholder="支付宝AppID" value={paymentConfig.alipay_appid} onInput={(e) => setPaymentConfig({ ...paymentConfig, alipay_appid: e.detail.value })} />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">公钥</Text>
+              <View className="flex-1">
+                <Input placeholder="支付宝公钥" value={paymentConfig.alipay_public_key} onInput={(e) => setPaymentConfig({ ...paymentConfig, alipay_public_key: e.detail.value })} />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-28 text-gray-600">私钥</Text>
+              <View className="flex-1">
+                <Input placeholder="应用私钥" value={paymentConfig.alipay_private_key} onInput={(e) => setPaymentConfig({ ...paymentConfig, alipay_private_key: e.detail.value })} />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <View className="mt-4">
+        <Button onClick={() => Taro.showToast({ title: '保存成功', icon: 'success' })}>保存配置</Button>
+      </View>
+    </View>
+  );
+
+  // 渲染消息管理
+  const renderMessages = () => (
+    <View className="admin-content">
+      <Card>
+        <CardHeader>
+          <View className="flex justify-between items-center">
+            <CardTitle>聊天记录查询</CardTitle>
+            <Button size="sm">导出记录</Button>
+          </View>
+        </CardHeader>
+        <CardContent>
+          <View className="admin-table-header">
+            <Text className="admin-table-cell w-16">ID</Text>
+            <Text className="admin-table-cell flex-1">内容</Text>
+            <Text className="admin-table-cell w-24">发送方</Text>
+            <Text className="admin-table-cell w-24">接收方</Text>
+            <Text className="admin-table-cell w-20">类型</Text>
+            <Text className="admin-table-cell w-28">时间</Text>
+          </View>
+          {[
+            { id: 1, from_user: '张老师', to_user: '王家长', content: '您好，请问孩子现在的学习情况怎么样？', msg_type: 'text', created_at: '2024-03-21 16:30' },
+            { id: 2, from_user: '王家长', to_user: '张老师', content: '孩子数学基础还可以，就是函数部分比较薄弱', msg_type: 'text', created_at: '2024-03-21 16:32' },
+            { id: 3, from_user: '张老师', to_user: '王家长', content: '好的，我会重点讲解函数', msg_type: 'text', created_at: '2024-03-21 16:33' },
+            { id: 4, from_user: '系统', to_user: '王家长', content: '您的会员即将到期，续费可享8折优惠', msg_type: 'system', created_at: '2024-03-21 10:00' },
+          ].map((msg) => (
+            <View key={msg.id} className="admin-table-row">
+              <Text className="admin-table-cell w-16">{msg.id}</Text>
+              <Text className="admin-table-cell flex-1 text-sm">{msg.content.substring(0, 30)}...</Text>
+              <Text className="admin-table-cell w-24">{msg.from_user}</Text>
+              <Text className="admin-table-cell w-24">{msg.to_user}</Text>
+              <View className="admin-table-cell w-20">
+                <Badge className={msg.msg_type === 'system' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}>
+                  <Text className="text-xs">{msg.msg_type === 'system' ? '系统' : '聊天'}</Text>
+                </Badge>
+              </View>
+              <Text className="admin-table-cell w-28 text-xs">{msg.created_at}</Text>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  // 渲染角色权限管理
+  const renderPermissions = () => (
+    <View className="admin-content">
+      <View className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <View className="flex justify-between items-center">
+              <CardTitle>角色管理</CardTitle>
+              <Button size="sm">添加角色</Button>
+            </View>
+          </CardHeader>
+          <CardContent>
+            <View className="flex flex-col gap-3">
+              {[
+                { id: 1, name: '超级管理员', permissions: ['全部权限'], user_count: 1 },
+                { id: 2, name: '运营管理', permissions: ['订单管理', '用户管理', '活动管理'], user_count: 3 },
+                { id: 3, name: '客服', permissions: ['订单查看', '用户查看', '消息管理'], user_count: 5 },
+                { id: 4, name: '财务管理', permissions: ['订单查看', '支付配置', '佣金管理'], user_count: 2 },
+              ].map((role) => (
+                <View key={role.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <View>
+                    <Text className="font-semibold">{role.name}</Text>
+                    <Text className="text-xs text-gray-400 mt-1">{role.permissions.join('、')}</Text>
+                  </View>
+                  <View className="flex items-center gap-2">
+                    <Text className="text-xs text-gray-500">{role.user_count}人</Text>
+                    <Button size="sm" variant="outline">编辑</Button>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <View className="flex justify-between items-center">
+              <CardTitle>管理账号</CardTitle>
+              <Button size="sm">添加账号</Button>
+            </View>
+          </CardHeader>
+          <CardContent>
+            <View className="admin-table-header text-sm">
+              <Text className="admin-table-cell flex-1">账号</Text>
+              <Text className="admin-table-cell w-24">角色</Text>
+              <Text className="admin-table-cell w-28">最后登录</Text>
+              <Text className="admin-table-cell w-20">状态</Text>
+            </View>
+            {[
+              { id: 1, username: 'admin', nickname: '超级管理员', role: '超级管理员', last_login: '2024-03-21 16:00', status: 1 },
+              { id: 2, username: 'operator1', nickname: '运营小王', role: '运营管理', last_login: '2024-03-21 15:30', status: 1 },
+              { id: 3, username: 'service1', nickname: '客服小李', role: '客服', last_login: '2024-03-21 14:00', status: 1 },
+              { id: 4, username: 'finance1', nickname: '财务小张', role: '财务管理', last_login: '2024-03-20 18:00', status: 1 },
+            ].map((account) => (
+              <View key={account.id} className="admin-table-row text-sm">
+                <View className="admin-table-cell flex-1">
+                  <Text>{account.nickname}</Text>
+                  <Text className="text-xs text-gray-400">{account.username}</Text>
+                </View>
+                <Text className="admin-table-cell w-24">{account.role}</Text>
+                <Text className="admin-table-cell w-28 text-xs">{account.last_login}</Text>
+                <View className="admin-table-cell w-20">
+                  <Badge className={account.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}>
+                    <Text className="text-xs">{account.status ? '正常' : '禁用'}</Text>
+                  </Badge>
+                </View>
+              </View>
+            ))}
+          </CardContent>
+        </Card>
+      </View>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>权限说明</CardTitle></CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-2 text-sm text-gray-600">
+            <Text>• 超级管理员：拥有所有权限，可管理其他管理员</Text>
+            <Text>• 运营管理：可管理订单、用户、活动等业务数据</Text>
+            <Text>• 客服：可查看订单和用户信息，处理用户咨询</Text>
+            <Text>• 财务管理：可查看订单和支付相关数据</Text>
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
   return (
     <View className="admin-layout">
       {/* 侧边栏 */}
@@ -1089,11 +1555,14 @@ const AdminPage = () => {
             {currentMenu === 'virtual' && renderVirtualProducts()}
             {currentMenu === 'activities' && renderActivities()}
             {currentMenu === 'banners' && renderBanners()}
-            {currentMenu === 'orders' && renderPlaceholder('订单管理')}
-            {currentMenu === 'users' && renderPlaceholder('用户管理')}
+            {currentMenu === 'orders' && renderOrders()}
+            {currentMenu === 'users' && renderUsers()}
             {currentMenu === 'teachers' && renderPlaceholder('教师管理')}
             {currentMenu === 'orgs' && renderPlaceholder('机构管理')}
-            {currentMenu === 'agents' && renderPlaceholder('代理商管理')}
+            {currentMenu === 'agents' && renderAgents()}
+            {currentMenu === 'messages' && renderMessages()}
+            {currentMenu === 'payment' && renderPayment()}
+            {currentMenu === 'permissions' && renderPermissions()}
           </>
         )}
       </View>

@@ -3,7 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bell, MessageCircle, FileText, User, Calendar } from 'lucide-react-taro';
+import { Bell, MessageCircle, FileText, User, Calendar, ChevronRight } from 'lucide-react-taro';
 import './index.css';
 
 interface ChatMessage {
@@ -26,6 +26,9 @@ interface SystemMessage {
   content: string;
   time: string;
   unread: boolean;
+  actionUrl?: string; // 点击跳转地址
+  actionType?: 'order' | 'membership' | 'teacher' | 'activity'; // 跳转类型
+  actionId?: number; // 相关ID
 }
 
 type Message = ChatMessage | SystemMessage;
@@ -77,7 +80,9 @@ const MessagePage = () => {
           title: '系统通知',
           content: '您有新的订单待处理',
           time: '1小时前',
-          unread: false,
+          unread: true,
+          actionUrl: '/pages/orders/index',
+          actionType: 'order',
         },
         {
           id: 4,
@@ -97,6 +102,9 @@ const MessagePage = () => {
           content: '您接单的【数学辅导】订单已完成试课',
           time: '2天前',
           unread: false,
+          actionUrl: '/pages/orders/index',
+          actionType: 'order',
+          actionId: 5,
         },
       ];
     } else {
@@ -131,7 +139,9 @@ const MessagePage = () => {
           title: '系统通知',
           content: '您的会员即将到期，续费可享8折优惠',
           time: '1小时前',
-          unread: false,
+          unread: true,
+          actionUrl: '/pages/membership/index',
+          actionType: 'membership',
         },
         {
           id: 4,
@@ -152,6 +162,9 @@ const MessagePage = () => {
           content: '您发布的【英语辅导】需求已被李老师接单',
           time: '2天前',
           unread: false,
+          actionUrl: '/pages/orders/index',
+          actionType: 'order',
+          actionId: 5,
         },
         {
           id: 6,
@@ -160,6 +173,19 @@ const MessagePage = () => {
           content: '发现一位数学优秀教师，距离您仅500米',
           time: '3天前',
           unread: false,
+          actionUrl: '/pages/teacher-detail/index?id=301',
+          actionType: 'teacher',
+          actionId: 301,
+        },
+        {
+          id: 7,
+          type: 'system',
+          title: '活动通知',
+          content: '北京四中探校活动即将开始，立即报名',
+          time: '5天前',
+          unread: false,
+          actionUrl: '/pages/activities/index',
+          actionType: 'activity',
         },
       ];
     }
@@ -174,6 +200,13 @@ const MessagePage = () => {
         if (activeTab === 'system') return m.type !== 'chat';
         return true;
       });
+
+  // 计算未读数量
+  const unreadCount = {
+    all: messages.filter(m => m.unread).length,
+    chat: messages.filter(m => m.type === 'chat' && m.unread).length,
+    system: messages.filter(m => m.type !== 'chat' && m.unread).length,
+  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -191,6 +224,12 @@ const MessagePage = () => {
     });
   };
 
+  const handleSystemClick = (msg: SystemMessage) => {
+    if (msg.actionUrl) {
+      Taro.navigateTo({ url: msg.actionUrl });
+    }
+  };
+
   const getActionTag = (lastAction?: string) => {
     if (lastAction === 'contact_request') {
       return <Badge className="bg-green-100 text-green-600 text-xs ml-2">交换联系方式</Badge>;
@@ -201,11 +240,21 @@ const MessagePage = () => {
     return null;
   };
 
+  const getActionLabel = (actionType?: string) => {
+    const labels: Record<string, string> = {
+      order: '查看订单',
+      membership: '立即续费',
+      teacher: '查看教师',
+      activity: '查看活动',
+    };
+    return labels[actionType || ''] || '查看详情';
+  };
+
   return (
     <View className="min-h-screen bg-gray-50">
       {/* Tab 切换 - 聊天放前面 */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
-        <View className="flex flex-row gap-4">
+        <View className="flex flex-row gap-6">
           {[
             { key: 'all', label: '全部' },
             { key: 'chat', label: '聊天' },
@@ -213,12 +262,21 @@ const MessagePage = () => {
           ].map((tab) => (
             <View
               key={tab.key}
-              className={`pb-2 ${activeTab === tab.key ? 'border-b-2 border-blue-500' : ''}`}
+              className={`pb-2 flex items-center ${activeTab === tab.key ? 'border-b-2 border-blue-500' : ''}`}
               onClick={() => setActiveTab(tab.key as any)}
             >
               <Text className={activeTab === tab.key ? 'text-blue-500 font-semibold' : 'text-gray-600'}>
                 {tab.label}
               </Text>
+              {unreadCount[tab.key as keyof typeof unreadCount] > 0 && (
+                <View className="ml-1 min-w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center">
+                  <Text className="text-white text-xs">
+                    {unreadCount[tab.key as keyof typeof unreadCount] > 99 
+                      ? '99+' 
+                      : unreadCount[tab.key as keyof typeof unreadCount]}
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
         </View>
@@ -247,17 +305,29 @@ const MessagePage = () => {
               return (
                 <Card 
                   key={msg.id} 
-                  className="bg-white"
-                  onClick={() => isChat ? handleChatClick(msg as ChatMessage) : undefined}
+                  className={`bg-white ${msg.unread ? 'border-l-4 border-l-red-500' : ''}`}
+                  onClick={() => isChat ? handleChatClick(msg as ChatMessage) : handleSystemClick(msg as SystemMessage)}
                 >
                   <CardContent className="p-4">
                     <View className="flex flex-row">
                       {/* 头像/图标 */}
                       {isChat && (msg as ChatMessage).avatar ? (
-                        <Image src={(msg as ChatMessage).avatar!} className="w-12 h-12 rounded-full" />
+                        <View className="relative">
+                          <Image src={(msg as ChatMessage).avatar!} className="w-12 h-12 rounded-full" />
+                          {msg.unread && (
+                            <View className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center">
+                              <Text className="text-white text-xs">1</Text>
+                            </View>
+                          )}
+                        </View>
                       ) : (
-                        <View className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                          <Icon size={24} color="#2563EB" />
+                        <View className={`w-12 h-12 rounded-full flex items-center justify-center ${msg.unread ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                          <Icon size={24} color={msg.unread ? '#2563EB' : '#9CA3AF'} />
+                          {msg.unread && (
+                            <View className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center">
+                              <Text className="text-white text-xs">1</Text>
+                            </View>
+                          )}
                         </View>
                       )}
                       
@@ -265,18 +335,33 @@ const MessagePage = () => {
                       <View className="flex-1 ml-3">
                         <View className="flex flex-row items-center justify-between">
                           <View className="flex items-center">
-                            <Text className="font-semibold">{msg.title}</Text>
+                            <Text className={`font-semibold ${msg.unread ? 'text-black' : 'text-gray-700'}`}>
+                              {msg.title}
+                            </Text>
                             {isChat && getActionTag((msg as ChatMessage).lastAction)}
+                            {msg.unread && (
+                              <View className="ml-2 w-2 h-2 rounded-full bg-red-500" />
+                            )}
                           </View>
                           <Text className="text-xs text-gray-400">{msg.time}</Text>
                         </View>
-                        <Text className="text-sm text-gray-500 mt-1 line-clamp-2">{msg.content}</Text>
+                        <View className="flex items-center justify-between mt-1">
+                          <Text className={`text-sm flex-1 ${msg.unread ? 'text-gray-800' : 'text-gray-500'} line-clamp-2`}>
+                            {msg.content}
+                          </Text>
+                          {!isChat && (msg as SystemMessage).actionUrl && (
+                            <ChevronRight size={16} color="#9CA3AF" className="ml-2 flex-shrink-0" />
+                          )}
+                        </View>
+                        {/* 系统消息的操作按钮 */}
+                        {!isChat && (msg as SystemMessage).actionUrl && (
+                          <View className="mt-2 flex justify-end">
+                            <Badge className="bg-blue-50 text-blue-600">
+                              <Text className="text-xs">{getActionLabel((msg as SystemMessage).actionType)}</Text>
+                            </Badge>
+                          </View>
+                        )}
                       </View>
-
-                      {/* 未读标记 */}
-                      {msg.unread && (
-                        <View className="w-2 h-2 rounded-full bg-red-500 ml-2 mt-2" />
-                      )}
                     </View>
                   </CardContent>
                 </Card>

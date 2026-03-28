@@ -40,6 +40,14 @@ export default defineAppConfig({
     'pages/activity-detail/index',
     // 活动列表
     'pages/activities/index',
+    // 收藏教师（家长端）
+    'pages/favorites/index',
+    // 学员管理（教师端）
+    'pages/students/index',
+    // 收益中心（教师端）
+    'pages/earnings/index',
+    // 设置页面
+    'pages/settings/index',
   ],
   window: {
     backgroundTextStyle: 'light',
