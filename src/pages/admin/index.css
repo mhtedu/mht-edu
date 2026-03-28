@@ -1,11 +1,28 @@
 /* PC管理后台样式 - 专为PC端优化 */
 
+/* ========== 重要：PC端全局重置 ========== */
+/* 覆盖Taro默认的移动端样式 */
+page {
+  background-color: #f5f7fa !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+}
+
+/* 强制PC端布局 */
+.taro-page {
+  min-height: 100vh !important;
+  background: #f5f7fa !important;
+}
+
 /* 整体布局 */
 .admin-layout {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  background-color: #f5f7fa;
+  display: flex !important;
+  flex-direction: row !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  background-color: #f5f7fa !important;
+  position: relative !important;
 }
 
 /* 左侧菜单栏 */
