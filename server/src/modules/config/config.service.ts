@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/typeorm';
-import { Connection } from 'mysql2/promise';
+import * as db from '@/storage/database/mysql-client';
 
 @Injectable()
 export class ConfigService {
@@ -8,11 +7,9 @@ export class ConfigService {
   private cacheTime: number = 0;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
 
-  constructor(@InjectConnection() private connection: Connection) {}
-
   // 获取所有配置
   async getAllConfig() {
-    const [rows] = await this.connection.execute(
+    const [rows] = await db.query(
       'SELECT * FROM site_config ORDER BY config_group, sort_order'
     );
     return rows;
@@ -20,7 +17,7 @@ export class ConfigService {
 
   // 按分组获取配置
   async getConfigByGroup(group: string) {
-    const [rows] = await this.connection.execute(
+    const [rows] = await db.query(
       'SELECT * FROM site_config WHERE config_group = ? ORDER BY sort_order',
       [group]
     );
@@ -34,7 +31,7 @@ export class ConfigService {
       return { key, value: this.configCache.get(key) };
     }
 
-    const [rows]: any = await this.connection.execute(
+    const [rows]: any = await db.query(
       'SELECT config_value FROM site_config WHERE config_key = ?',
       [key]
     );
@@ -64,7 +61,7 @@ export class ConfigService {
 
   // 更新单个配置
   async updateConfig(key: string, value: string) {
-    await this.connection.execute(
+    await db.update(
       'UPDATE site_config SET config_value = ? WHERE config_key = ?',
       [value, key]
     );
@@ -77,7 +74,7 @@ export class ConfigService {
 
   // 批量更新配置
   async batchUpdateConfig(configs: { key: string; value: string }[]) {
-    const conn = await this.connection;
+    const conn = await db.getConnection();
     await conn.beginTransaction();
 
     try {
@@ -96,6 +93,8 @@ export class ConfigService {
     } catch (error) {
       await conn.rollback();
       throw error;
+    } finally {
+      conn.release();
     }
   }
 
@@ -110,7 +109,7 @@ export class ConfigService {
       'contact_wechat',
     ];
 
-    const [rows]: any = await this.connection.execute(
+    const [rows]: any = await db.query(
       `SELECT config_key, config_value FROM site_config WHERE config_key IN (${publicKeys.map(() => '?').join(',')})`,
       publicKeys
     );
@@ -125,7 +124,7 @@ export class ConfigService {
 
   // 获取微信支付配置
   async getWechatPayConfig() {
-    const [rows]: any = await this.connection.execute(
+    const [rows]: any = await db.query(
       `SELECT config_key, config_value FROM site_config 
        WHERE config_key IN ('wechat_appid', 'wechat_mch_id', 'wechat_pay_key', 'wechat_pay_cert', 'wechat_pay_key_pem')`
     );

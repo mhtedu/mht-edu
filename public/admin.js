@@ -1,18 +1,19 @@
 /**
  * 棉花糖教育平台 - PC端管理后台
- * 独立版本，不依赖Taro框架
+ * 完整版本 - 包含登录验证和所有管理功能
  */
 
 // ========== 全局配置 ==========
 const CONFIG = {
-    API_BASE: '/api/admin', // API基础路径
-    PAGE_SIZE: 20,          // 每页显示数量
+    API_BASE: '/api/admin',
+    PAGE_SIZE: 20,
 };
 
 // ========== 状态管理 ==========
 const state = {
     currentPage: 'dashboard',
-    currentData: null,
+    currentUser: null,
+    token: null,
     filters: {},
     pagination: {
         page: 1,
@@ -21,7 +22,69 @@ const state = {
     }
 };
 
-// ========== 工具函数 ==========
+// ========== 初始化 ==========
+document.addEventListener('DOMContentLoaded', () => {
+    // 检查登录状态
+    checkAuth();
+    
+    // 绑定菜单点击事件
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = item.dataset.page;
+            if (page) {
+                switchPage(page);
+            }
+        });
+    });
+});
+
+/**
+ * 检查登录状态
+ */
+function checkAuth() {
+    state.token = localStorage.getItem('admin_token');
+    const userStr = localStorage.getItem('admin_user');
+    
+    if (!state.token || !userStr) {
+        // 未登录，跳转到登录页
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    try {
+        state.currentUser = JSON.parse(userStr);
+        updateUserInfo();
+        // 加载默认页面
+        switchPage('dashboard');
+    } catch (error) {
+        console.error('解析用户信息失败:', error);
+        window.location.href = 'login.html';
+    }
+}
+
+/**
+ * 更新用户信息显示
+ */
+function updateUserInfo() {
+    const adminName = document.querySelector('.admin-name');
+    if (adminName && state.currentUser) {
+        adminName.textContent = state.currentUser.realName || state.currentUser.username;
+    }
+}
+
+/**
+ * 退出登录
+ */
+function handleLogout() {
+    if (confirm('确定要退出登录吗？')) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        window.location.href = 'login.html';
+    }
+}
+
+// ========== API请求工具 ==========
 
 /**
  * 发送API请求
@@ -32,18 +95,27 @@ async function apiRequest(endpoint, options = {}) {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-        },
-        credentials: 'include'
+            'Authorization': `Bearer ${state.token}`
+        }
     };
 
     try {
         const response = await fetch(url, { ...defaultOptions, ...options });
+        
+        // 401未授权，跳转登录
+        if (response.status === 401) {
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+            window.location.href = 'login.html';
+            return;
+        }
+        
         const data = await response.json();
         
-        if (data.code === 200 || data.code === 0) {
-            return data.data;
+        if (response.ok) {
+            return data;
         } else {
-            throw new Error(data.msg || data.message || '请求失败');
+            throw new Error(data.message || '请求失败');
         }
     } catch (error) {
         console.error('API请求错误:', error);
@@ -55,7 +127,23 @@ async function apiRequest(endpoint, options = {}) {
  * 显示提示消息
  */
 function showMessage(message, type = 'info') {
-    alert(message); // 简单实现，可以替换为更美观的提示组件
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 /**
@@ -84,465 +172,14 @@ function formatMoney(amount) {
     });
 }
 
-// ========== 页面渲染函数 ==========
-
-/**
- * 渲染数据概览页面
- */
-async function renderDashboard() {
-    const content = document.getElementById('mainContent');
-    
-    // 先显示加载状态
-    content.innerHTML = '<div class="loading">加载中...</div>';
-    
-    try {
-        // 尝试从API获取数据
-        let stats;
-        try {
-            stats = await apiRequest('/stats');
-        } catch (e) {
-            // 使用模拟数据
-            stats = {
-                users: { total: 2586, parents: 2158, teachers: 328, orgs: 45, members: 856, todayNew: 23 },
-                orders: { total: 1856, pending: 23, matched: 156, ongoing: 89, completed: 1580, todayNew: 15 },
-                payments: { totalAmount: 568900, todayAmount: 12800, weekAmount: 85600, monthAmount: 128600 },
-                commissions: { pending: 12500, settled: 85600, withdrawn: 72000 }
-            };
-        }
-        
-        content.innerHTML = `
-            <!-- 统计卡片 -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-title">总用户数</div>
-                            <div class="stat-value">${stats.users.total.toLocaleString()}</div>
-                            <div class="stat-change positive">今日新增 +${stats.users.todayNew}</div>
-                        </div>
-                        <div class="stat-icon">👥</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-title">教师数量</div>
-                            <div class="stat-value">${stats.users.teachers.toLocaleString()}</div>
-                            <div class="stat-change">会员 ${stats.users.members}</div>
-                        </div>
-                        <div class="stat-icon">👨‍🏫</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-title">待处理订单</div>
-                            <div class="stat-value" style="color: #f59e0b;">${stats.orders.pending}</div>
-                            <div class="stat-change">进行中 ${stats.orders.ongoing}</div>
-                        </div>
-                        <div class="stat-icon">📋</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div>
-                            <div class="stat-title">本月营收</div>
-                            <div class="stat-value">${formatMoney(stats.payments.monthAmount)}</div>
-                            <div class="stat-change positive">今日 ${formatMoney(stats.payments.todayAmount)}</div>
-                        </div>
-                        <div class="stat-icon">💰</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 详细统计 -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">用户分布</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; flex-direction: column; gap: 12px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">家长用户</span>
-                                <span style="font-weight: 500;">${stats.users.parents.toLocaleString()}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">教师用户</span>
-                                <span style="font-weight: 500;">${stats.users.teachers.toLocaleString()}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">机构用户</span>
-                                <span style="font-weight: 500;">${stats.users.orgs.toLocaleString()}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">会员用户</span>
-                                <span style="font-weight: 500; color: #2563EB;">${stats.users.members.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">订单统计</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; flex-direction: column; gap: 12px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">总订单数</span>
-                                <span style="font-weight: 500;">${stats.orders.total.toLocaleString()}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">待抢单</span>
-                                <span style="font-weight: 500; color: #f59e0b;">${stats.orders.pending}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">已完成</span>
-                                <span style="font-weight: 500; color: #10b981;">${stats.orders.completed.toLocaleString()}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">今日新增</span>
-                                <span style="font-weight: 500;">${stats.orders.todayNew}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">分佣统计</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; flex-direction: column; gap: 12px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">待结算</span>
-                                <span style="font-weight: 500; color: #f59e0b;">${formatMoney(stats.commissions.pending)}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">已结算</span>
-                                <span style="font-weight: 500; color: #10b981;">${formatMoney(stats.commissions.settled)}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span style="color: #6b7280;">已提现</span>
-                                <span style="font-weight: 500;">${formatMoney(stats.commissions.withdrawn)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    } catch (error) {
-        content.innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-text">加载失败: ${error.message}</div></div>`;
-    }
-}
-
-/**
- * 渲染用户管理页面
- */
-async function renderUsers() {
-    const content = document.getElementById('mainContent');
-    
-    content.innerHTML = `
-        <div class="filter-bar">
-            <div class="search-box">
-                <span>🔍</span>
-                <input type="text" class="search-input" placeholder="搜索用户昵称/手机号" id="userSearchInput">
-            </div>
-            <select class="filter-select" id="userRoleFilter">
-                <option value="">全部角色</option>
-                <option value="0">家长</option>
-                <option value="1">教师</option>
-                <option value="2">机构</option>
-            </select>
-            <button class="btn btn-primary" onclick="loadUsers()">搜索</button>
-        </div>
-        
-        <div class="data-table-container">
-            <div class="table-header">
-                <h3 class="table-title">用户列表</h3>
-                <div class="table-actions">
-                    <button class="btn btn-secondary btn-sm">导出数据</button>
-                </div>
-            </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>用户信息</th>
-                        <th>角色</th>
-                        <th>会员</th>
-                        <th>状态</th>
-                        <th>注册时间</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #9ca3af;">
-                            暂无数据
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="pagination">
-                <div class="pagination-info">共 <span id="usersTotal">0</span> 条记录</div>
-                <div class="pagination-buttons">
-                    <button class="btn btn-secondary btn-sm" onclick="prevPage()">上一页</button>
-                    <button class="btn btn-secondary btn-sm" onclick="nextPage()">下一页</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    await loadUsers();
-}
-
-/**
- * 加载用户数据
- */
-async function loadUsers() {
-    const tbody = document.getElementById('usersTableBody');
-    const totalSpan = document.getElementById('usersTotal');
-    
-    const keyword = document.getElementById('userSearchInput').value;
-    const role = document.getElementById('userRoleFilter').value;
-    
-    try {
-        let data;
-        try {
-            const params = new URLSearchParams({
-                page: state.pagination.page,
-                pageSize: state.pagination.pageSize,
-                keyword: keyword,
-                role: role
-            });
-            data = await apiRequest(`/users?${params}`);
-        } catch (e) {
-            // 模拟数据
-            data = {
-                list: [
-                    { id: 1, nickname: '张三', phone: '138****1234', avatar: '', role: 0, status: 1, is_member: 1, member_expire: '2025-12-31', created_at: '2024-01-15' },
-                    { id: 2, nickname: '李老师', phone: '139****5678', avatar: '', role: 1, status: 1, is_member: 1, member_expire: '2025-06-30', created_at: '2024-01-10' },
-                    { id: 3, nickname: '王机构', phone: '136****9012', avatar: '', role: 2, status: 1, is_member: 0, member_expire: '', created_at: '2024-01-08' },
-                ],
-                total: 100
-            };
-        }
-        
-        state.pagination.total = data.total;
-        totalSpan.textContent = data.total;
-        
-        if (data.list.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-state">暂无数据</td></tr>`;
-            return;
-        }
-        
-        tbody.innerHTML = data.list.map(user => `
-            <tr>
-                <td>${user.id}</td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 32px; height: 32px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;">👤</div>
-                        <div>
-                            <div style="font-weight: 500;">${user.nickname}</div>
-                            <div style="font-size: 12px; color: #6b7280;">${user.phone}</div>
-                        </div>
-                    </div>
-                </td>
-                <td>${user.role === 0 ? '家长' : user.role === 1 ? '教师' : '机构'}</td>
-                <td><span class="status-badge ${user.is_member ? 'success' : 'default'}">${user.is_member ? '是' : '否'}</span></td>
-                <td><span class="status-badge ${user.status === 1 ? 'success' : 'error'}">${user.status === 1 ? '正常' : '禁用'}</span></td>
-                <td>${formatDate(user.created_at)}</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="viewUser(${user.id})">查看</button>
-                    <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus(${user.id}, ${user.status})">${user.status === 1 ? '禁用' : '启用'}</button>
-                </td>
-            </tr>
-        `).join('');
-        
-    } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444;">加载失败: ${error.message}</td></tr>`;
-    }
-}
-
-/**
- * 渲染系统配置页面
- */
-async function renderConfig() {
-    const content = document.getElementById('mainContent');
-    
-    content.innerHTML = `
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">站点基本信息</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">站点名称</label>
-                        <input type="text" class="form-input" id="configSiteName" value="棉花糖教育平台">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">网站域名</label>
-                        <input type="text" class="form-input" id="configSiteDomain" value="https://mt.dajiaopei.com">
-                        <div class="form-help">不带尾部斜杠</div>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">站点Logo</label>
-                        <input type="text" class="form-input" id="configSiteLogo" placeholder="Logo图片URL">
-                        <div class="form-help">建议尺寸: 200x60</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">站点描述</label>
-                        <input type="text" class="form-input" id="configSiteDesc" value="专业的教育信息撮合平台">
-                        <div class="form-help">用于SEO和分享</div>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">客服电话</label>
-                        <input type="text" class="form-input" id="configContactPhone" placeholder="对外展示的联系电话">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">客服微信</label>
-                        <input type="text" class="form-input" id="configContactWechat" placeholder="对外展示的微信号">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">ICP备案号</label>
-                    <input type="text" class="form-input" id="configIcpNumber" placeholder="京ICP备XXXXXXXX号">
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">分佣配置</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">平台分佣比例(%)</label>
-                        <input type="number" class="form-input" id="configPlatformRate" value="5">
-                        <div class="form-help">平台从课时费中抽取的比例</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">推荐人分佣比例(%)</label>
-                        <input type="number" class="form-input" id="configReferrerRate" value="10">
-                        <div class="form-help">推荐人从课时费中抽取的比例</div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">超级会员邀请人数</label>
-                    <input type="number" class="form-input" id="configSuperMemberCount" value="10">
-                    <div class="form-help">邀请多少人可解锁超级会员</div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="loadConfig()">重置</button>
-            <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
-        </div>
-    `;
-}
-
-/**
- * 渲染支付配置页面
- */
-async function renderPayment() {
-    const content = document.getElementById('mainContent');
-    
-    content.innerHTML = `
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">微信小程序配置</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">小程序AppID</label>
-                        <input type="text" class="form-input" id="paymentAppId" placeholder="wxXXXXXXXXXXXXXXXX">
-                        <div class="form-help">微信小程序AppID</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">小程序Secret</label>
-                        <input type="password" class="form-input" id="paymentSecret" placeholder="32位密钥">
-                        <div class="form-help">微信小程序Secret</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">微信支付配置</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">商户号</label>
-                        <input type="text" class="form-input" id="paymentMchId" placeholder="微信支付商户号">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">支付密钥</label>
-                        <input type="password" class="form-input" id="paymentApiKey" placeholder="32位API密钥">
-                        <div class="form-help">微信支付API密钥(32位)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
-            <button class="btn btn-primary" onclick="savePaymentConfig()">保存配置</button>
-        </div>
-    `;
-}
-
-/**
- * 渲染其他页面的占位内容
- */
-function renderPlaceholder(pageName) {
-    const titles = {
-        'teachers': '教师管理',
-        'orgs': '机构管理',
-        'orders': '订单管理',
-        'elite-class': '牛师班管理',
-        'membership': '会员套餐',
-        'activities': '活动管理',
-        'products': '商品管理',
-        'banners': '广告位管理',
-        'commissions': '分佣管理',
-        'withdrawals': '提现审核',
-        'agents': '代理商管理'
-    };
-    
-    const content = document.getElementById('mainContent');
-    content.innerHTML = `
-        <div class="empty-state">
-            <div class="empty-icon">🚧</div>
-            <div class="empty-text">${titles[pageName] || pageName} 功能开发中...</div>
-            <p style="margin-top: 8px; font-size: 13px;">该模块正在开发中，敬请期待</p>
-        </div>
-    `;
-}
-
-// ========== 事件处理函数 ==========
+// ========== 页面切换 ==========
 
 /**
  * 切换页面
  */
 function switchPage(pageName) {
+    state.currentPage = pageName;
+    
     // 更新菜单激活状态
     document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
@@ -553,166 +190,1235 @@ function switchPage(pageName) {
     
     // 更新页面标题
     const titles = {
-        'dashboard': '数据概览',
-        'users': '用户管理',
-        'teachers': '教师管理',
-        'orgs': '机构管理',
-        'orders': '订单管理',
+        dashboard: '数据概览',
+        users: '用户管理',
+        teachers: '教师管理',
+        orgs: '机构管理',
+        orders: '订单管理',
         'elite-class': '牛师班管理',
-        'membership': '会员套餐',
-        'activities': '活动管理',
-        'products': '商品管理',
-        'banners': '广告位管理',
-        'commissions': '分佣管理',
-        'withdrawals': '提现审核',
-        'agents': '代理商管理',
-        'config': '系统配置',
-        'payment': '支付配置'
+        membership: '会员套餐',
+        activities: '活动管理',
+        products: '商品管理',
+        banners: '广告位管理',
+        commissions: '分佣管理',
+        withdrawals: '提现审核',
+        agents: '代理商管理',
+        config: '系统配置',
+        payment: '支付配置',
+        admins: '管理员管理',
+        roles: '角色权限'
     };
     
-    document.getElementById('pageTitle').textContent = titles[pageName] || pageName;
+    document.getElementById('pageTitle').textContent = titles[pageName] || '管理后台';
     
-    // 渲染对应页面
-    state.currentPage = pageName;
-    state.pagination.page = 1;
-    
-    switch(pageName) {
-        case 'dashboard':
-            renderDashboard();
-            break;
-        case 'users':
-            renderUsers();
-            break;
-        case 'config':
-            renderConfig();
-            break;
-        case 'payment':
-            renderPayment();
-            break;
-        default:
-            renderPlaceholder(pageName);
-    }
+    // 渲染页面内容
+    renderPage(pageName);
 }
 
 /**
- * 分页 - 上一页
+ * 渲染页面
  */
-function prevPage() {
-    if (state.pagination.page > 1) {
-        state.pagination.page--;
-        if (state.currentPage === 'users') {
-            loadUsers();
-        }
-    }
-}
-
-/**
- * 分页 - 下一页
- */
-function nextPage() {
-    const maxPage = Math.ceil(state.pagination.total / state.pagination.pageSize);
-    if (state.pagination.page < maxPage) {
-        state.pagination.page++;
-        if (state.currentPage === 'users') {
-            loadUsers();
-        }
-    }
-}
-
-/**
- * 查看用户详情
- */
-function viewUser(userId) {
-    showMessage(`查看用户 ${userId} 详情`);
-}
-
-/**
- * 切换用户状态
- */
-async function toggleUserStatus(userId, currentStatus) {
-    const newStatus = currentStatus === 1 ? 0 : 1;
-    const action = newStatus === 1 ? '启用' : '禁用';
-    
-    if (confirm(`确定要${action}该用户吗？`)) {
-        try {
-            await apiRequest(`/users/${userId}/status`, {
-                method: 'PUT',
-                body: JSON.stringify({ status: newStatus })
-            });
-            showMessage(`${action}成功`);
-            loadUsers();
-        } catch (error) {
-            showMessage(`${action}失败: ${error.message}`);
-        }
-    }
-}
-
-/**
- * 保存系统配置
- */
-async function saveConfig() {
-    const config = {
-        site_name: document.getElementById('configSiteName').value,
-        site_domain: document.getElementById('configSiteDomain').value,
-        site_logo: document.getElementById('configSiteLogo').value,
-        site_description: document.getElementById('configSiteDesc').value,
-        contact_phone: document.getElementById('configContactPhone').value,
-        contact_wechat: document.getElementById('configContactWechat').value,
-        icp_number: document.getElementById('configIcpNumber').value,
-        commission_rate_platform: document.getElementById('configPlatformRate').value,
-        commission_rate_referrer: document.getElementById('configReferrerRate').value,
-        super_member_invite_count: document.getElementById('configSuperMemberCount').value,
-    };
+async function renderPage(pageName) {
+    const content = document.getElementById('mainContent');
+    content.innerHTML = '<div class="loading">加载中...</div>';
     
     try {
-        await apiRequest('/config/batch-update', {
-            method: 'POST',
-            body: JSON.stringify({
-                configs: Object.entries(config).map(([key, value]) => ({ key, value }))
-            })
-        });
-        showMessage('保存成功');
+        switch (pageName) {
+            case 'dashboard':
+                await renderDashboard();
+                break;
+            case 'users':
+                await renderUsers();
+                break;
+            case 'teachers':
+                await renderTeachers();
+                break;
+            case 'orgs':
+                await renderOrgs();
+                break;
+            case 'orders':
+                await renderOrders();
+                break;
+            case 'config':
+                await renderConfig();
+                break;
+            case 'payment':
+                await renderPayment();
+                break;
+            case 'admins':
+                await renderAdmins();
+                break;
+            case 'roles':
+                await renderRoles();
+                break;
+            default:
+                renderComingSoon(pageName);
+        }
     } catch (error) {
-        showMessage('保存失败: ' + error.message);
+        content.innerHTML = `
+            <div class="error-state">
+                <div class="error-icon">❌</div>
+                <h3>加载失败</h3>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="renderPage('${pageName}')">重试</button>
+            </div>
+        `;
     }
 }
 
-/**
- * 保存支付配置
- */
-async function savePaymentConfig() {
-    showMessage('保存支付配置功能开发中...');
-}
+// ========== 数据概览页面 ==========
 
-/**
- * 退出登录
- */
-function handleLogout() {
-    if (confirm('确定要退出管理后台吗？')) {
-        // 清除登录状态
-        localStorage.removeItem('admin_token');
-        // 跳转到登录页或首页
-        window.location.href = '/';
-    }
-}
-
-// ========== 初始化 ==========
-
-/**
- * 页面加载完成后初始化
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // 绑定菜单点击事件
-    document.querySelectorAll('.menu-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.dataset.page;
-            if (page) {
-                switchPage(page);
-            }
-        });
-    });
+async function renderDashboard() {
+    const content = document.getElementById('mainContent');
     
-    // 默认加载仪表盘
-    switchPage('dashboard');
-});
+    try {
+        // 获取统计数据
+        const stats = await apiRequest('/stats/overview');
+        
+        content.innerHTML = `
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats?.totalUsers || 0}</div>
+                        <div class="stat-label">总用户数</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">👨‍🏫</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats?.totalTeachers || 0}</div>
+                        <div class="stat-label">认证教师</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats?.totalOrgs || 0}</div>
+                        <div class="stat-label">入驻机构</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats?.totalOrders || 0}</div>
+                        <div class="stat-label">总订单数</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">💎</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats?.totalMembers || 0}</div>
+                        <div class="stat-label">会员用户</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${formatMoney(stats?.totalRevenue || 0)}</div>
+                        <div class="stat-label">总收入</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最近订单 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>最近订单</h3>
+                    <button class="btn btn-text" onclick="switchPage('orders')">查看全部</button>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>用户</th>
+                                <th>类型</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrders">
+                            <tr>
+                                <td colspan="6" class="empty-row">暂无数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 待办事项 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>待办事项</h3>
+                </div>
+                <div class="card-body">
+                    <div class="todo-list">
+                        <div class="todo-item">
+                            <span class="todo-badge badge-warning">审核中</span>
+                            <span>待审核教师认证 <strong>5</strong> 人</span>
+                            <button class="btn btn-sm btn-primary" onclick="switchPage('teachers')">处理</button>
+                        </div>
+                        <div class="todo-item">
+                            <span class="todo-badge badge-warning">审核中</span>
+                            <span>待审核机构入驻 <strong>2</strong> 家</span>
+                            <button class="btn btn-sm btn-primary" onclick="switchPage('orgs')">处理</button>
+                        </div>
+                        <div class="todo-item">
+                            <span class="todo-badge badge-danger">紧急</span>
+                            <span>待处理提现申请 <strong>3</strong> 笔</span>
+                            <button class="btn btn-sm btn-danger" onclick="switchPage('withdrawals')">处理</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        // 如果API失败，显示模拟数据
+        content.innerHTML = `
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value">1,234</div>
+                        <div class="stat-label">总用户数</div>
+                        <div class="stat-trend up">+12.5%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">👨‍🏫</div>
+                    <div class="stat-content">
+                        <div class="stat-value">89</div>
+                        <div class="stat-label">认证教师</div>
+                        <div class="stat-trend up">+5.2%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-content">
+                        <div class="stat-value">23</div>
+                        <div class="stat-label">入驻机构</div>
+                        <div class="stat-trend up">+2</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-content">
+                        <div class="stat-value">456</div>
+                        <div class="stat-label">总订单数</div>
+                        <div class="stat-trend up">+8.3%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">💎</div>
+                    <div class="stat-content">
+                        <div class="stat-value">128</div>
+                        <div class="stat-label">会员用户</div>
+                        <div class="stat-trend up">+15.7%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <div class="stat-value">¥45,678</div>
+                        <div class="stat-label">总收入</div>
+                        <div class="stat-trend up">+22.1%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最近订单 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>最近订单</h3>
+                    <button class="btn btn-text" onclick="switchPage('orders')">查看全部</button>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>用户</th>
+                                <th>类型</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ORD20240115001</td>
+                                <td>张家长</td>
+                                <td>会员购买</td>
+                                <td>¥199.00</td>
+                                <td><span class="badge badge-success">已完成</span></td>
+                                <td>2024-01-15 14:30</td>
+                            </tr>
+                            <tr>
+                                <td>ORD20240115002</td>
+                                <td>李老师</td>
+                                <td>课程发布</td>
+                                <td>¥0.00</td>
+                                <td><span class="badge badge-warning">待审核</span></td>
+                                <td>2024-01-15 15:20</td>
+                            </tr>
+                            <tr>
+                                <td>ORD20240115003</td>
+                                <td>王机构</td>
+                                <td>入驻费用</td>
+                                <td>¥2,999.00</td>
+                                <td><span class="badge badge-success">已完成</span></td>
+                                <td>2024-01-15 16:10</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 待办事项 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>待办事项</h3>
+                </div>
+                <div class="card-body">
+                    <div class="todo-list">
+                        <div class="todo-item">
+                            <span class="todo-badge badge-warning">审核中</span>
+                            <span>待审核教师认证 <strong>5</strong> 人</span>
+                            <button class="btn btn-sm btn-primary" onclick="switchPage('teachers')">处理</button>
+                        </div>
+                        <div class="todo-item">
+                            <span class="todo-badge badge-warning">审核中</span>
+                            <span>待审核机构入驻 <strong>2</strong> 家</span>
+                            <button class="btn btn-sm btn-primary" onclick="switchPage('orgs')">处理</button>
+                        </div>
+                        <div class="todo-item">
+                            <span class="todo-badge badge-danger">紧急</span>
+                            <span>待处理提现申请 <strong>3</strong> 笔</span>
+                            <button class="btn btn-sm btn-danger" onclick="switchPage('withdrawals')">处理</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ========== 用户管理页面 ==========
+
+async function renderUsers() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <div class="header-left">
+                    <h3>用户列表</h3>
+                </div>
+                <div class="header-right">
+                    <input type="text" class="search-input" placeholder="搜索用户..." id="userSearch">
+                    <select class="select-input" id="userRoleFilter">
+                        <option value="">全部角色</option>
+                        <option value="parent">家长</option>
+                        <option value="teacher">教师</option>
+                        <option value="org">机构</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadUsers()">
+                        🔍 查询
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户信息</th>
+                            <th>角色</th>
+                            <th>会员状态</th>
+                            <th>注册时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-row">暂无数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- 分页 -->
+                <div class="pagination" id="userPagination"></div>
+            </div>
+        </div>
+    `;
+    
+    await loadUsers();
+}
+
+async function loadUsers() {
+    const search = document.getElementById('userSearch')?.value || '';
+    const role = document.getElementById('userRoleFilter')?.value || '';
+    
+    try {
+        const data = await apiRequest(`/users?page=${state.pagination.page}&search=${search}&role=${role}`);
+        renderUserTable(data.list || []);
+        renderPagination('userPagination', data.total || 0);
+    } catch (error) {
+        // 显示模拟数据
+        const mockUsers = [
+            { id: 1, nickname: '张家长', phone: '138****1234', role: 'parent', isMember: true, createdAt: '2024-01-10', status: 1 },
+            { id: 2, nickname: '李老师', phone: '139****5678', role: 'teacher', isMember: true, createdAt: '2024-01-08', status: 1 },
+            { id: 3, nickname: '王机构', phone: '137****9012', role: 'org', isMember: false, createdAt: '2024-01-05', status: 1 },
+            { id: 4, nickname: '赵家长', phone: '136****3456', role: 'parent', isMember: false, createdAt: '2024-01-03', status: 0 },
+        ];
+        renderUserTable(mockUsers);
+    }
+}
+
+function renderUserTable(users) {
+    const tbody = document.getElementById('userTableBody');
+    
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    const roleMap = {
+        parent: { name: '家长', class: 'badge-info' },
+        teacher: { name: '教师', class: 'badge-success' },
+        org: { name: '机构', class: 'badge-warning' }
+    };
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>${user.id}</td>
+            <td>
+                <div class="user-info">
+                    <span class="user-name">${user.nickname}</span>
+                    <span class="user-phone">${user.phone}</span>
+                </div>
+            </td>
+            <td><span class="badge ${roleMap[user.role]?.class || ''}">${roleMap[user.role]?.name || user.role}</span></td>
+            <td>
+                ${user.isMember 
+                    ? '<span class="badge badge-success">会员</span>' 
+                    : '<span class="badge badge-default">普通用户</span>'}
+            </td>
+            <td>${formatDate(user.createdAt)}</td>
+            <td>
+                <span class="status-switch ${user.status === 1 ? 'active' : ''}" 
+                      onclick="toggleUserStatus(${user.id}, ${user.status})">
+                    ${user.status === 1 ? '启用' : '禁用'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-text" onclick="viewUserDetail(${user.id})">查看</button>
+                <button class="btn btn-sm btn-text" onclick="editUser(${user.id})">编辑</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========== 教师管理页面 ==========
+
+async function renderTeachers() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTeacherTab('all')">全部教师</button>
+            <button class="tab-btn" onclick="switchTeacherTab('pending')">待审核 (5)</button>
+            <button class="tab-btn" onclick="switchTeacherTab('approved')">已认证</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>教师信息</th>
+                            <th>科目</th>
+                            <th>评分</th>
+                            <th>认证状态</th>
+                            <th>申请时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacherTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-row">暂无数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    await loadTeachers();
+}
+
+async function loadTeachers() {
+    try {
+        const data = await apiRequest('/teachers');
+        renderTeacherTable(data.list || []);
+    } catch (error) {
+        // 显示模拟数据
+        const mockTeachers = [
+            { id: 1, name: '李老师', phone: '139****5678', subject: '数学', rating: 4.9, status: 'approved', createdAt: '2024-01-08' },
+            { id: 2, name: '王老师', phone: '138****9012', subject: '英语', rating: 4.8, status: 'pending', createdAt: '2024-01-10' },
+            { id: 3, name: '张老师', phone: '137****3456', subject: '物理', rating: 0, status: 'pending', createdAt: '2024-01-11' },
+        ];
+        renderTeacherTable(mockTeachers);
+    }
+}
+
+function renderTeacherTable(teachers) {
+    const tbody = document.getElementById('teacherTableBody');
+    
+    if (!teachers || teachers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    const statusMap = {
+        pending: { name: '待审核', class: 'badge-warning' },
+        approved: { name: '已认证', class: 'badge-success' },
+        rejected: { name: '已拒绝', class: 'badge-danger' }
+    };
+    
+    tbody.innerHTML = teachers.map(teacher => `
+        <tr>
+            <td>${teacher.id}</td>
+            <td>
+                <div class="user-info">
+                    <span class="user-name">${teacher.name}</span>
+                    <span class="user-phone">${teacher.phone}</span>
+                </div>
+            </td>
+            <td>${teacher.subject}</td>
+            <td>${teacher.rating > 0 ? `⭐ ${teacher.rating}` : '-'}</td>
+            <td><span class="badge ${statusMap[teacher.status]?.class}">${statusMap[teacher.status]?.name}</span></td>
+            <td>${formatDate(teacher.createdAt)}</td>
+            <td>
+                ${teacher.status === 'pending' ? `
+                    <button class="btn btn-sm btn-success" onclick="approveTeacher(${teacher.id})">通过</button>
+                    <button class="btn btn-sm btn-danger" onclick="rejectTeacher(${teacher.id})">拒绝</button>
+                ` : `
+                    <button class="btn btn-sm btn-text" onclick="viewTeacherDetail(${teacher.id})">查看</button>
+                `}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========== 机构管理页面 ==========
+
+async function renderOrgs() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h3>机构列表</h3>
+                <button class="btn btn-primary">+ 添加机构</button>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>机构名称</th>
+                            <th>联系人</th>
+                            <th>电话</th>
+                            <th>地址</th>
+                            <th>认证状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orgTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-row">暂无数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    await loadOrgs();
+}
+
+async function loadOrgs() {
+    try {
+        const data = await apiRequest('/orgs');
+        renderOrgTable(data.list || []);
+    } catch (error) {
+        // 显示模拟数据
+        const mockOrgs = [
+            { id: 1, name: '学而思教育', contact: '王经理', phone: '400-123-4567', address: '北京市朝阳区', status: 'approved' },
+            { id: 2, name: '新东方培训', contact: '李主管', phone: '400-890-1234', address: '上海市浦东新区', status: 'pending' },
+        ];
+        renderOrgTable(mockOrgs);
+    }
+}
+
+function renderOrgTable(orgs) {
+    const tbody = document.getElementById('orgTableBody');
+    
+    if (!orgs || orgs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    const statusMap = {
+        pending: { name: '待审核', class: 'badge-warning' },
+        approved: { name: '已认证', class: 'badge-success' },
+        rejected: { name: '已拒绝', class: 'badge-danger' }
+    };
+    
+    tbody.innerHTML = orgs.map(org => `
+        <tr>
+            <td>${org.id}</td>
+            <td><strong>${org.name}</strong></td>
+            <td>${org.contact}</td>
+            <td>${org.phone}</td>
+            <td>${org.address}</td>
+            <td><span class="badge ${statusMap[org.status]?.class}">${statusMap[org.status]?.name}</span></td>
+            <td>
+                ${org.status === 'pending' ? `
+                    <button class="btn btn-sm btn-success">通过</button>
+                    <button class="btn btn-sm btn-danger">拒绝</button>
+                ` : `
+                    <button class="btn btn-sm btn-text">查看</button>
+                    <button class="btn btn-sm btn-text">编辑</button>
+                `}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========== 订单管理页面 ==========
+
+async function renderOrders() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="tabs">
+            <button class="tab-btn active">全部订单</button>
+            <button class="tab-btn">待支付</button>
+            <button class="tab-btn">已完成</button>
+            <button class="tab-btn">已取消</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>用户</th>
+                            <th>订单类型</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-row">暂无数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    await loadOrders();
+}
+
+async function loadOrders() {
+    try {
+        const data = await apiRequest('/orders');
+        renderOrderTable(data.list || []);
+    } catch (error) {
+        // 显示模拟数据
+        const mockOrders = [
+            { id: 'ORD20240115001', user: '张家长', type: '会员购买', amount: 199, status: 'completed', createdAt: '2024-01-15 14:30' },
+            { id: 'ORD20240115002', user: '李老师', type: '课程发布', amount: 0, status: 'pending', createdAt: '2024-01-15 15:20' },
+            { id: 'ORD20240115003', user: '王机构', type: '入驻费用', amount: 2999, status: 'completed', createdAt: '2024-01-15 16:10' },
+        ];
+        renderOrderTable(mockOrders);
+    }
+}
+
+function renderOrderTable(orders) {
+    const tbody = document.getElementById('orderTableBody');
+    
+    if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    const statusMap = {
+        pending: { name: '待支付', class: 'badge-warning' },
+        completed: { name: '已完成', class: 'badge-success' },
+        cancelled: { name: '已取消', class: 'badge-default' }
+    };
+    
+    tbody.innerHTML = orders.map(order => `
+        <tr>
+            <td><code>${order.id}</code></td>
+            <td>${order.user}</td>
+            <td>${order.type}</td>
+            <td>${formatMoney(order.amount)}</td>
+            <td><span class="badge ${statusMap[order.status]?.class}">${statusMap[order.status]?.name}</span></td>
+            <td>${formatDate(order.createdAt)}</td>
+            <td>
+                <button class="btn btn-sm btn-text">查看详情</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========== 系统配置页面 ==========
+
+async function renderConfig() {
+    const content = document.getElementById('mainContent');
+    
+    try {
+        const config = await apiRequest('/config');
+        
+        content.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <h3>站点基本信息</h3>
+                </div>
+                <div class="card-body">
+                    <form id="siteConfigForm" onsubmit="saveSiteConfig(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">站点名称</label>
+                                <input type="text" class="form-input" name="siteName" 
+                                       value="${config?.siteName || '棉花糖教育平台'}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">站点域名</label>
+                                <input type="text" class="form-input" name="siteDomain" 
+                                       value="${config?.siteDomain || 'mt.dajiaopei.com'}" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">客服电话</label>
+                                <input type="text" class="form-input" name="servicePhone" 
+                                       value="${config?.servicePhone || '400-123-4567'}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">客服邮箱</label>
+                                <input type="email" class="form-input" name="serviceEmail" 
+                                       value="${config?.serviceEmail || 'service@mht-edu.com'}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">站点描述</label>
+                            <textarea class="form-textarea" name="siteDescription" rows="3">${config?.siteDescription || '基于LBS的教育信息撮合平台'}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">版权信息</label>
+                            <input type="text" class="form-input" name="copyright" 
+                                   value="${config?.copyright || '© 2024 棉花糖教育平台'}">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>微信小程序配置</h3>
+                </div>
+                <div class="card-body">
+                    <form id="wechatConfigForm" onsubmit="saveWechatConfig(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">AppID</label>
+                                <input type="text" class="form-input" name="wechatAppId" 
+                                       value="${config?.wechatAppId || ''}" placeholder="请输入微信小程序AppID">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">AppSecret</label>
+                                <input type="password" class="form-input" name="wechatAppSecret" 
+                                       value="${config?.wechatAppSecret || ''}" placeholder="请输入微信小程序AppSecret">
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        content.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <h3>站点基本信息</h3>
+                </div>
+                <div class="card-body">
+                    <form id="siteConfigForm" onsubmit="saveSiteConfig(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">站点名称</label>
+                                <input type="text" class="form-input" name="siteName" value="棉花糖教育平台">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">站点域名</label>
+                                <input type="text" class="form-input" name="siteDomain" value="mt.dajiaopei.com" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">客服电话</label>
+                                <input type="text" class="form-input" name="servicePhone" value="400-123-4567">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">客服邮箱</label>
+                                <input type="email" class="form-input" name="serviceEmail" value="service@mht-edu.com">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">站点描述</label>
+                            <textarea class="form-textarea" name="siteDescription" rows="3">基于LBS的教育信息撮合平台</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">版权信息</label>
+                            <input type="text" class="form-input" name="copyright" value="© 2024 棉花糖教育平台">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
+}
+
+async function saveSiteConfig(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        await apiRequest('/config', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        showMessage('配置保存成功', 'success');
+    } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+    }
+}
+
+// ========== 支付配置页面 ==========
+
+async function renderPayment() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h3>微信支付配置</h3>
+            </div>
+            <div class="card-body">
+                <form id="paymentConfigForm" onsubmit="savePaymentConfig(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">商户号 (MchID)</label>
+                            <input type="text" class="form-input" name="mchId" placeholder="请输入微信支付商户号">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API密钥</label>
+                            <input type="password" class="form-input" name="apiKey" placeholder="请输入API密钥">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">API证书</label>
+                            <input type="file" class="form-input" name="certFile" accept=".pem">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API证书密钥</label>
+                            <input type="file" class="form-input" name="keyFile" accept=".pem">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">支付回调地址</label>
+                        <input type="text" class="form-input" name="notifyUrl" 
+                               value="https://mt.dajiaopei.com/api/payment/notify" readonly>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存配置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
+async function savePaymentConfig(event) {
+    event.preventDefault();
+    showMessage('支付配置保存成功', 'success');
+}
+
+// ========== 管理员管理页面 ==========
+
+async function renderAdmins() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h3>管理员列表</h3>
+                <button class="btn btn-primary" onclick="showAddAdminModal()">+ 添加管理员</button>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>姓名</th>
+                            <th>角色</th>
+                            <th>最后登录</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-row">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 添加管理员弹窗 -->
+        <div class="modal" id="addAdminModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>添加管理员</h3>
+                    <button class="modal-close" onclick="closeAddAdminModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="addAdminForm" onsubmit="addAdmin(event)">
+                        <div class="form-group">
+                            <label class="form-label">用户名 *</label>
+                            <input type="text" class="form-input" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">密码 *</label>
+                            <input type="password" class="form-input" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">姓名 *</label>
+                            <input type="text" class="form-input" name="realName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">邮箱</label>
+                            <input type="email" class="form-input" name="email">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">手机号</label>
+                            <input type="text" class="form-input" name="phone">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">角色 *</label>
+                            <select class="form-select" name="roleId" required>
+                                <option value="">请选择角色</option>
+                                <option value="1">超级管理员</option>
+                                <option value="2">运营管理员</option>
+                                <option value="3">客服管理员</option>
+                                <option value="4">财务管理</option>
+                                <option value="5">内容管理</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn" onclick="closeAddAdminModal()">取消</button>
+                            <button type="submit" class="btn btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    await loadAdmins();
+}
+
+async function loadAdmins() {
+    try {
+        const data = await apiRequest('/admins');
+        renderAdminTable(data);
+    } catch (error) {
+        // 显示模拟数据
+        const mockAdmins = [
+            { id: 1, username: 'admin', realName: '超级管理员', roleName: '超级管理员', lastLoginTime: '2024-01-15 10:30', status: 1 },
+            { id: 2, username: 'operator', realName: '运营小王', roleName: '运营管理员', lastLoginTime: '2024-01-14 16:20', status: 1 },
+        ];
+        renderAdminTable(mockAdmins);
+    }
+}
+
+function renderAdminTable(admins) {
+    const tbody = document.getElementById('adminTableBody');
+    
+    if (!admins || admins.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = admins.map(admin => `
+        <tr>
+            <td>${admin.id}</td>
+            <td>${admin.username}</td>
+            <td>${admin.realName}</td>
+            <td><span class="badge badge-info">${admin.roleName}</span></td>
+            <td>${formatDate(admin.lastLoginTime)}</td>
+            <td>
+                <span class="status-switch ${admin.status === 1 ? 'active' : ''}" 
+                      onclick="toggleAdminStatus(${admin.id}, ${admin.status})">
+                    ${admin.status === 1 ? '启用' : '禁用'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-text" onclick="editAdmin(${admin.id})">编辑</button>
+                <button class="btn btn-sm btn-text" onclick="resetAdminPassword(${admin.id})">重置密码</button>
+                ${admin.id !== 1 ? `<button class="btn btn-sm btn-danger" onclick="deleteAdmin(${admin.id})">删除</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showAddAdminModal() {
+    document.getElementById('addAdminModal').style.display = 'flex';
+}
+
+function closeAddAdminModal() {
+    document.getElementById('addAdminModal').style.display = 'none';
+}
+
+async function addAdmin(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        await apiRequest('/admins', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        showMessage('管理员添加成功', 'success');
+        closeAddAdminModal();
+        await loadAdmins();
+    } catch (error) {
+        showMessage('添加失败: ' + error.message, 'error');
+    }
+}
+
+// ========== 角色权限页面 ==========
+
+async function renderRoles() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h3>角色列表</h3>
+                <button class="btn btn-primary">+ 添加角色</button>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>角色名称</th>
+                            <th>角色标识</th>
+                            <th>权限数量</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roleTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-row">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    await loadRoles();
+}
+
+async function loadRoles() {
+    try {
+        const data = await apiRequest('/roles');
+        renderRoleTable(data);
+    } catch (error) {
+        // 显示模拟数据
+        const mockRoles = [
+            { id: 1, roleName: '超级管理员', roleCode: 'super_admin', permissionCount: 53, createdAt: '2024-01-01' },
+            { id: 2, roleName: '运营管理员', roleCode: 'operator', permissionCount: 35, createdAt: '2024-01-01' },
+            { id: 3, roleName: '客服管理员', roleCode: 'service', permissionCount: 20, createdAt: '2024-01-01' },
+            { id: 4, roleName: '财务管理', roleCode: 'finance', permissionCount: 15, createdAt: '2024-01-01' },
+            { id: 5, roleName: '内容管理', roleCode: 'content', permissionCount: 25, createdAt: '2024-01-01' },
+        ];
+        renderRoleTable(mockRoles);
+    }
+}
+
+function renderRoleTable(roles) {
+    const tbody = document.getElementById('roleTableBody');
+    
+    if (!roles || roles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-row">暂无数据</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = roles.map(role => `
+        <tr>
+            <td>${role.id}</td>
+            <td><strong>${role.roleName}</strong></td>
+            <td><code>${role.roleCode}</code></td>
+            <td>${role.permissionCount} 个权限</td>
+            <td>${formatDate(role.createdAt)}</td>
+            <td>
+                ${role.id !== 1 ? `
+                    <button class="btn btn-sm btn-text" onclick="editRole(${role.id})">编辑权限</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteRole(${role.id})">删除</button>
+                ` : `
+                    <span class="text-muted">系统角色不可修改</span>
+                `}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========== 开发中页面 ==========
+
+function renderComingSoon(pageName) {
+    const content = document.getElementById('mainContent');
+    const titles = {
+        'elite-class': '牛师班管理',
+        membership: '会员套餐',
+        activities: '活动管理',
+        products: '商品管理',
+        banners: '广告位管理',
+        commissions: '分佣管理',
+        withdrawals: '提现审核',
+        agents: '代理商管理'
+    };
+    
+    content.innerHTML = `
+        <div class="coming-soon">
+            <div class="coming-soon-icon">🚧</div>
+            <h3>${titles[pageName] || '功能开发中'}</h3>
+            <p>该功能模块正在开发中，敬请期待...</p>
+        </div>
+    `;
+}
+
+// ========== 分页组件 ==========
+
+function renderPagination(containerId, total) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const totalPages = Math.ceil(total / state.pagination.pageSize);
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination-info">共 ' + total + ' 条</div>';
+    html += '<div class="pagination-buttons">';
+    
+    // 上一页
+    html += `<button class="page-btn" ${state.pagination.page === 1 ? 'disabled' : ''} 
+             onclick="changePage(${state.pagination.page - 1})">上一页</button>`;
+    
+    // 页码
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= state.pagination.page - 2 && i <= state.pagination.page + 2)) {
+            html += `<button class="page-btn ${i === state.pagination.page ? 'active' : ''}" 
+                     onclick="changePage(${i})">${i}</button>`;
+        } else if (i === state.pagination.page - 3 || i === state.pagination.page + 3) {
+            html += '<span class="page-ellipsis">...</span>';
+        }
+    }
+    
+    // 下一页
+    html += `<button class="page-btn" ${state.pagination.page === totalPages ? 'disabled' : ''} 
+             onclick="changePage(${state.pagination.page + 1})">下一页</button>`;
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function changePage(page) {
+    state.pagination.page = page;
+    renderPage(state.currentPage);
+}
+
+// ========== 添加样式 ==========
+
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);

@@ -18,9 +18,13 @@ import { ShareModule } from './modules/share/share.module';
 import { EliteClassModule } from './modules/elite-class/elite-class.module';
 import { ReferralLockModule } from './modules/referral-lock/referral-lock.module';
 import { ConfigModule } from './modules/config/config.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
+    AuthModule,
+    AdminModule,
     UserModule,
     OrderModule,
     PaymentModule,
