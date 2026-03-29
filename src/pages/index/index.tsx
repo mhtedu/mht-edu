@@ -322,9 +322,60 @@ const IndexPage = () => {
     if (savedCity) {
       setCurrentCity(savedCity);
     } else {
-      // 默认北京
-      setCurrentCity('北京');
+      // 尝试自动定位
+      try {
+        const location = await Taro.getLocation({ type: 'wgs84' });
+        console.log('定位成功:', location);
+        
+        // 根据经纬度查找最近城市
+        const nearestCity = findNearestCity(location.latitude, location.longitude);
+        if (nearestCity) {
+          setCurrentCity(nearestCity);
+          Taro.setStorageSync('selectedCity', nearestCity);
+        } else {
+          // 定位失败，默认北京
+          setCurrentCity('北京');
+        }
+      } catch (error) {
+        console.log('定位失败，使用默认城市:', error);
+        // 定位失败，默认北京
+        setCurrentCity('北京');
+      }
     }
+  };
+
+  // 根据经纬度查找最近城市
+  const findNearestCity = (lat: number, lng: number): string | null => {
+    let minDistance = Infinity;
+    let nearestCity: string | null = null;
+    
+    Object.entries(CITY_DATA).forEach(([cityName, data]) => {
+      const distance = calculateDistance(lat, lng, data.lat, data.lng);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestCity = cityName;
+      }
+    });
+    
+    // 如果最近城市距离超过500km，返回null
+    if (minDistance > 500) {
+      return null;
+    }
+    
+    return nearestCity;
+  };
+
+  // 计算两点间距离（km）
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // 地球半径（km）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   // 选择城市
