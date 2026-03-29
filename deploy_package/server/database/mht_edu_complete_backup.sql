@@ -1,54 +1,25 @@
 -- ============================================
 -- 棉花糖教育平台 - 完整数据库初始化脚本
--- 修复版：外键约束放到最后添加
--- 版本：v1.0.1
+-- 包含：表结构 + 演示数据
+-- 版本：v1.0.0
+-- 日期：2025-01-13
 -- ============================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- ============================================
+-- 第一部分：基础表结构
+-- ============================================
+
 -- 创建数据库（如果不存在）
 CREATE DATABASE IF NOT EXISTS mht_edu DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE mht_edu;
 
--- ============================================
--- 第一部分：删除所有表
--- ============================================
-DROP TABLE IF EXISTS `elite_class_student_lessons`;
-DROP TABLE IF EXISTS `elite_class_lessons`;
-DROP TABLE IF EXISTS `elite_class_students`;
-DROP TABLE IF EXISTS `elite_classes`;
-DROP TABLE IF EXISTS `order_reviews`;
-DROP TABLE IF EXISTS `order_close_history`;
-DROP TABLE IF EXISTS `orders`;
-DROP TABLE IF EXISTS `teacher_moments`;
-DROP TABLE IF EXISTS `teacher_profiles`;
-DROP TABLE IF EXISTS `activities`;
-DROP TABLE IF EXISTS `activity_signups`;
-DROP TABLE IF EXISTS `products`;
-DROP TABLE IF EXISTS `product_categories`;
-DROP TABLE IF EXISTS `messages`;
-DROP TABLE IF EXISTS `conversations`;
-DROP TABLE IF EXISTS `notifications`;
-DROP TABLE IF EXISTS `message_reminders`;
-DROP TABLE IF EXISTS `payments`;
-DROP TABLE IF EXISTS `withdrawals`;
-DROP TABLE IF EXISTS `earnings`;
-DROP TABLE IF EXISTS `referral_locks`;
-DROP TABLE IF EXISTS `share_records`;
-DROP TABLE IF EXISTS `cities`;
-DROP TABLE IF EXISTS `memberships`;
-DROP TABLE IF EXISTS `super_memberships`;
-DROP TABLE IF EXISTS `organizations`;
-DROP TABLE IF EXISTS `users`;
-
--- ============================================
--- 第二部分：创建所有表（不包含外键约束）
--- ============================================
-
 -- ------------------------------
 -- 1. 用户表
 -- ------------------------------
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `openid` VARCHAR(64) COMMENT '微信openid',
@@ -89,6 +60,7 @@ CREATE TABLE `users` (
 -- ------------------------------
 -- 2. 教师扩展表
 -- ------------------------------
+DROP TABLE IF EXISTS `teacher_profiles`;
 CREATE TABLE `teacher_profiles` (
     `user_id` INT PRIMARY KEY COMMENT '用户ID',
     `real_name` VARCHAR(20) COMMENT '真实姓名',
@@ -118,12 +90,14 @@ CREATE TABLE `teacher_profiles` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_rating` (`rating`),
-    INDEX `idx_teaching_years` (`teaching_years`)
+    INDEX `idx_teaching_years` (`teaching_years`),
+    CONSTRAINT `fk_teacher_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='教师扩展表';
 
 -- ------------------------------
 -- 3. 机构表
 -- ------------------------------
+DROP TABLE IF EXISTS `organizations`;
 CREATE TABLE `organizations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL COMMENT '关联用户ID',
@@ -141,12 +115,14 @@ CREATE TABLE `organizations` (
     `student_count` INT DEFAULT 0 COMMENT '学生数量',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_user` (`user_id`)
+    INDEX `idx_user` (`user_id`),
+    CONSTRAINT `fk_org_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='机构表';
 
 -- ------------------------------
 -- 4. 订单/需求表
 -- ------------------------------
+DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `order_no` VARCHAR(32) COMMENT '订单编号',
@@ -174,12 +150,14 @@ CREATE TABLE `orders` (
     INDEX `idx_subject` (`subject`),
     INDEX `idx_status` (`status`),
     INDEX `idx_location` (`latitude`, `longitude`),
-    INDEX `idx_assigned_teacher` (`assigned_teacher_id`)
+    INDEX `idx_assigned_teacher` (`assigned_teacher_id`),
+    CONSTRAINT `fk_order_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单/需求表';
 
 -- ------------------------------
 -- 5. 会员套餐表
 -- ------------------------------
+DROP TABLE IF EXISTS `memberships`;
 CREATE TABLE `memberships` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(50) NOT NULL COMMENT '套餐名称',
@@ -196,25 +174,9 @@ CREATE TABLE `memberships` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会员套餐表';
 
 -- ------------------------------
--- 6. 超级会员表
+-- 6. 支付记录表
 -- ------------------------------
-CREATE TABLE `super_memberships` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL COMMENT '用户ID',
-    `type` TINYINT NOT NULL COMMENT '类型: 1购买 2邀请达标',
-    `start_at` DATETIME NOT NULL COMMENT '开始时间',
-    `expire_at` DATETIME NOT NULL COMMENT '过期时间',
-    `invite_teacher_count` INT DEFAULT 0 COMMENT '邀请教师数',
-    `invite_parent_count` INT DEFAULT 0 COMMENT '邀请家长数',
-    `status` TINYINT DEFAULT 1 COMMENT '状态: 1有效 0无效',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='超级会员表';
-
--- ------------------------------
--- 7. 支付记录表
--- ------------------------------
+DROP TABLE IF EXISTS `payments`;
 CREATE TABLE `payments` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `payment_no` VARCHAR(32) COMMENT '支付单号',
@@ -231,279 +193,226 @@ CREATE TABLE `payments` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_user` (`user_id`),
     INDEX `idx_payment_no` (`payment_no`),
-    INDEX `idx_transaction` (`transaction_id`)
+    INDEX `idx_transaction` (`transaction_id`),
+    CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';
 
 -- ------------------------------
--- 8. 收益记录表
+-- 7. 佣金表
 -- ------------------------------
-CREATE TABLE `earnings` (
+DROP TABLE IF EXISTS `commissions`;
+CREATE TABLE `commissions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL COMMENT '用户ID',
-    `type` SMALLINT NOT NULL COMMENT '类型: 1课时分成 2推荐奖励 3代理分佣',
-    `amount` DECIMAL(10,2) NOT NULL COMMENT '金额',
-    `order_id` INT COMMENT '关联订单',
+    `user_id` INT NOT NULL COMMENT '收款用户ID',
+    `amount` DECIMAL(10,2) NOT NULL COMMENT '佣金金额',
+    `type` VARCHAR(20) COMMENT '佣金类型: order_share/membership_share/elite_class_share',
+    `order_id` INT COMMENT '关联订单ID',
+    `from_user_id` INT COMMENT '来源用户ID',
+    `level` SMALLINT DEFAULT 1 COMMENT '分销层级: 1一级 2二级',
     `status` SMALLINT DEFAULT 0 COMMENT '状态: 0待结算 1已结算 2已提现',
-    `description` VARCHAR(255) COMMENT '说明',
+    `settled_at` DATETIME COMMENT '结算时间',
+    `withdrawn_at` DATETIME COMMENT '提现时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_user` (`user_id`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收益记录表';
+    INDEX `idx_status` (`status`),
+    INDEX `idx_from_user` (`from_user_id`),
+    CONSTRAINT `fk_commission_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='佣金表';
 
 -- ------------------------------
--- 9. 提现表
+-- 8. 活动表
 -- ------------------------------
-CREATE TABLE `withdrawals` (
+DROP TABLE IF EXISTS `activities`;
+CREATE TABLE `activities` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL COMMENT '用户ID',
-    `amount` DECIMAL(10,2) NOT NULL COMMENT '提现金额',
-    `status` SMALLINT DEFAULT 0 COMMENT '状态: 0待审核 1已通过 2已拒绝 3已打款',
-    `bank_name` VARCHAR(50) COMMENT '银行名称',
-    `bank_account` VARCHAR(50) COMMENT '银行账号',
-    `real_name` VARCHAR(20) COMMENT '真实姓名',
-    `reject_reason` VARCHAR(255) COMMENT '拒绝原因',
+    `title` VARCHAR(100) NOT NULL COMMENT '活动标题',
+    `type` VARCHAR(20) COMMENT '活动类型: visit/training/lecture/other',
+    `cover_image` VARCHAR(255) COMMENT '封面图',
+    `images` JSON COMMENT '图片列表',
+    `description` TEXT COMMENT '活动描述',
+    `start_time` DATETIME COMMENT '开始时间',
+    `end_time` DATETIME COMMENT '结束时间',
+    `address` VARCHAR(255) COMMENT '活动地址',
+    `latitude` DECIMAL(10,7) COMMENT '纬度',
+    `longitude` DECIMAL(10,7) COMMENT '经度',
+    `is_online` TINYINT DEFAULT 0 COMMENT '是否有线上参与',
+    `online_price` DECIMAL(10,2) DEFAULT 0 COMMENT '线上价格',
+    `offline_price` DECIMAL(10,2) DEFAULT 0 COMMENT '线下价格',
+    `max_participants` INT DEFAULT 0 COMMENT '最大参与人数',
+    `current_participants` INT DEFAULT 0 COMMENT '当前参与人数',
+    `target_roles` JSON COMMENT '目标角色: [0,1]表示家长和教师',
+    `organizer_id` INT COMMENT '组织者ID',
+    `organizer_type` VARCHAR(20) COMMENT '组织者类型: platform/org/agent',
+    `status` SMALLINT DEFAULT 0 COMMENT '状态: 0草稿 1报名中 2进行中 3已结束',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_user` (`user_id`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提现表';
+    INDEX `idx_type` (`type`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_start_time` (`start_time`),
+    INDEX `idx_location` (`latitude`, `longitude`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动表';
 
 -- ------------------------------
--- 10. 消息会话表
+-- 9. 活动报名表
 -- ------------------------------
+DROP TABLE IF EXISTS `activity_registrations`;
+CREATE TABLE `activity_registrations` (
+    `id` INT AUTO_INCREMENT,
+    `activity_id` INT NOT NULL COMMENT '活动ID',
+    `user_id` INT NOT NULL COMMENT '用户ID',
+    `participation_type` SMALLINT DEFAULT 1 COMMENT '参与方式: 1线上 2线下',
+    `amount` DECIMAL(10,2) DEFAULT 0 COMMENT '支付金额',
+    `status` SMALLINT DEFAULT 0 COMMENT '状态: 0待支付 1已报名 2已签到 3已取消',
+    `referrer_id` INT COMMENT '推荐人ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_activity_user` (`activity_id`, `user_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`),
+    CONSTRAINT `fk_reg_activity` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_reg_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动报名表';
+
+-- ------------------------------
+-- 10. 消息表
+-- ------------------------------
+DROP TABLE IF EXISTS `messages`;
+CREATE TABLE `messages` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `from_user_id` INT NOT NULL COMMENT '发送者ID',
+    `to_user_id` INT NOT NULL COMMENT '接收者ID',
+    `content` TEXT COMMENT '消息内容',
+    `msg_type` SMALLINT DEFAULT 1 COMMENT '消息类型: 1文本 2图片 3语音 4名片 5订单',
+    `extra_data` JSON COMMENT '扩展数据',
+    `is_read` TINYINT DEFAULT 0 COMMENT '是否已读',
+    `read_at` DATETIME COMMENT '阅读时间',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_from` (`from_user_id`),
+    INDEX `idx_to` (`to_user_id`),
+    INDEX `idx_is_read` (`is_read`),
+    CONSTRAINT `fk_msg_from` FOREIGN KEY (`from_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_msg_to` FOREIGN KEY (`to_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息表';
+
+-- ------------------------------
+-- 11. 会话表
+-- ------------------------------
+DROP TABLE IF EXISTS `conversations`;
 CREATE TABLE `conversations` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user1_id` INT NOT NULL COMMENT '用户1ID',
     `user2_id` INT NOT NULL COMMENT '用户2ID',
     `last_message` TEXT COMMENT '最后一条消息',
     `last_message_time` DATETIME COMMENT '最后消息时间',
+    `user1_unread` INT DEFAULT 0 COMMENT '用户1未读数',
+    `user2_unread` INT DEFAULT 0 COMMENT '用户2未读数',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_users` (`user1_id`, `user2_id`),
     INDEX `idx_user1` (`user1_id`),
     INDEX `idx_user2` (`user2_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息会话表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会话表';
 
 -- ------------------------------
--- 11. 消息表
+-- 12. 城市代理表
 -- ------------------------------
-CREATE TABLE `messages` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `conversation_id` INT NOT NULL COMMENT '会话ID',
-    `sender_id` INT NOT NULL COMMENT '发送者ID',
-    `receiver_id` INT NOT NULL COMMENT '接收者ID',
-    `content` TEXT NOT NULL COMMENT '消息内容',
-    `type` SMALLINT DEFAULT 1 COMMENT '类型: 1文本 2图片 3联系方式 4试课邀请',
-    `is_read` TINYINT DEFAULT 0 COMMENT '是否已读',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_conversation` (`conversation_id`),
-    INDEX `idx_sender` (`sender_id`),
-    INDEX `idx_receiver` (`receiver_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息表';
-
--- ------------------------------
--- 12. 消息提醒表
--- ------------------------------
-CREATE TABLE `message_reminders` (
+DROP TABLE IF EXISTS `city_agents`;
+CREATE TABLE `city_agents` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL COMMENT '用户ID',
-    `type` SMALLINT NOT NULL COMMENT '类型: 1新消息 2订单更新 3会员到期 4系统通知',
-    `title` VARCHAR(100) NOT NULL COMMENT '标题',
-    `content` TEXT COMMENT '内容',
-    `is_read` TINYINT DEFAULT 0 COMMENT '是否已读',
+    `city_code` VARCHAR(10) NOT NULL COMMENT '城市编码',
+    `city_name` VARCHAR(50) NOT NULL COMMENT '城市名称',
+    `status` SMALLINT DEFAULT 0 COMMENT '状态: 0待审核 1已开通 2已禁用',
+    `deposit` DECIMAL(10,2) DEFAULT 0 COMMENT '保证金',
+    `commission_rate` DECIMAL(5,2) DEFAULT 5.00 COMMENT '佣金比例(%)',
+    `total_earnings` DECIMAL(10,2) DEFAULT 0 COMMENT '累计收益',
+    `settled_earnings` DECIMAL(10,2) DEFAULT 0 COMMENT '已结算收益',
+    `apply_time` DATETIME COMMENT '申请时间',
+    `approve_time` DATETIME COMMENT '审核时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_city` (`city_code`),
     INDEX `idx_user` (`user_id`),
-    INDEX `idx_is_read` (`is_read`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息提醒表';
+    CONSTRAINT `fk_agent_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='城市代理表';
 
 -- ------------------------------
--- 13. 通知表
+-- 13. 分享链接表
 -- ------------------------------
-CREATE TABLE `notifications` (
+DROP TABLE IF EXISTS `share_links`;
+CREATE TABLE `share_links` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `user_id` INT NOT NULL COMMENT '用户ID',
-    `type` SMALLINT NOT NULL COMMENT '类型',
-    `title` VARCHAR(100) NOT NULL COMMENT '标题',
-    `content` TEXT COMMENT '内容',
-    `data` JSON COMMENT '附加数据',
-    `is_read` TINYINT DEFAULT 0 COMMENT '是否已读',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
-
--- ------------------------------
--- 14. 教师动态表
--- ------------------------------
-CREATE TABLE `teacher_moments` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `teacher_id` INT NOT NULL COMMENT '教师ID',
-    `content` TEXT NOT NULL COMMENT '内容',
-    `images` JSON COMMENT '图片列表',
-    `video_url` VARCHAR(255) COMMENT '视频链接',
-    `like_count` INT DEFAULT 0 COMMENT '点赞数',
-    `comment_count` INT DEFAULT 0 COMMENT '评论数',
-    `status` SMALLINT DEFAULT 1 COMMENT '状态: 1正常 0隐藏',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_teacher` (`teacher_id`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='教师动态表';
-
--- ------------------------------
--- 15. 订单评价表
--- ------------------------------
-CREATE TABLE `order_reviews` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `order_id` INT NOT NULL COMMENT '订单ID',
-    `user_id` INT NOT NULL COMMENT '评价用户ID',
-    `teacher_id` INT NOT NULL COMMENT '教师ID',
-    `rating` SMALLINT NOT NULL COMMENT '评分1-5',
-    `content` TEXT COMMENT '评价内容',
-    `images` JSON COMMENT '图片列表',
-    `is_anonymous` TINYINT DEFAULT 0 COMMENT '是否匿名',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_order` (`order_id`),
-    INDEX `idx_teacher` (`teacher_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单评价表';
-
--- ------------------------------
--- 16. 订单关闭历史表
--- ------------------------------
-CREATE TABLE `order_close_history` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `order_id` INT NOT NULL COMMENT '订单ID',
-    `user_id` INT NOT NULL COMMENT '操作用户ID',
-    `reason` VARCHAR(255) COMMENT '关闭原因',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_order` (`order_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单关闭历史表';
-
--- ------------------------------
--- 17. 活动表
--- ------------------------------
-CREATE TABLE `activities` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `title` VARCHAR(100) NOT NULL COMMENT '活动标题',
-    `type` VARCHAR(20) NOT NULL COMMENT '类型: visit/lecture/training',
-    `cover_image` VARCHAR(255) COMMENT '封面图',
-    `description` TEXT COMMENT '活动描述',
-    `start_time` DATETIME NOT NULL COMMENT '开始时间',
-    `end_time` DATETIME NOT NULL COMMENT '结束时间',
-    `address` VARCHAR(255) COMMENT '地址',
-    `latitude` DECIMAL(10,7) COMMENT '纬度',
-    `longitude` DECIMAL(10,7) COMMENT '经度',
-    `is_online` TINYINT DEFAULT 0 COMMENT '是否线上',
-    `online_price` DECIMAL(10,2) DEFAULT 0 COMMENT '线上价格',
-    `offline_price` DECIMAL(10,2) DEFAULT 0 COMMENT '线下价格',
-    `max_participants` INT DEFAULT 0 COMMENT '最大参与人数',
-    `current_participants` INT DEFAULT 0 COMMENT '当前参与人数',
-    `target_roles` JSON COMMENT '目标角色',
-    `status` SMALLINT DEFAULT 1 COMMENT '状态: 1进行中 0已结束',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_type` (`type`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动表';
-
--- ------------------------------
--- 18. 活动报名表
--- ------------------------------
-CREATE TABLE `activity_signups` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `activity_id` INT NOT NULL COMMENT '活动ID',
-    `user_id` INT NOT NULL COMMENT '用户ID',
-    `participation_type` SMALLINT DEFAULT 1 COMMENT '参与方式: 1线上 2线下',
-    `status` SMALLINT DEFAULT 1 COMMENT '状态: 1已报名 0已取消',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX `idx_activity` (`activity_id`),
-    INDEX `idx_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动报名表';
-
--- ------------------------------
--- 19. 商品分类表
--- ------------------------------
-CREATE TABLE `product_categories` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
-    `sort_order` INT DEFAULT 0 COMMENT '排序',
-    `status` TINYINT DEFAULT 1 COMMENT '状态',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品分类表';
-
--- ------------------------------
--- 20. 商品表
--- ------------------------------
-CREATE TABLE `products` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `category_id` INT COMMENT '分类ID',
-    `name` VARCHAR(100) NOT NULL COMMENT '商品名称',
-    `description` TEXT COMMENT '商品描述',
-    `price` DECIMAL(10,2) NOT NULL COMMENT '价格',
-    `original_price` DECIMAL(10,2) COMMENT '原价',
-    `image` VARCHAR(255) COMMENT '主图',
-    `images` JSON COMMENT '图片列表',
-    `stock` INT DEFAULT -1 COMMENT '库存(-1无限)',
-    `sales` INT DEFAULT 0 COMMENT '销量',
-    `type` SMALLINT DEFAULT 1 COMMENT '类型: 1实物 2虚拟',
-    `delivery_type` SMALLINT DEFAULT 1 COMMENT '交付方式: 1快递 2下载 3网盘',
-    `file_url` VARCHAR(255) COMMENT '文件链接',
-    `pan_url` VARCHAR(255) COMMENT '网盘链接',
-    `status` TINYINT DEFAULT 1 COMMENT '状态',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_category` (`category_id`),
-    INDEX `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品表';
-
--- ------------------------------
--- 21. 分销关系锁定表
--- ------------------------------
-CREATE TABLE `referral_locks` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id` INT UNSIGNED NOT NULL COMMENT '被锁定的用户ID',
-    `locker_id` INT UNSIGNED NOT NULL COMMENT '锁定者ID',
-    `lock_type` VARCHAR(20) NOT NULL COMMENT '锁定类型: invite_link/teacher_profile/activity/elite_class',
-    `lock_source_id` INT UNSIGNED COMMENT '锁定来源ID',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user` (`user_id`),
-    INDEX `idx_locker` (`locker_id`),
-    INDEX `idx_lock_type` (`lock_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分销关系锁定表';
-
--- ------------------------------
--- 22. 分享记录表
--- ------------------------------
-CREATE TABLE `share_records` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `share_code` VARCHAR(32) NOT NULL COMMENT '分享码',
     `user_id` INT NOT NULL COMMENT '分享者ID',
-    `share_type` VARCHAR(20) NOT NULL COMMENT '分享类型',
-    `share_source_id` INT COMMENT '分享来源ID',
-    `share_code` VARCHAR(20) COMMENT '分享码',
+    `target_type` VARCHAR(20) NOT NULL COMMENT '目标类型: order/teacher/activity/elite_class',
+    `target_id` INT NOT NULL COMMENT '目标ID',
     `view_count` INT DEFAULT 0 COMMENT '浏览次数',
+    `share_count` INT DEFAULT 0 COMMENT '分享次数',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_share_code` (`share_code`),
     INDEX `idx_user` (`user_id`),
-    INDEX `idx_share_code` (`share_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享记录表';
+    INDEX `idx_target` (`target_type`, `target_id`),
+    CONSTRAINT `fk_share_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享链接表';
 
 -- ------------------------------
--- 23. 城市表
+-- 14. 分享日志表
 -- ------------------------------
-CREATE TABLE `cities` (
+DROP TABLE IF EXISTS `share_logs`;
+CREATE TABLE `share_logs` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `code` VARCHAR(10) NOT NULL COMMENT '城市编码',
-    `name` VARCHAR(50) NOT NULL COMMENT '城市名称',
-    `province` VARCHAR(50) COMMENT '省份',
-    `latitude` DECIMAL(10,7) COMMENT '纬度',
-    `longitude` DECIMAL(10,7) COMMENT '经度',
-    `status` TINYINT DEFAULT 1 COMMENT '状态',
+    `share_code` VARCHAR(32) NOT NULL COMMENT '分享码',
+    `user_id` INT COMMENT '分享者ID',
+    `channel` VARCHAR(20) COMMENT '分享渠道: wechat/moment/qrcode',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY `uk_code` (`code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='城市表';
+    INDEX `idx_share_code` (`share_code`),
+    INDEX `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享日志表';
 
 -- ------------------------------
--- 24. 牛师班表
+-- 15. 分享浏览日志表
 -- ------------------------------
+DROP TABLE IF EXISTS `share_view_logs`;
+CREATE TABLE `share_view_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `share_code` VARCHAR(32) NOT NULL COMMENT '分享码',
+    `viewer_id` INT COMMENT '浏览者ID',
+    `ip` VARCHAR(50) COMMENT 'IP地址',
+    `user_agent` VARCHAR(500) COMMENT 'User-Agent',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_share_code` (`share_code`),
+    INDEX `idx_viewer` (`viewer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分享浏览日志表';
+
+-- ------------------------------
+-- 16. 潜在用户表（通过分享访问的未注册用户）
+-- ------------------------------
+DROP TABLE IF EXISTS `potential_users`;
+CREATE TABLE `potential_users` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `share_code` VARCHAR(32) NOT NULL COMMENT '分享码',
+    `inviter_id` INT NOT NULL COMMENT '邀请人ID',
+    `openid` VARCHAR(64) COMMENT '微信openid',
+    `status` VARCHAR(20) DEFAULT 'pending' COMMENT '状态: pending待注册 converted已转化',
+    `converted_user_id` INT COMMENT '转化后的用户ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_share_code` (`share_code`),
+    INDEX `idx_inviter` (`inviter_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='潜在用户表';
+
+-- ============================================
+-- 第二部分：牛师班相关表
+-- ============================================
+
+-- ------------------------------
+-- 17. 牛师班表
+-- ------------------------------
+DROP TABLE IF EXISTS `elite_classes`;
 CREATE TABLE `elite_classes` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `teacher_id` INT UNSIGNED NOT NULL COMMENT '教师用户ID',
@@ -528,30 +437,39 @@ CREATE TABLE `elite_classes` (
     INDEX `idx_status` (`status`),
     INDEX `idx_subject` (`subject`),
     INDEX `idx_location` (`latitude`, `longitude`),
-    INDEX `idx_start_time` (`start_time`)
+    INDEX `idx_start_time` (`start_time`),
+    CONSTRAINT `fk_elite_class_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='牛师班表';
 
 -- ------------------------------
--- 25. 牛师班报名表
+-- 18. 牛师班报名表
 -- ------------------------------
-CREATE TABLE `elite_class_students` (
+DROP TABLE IF EXISTS `elite_class_enrollments`;
+CREATE TABLE `elite_class_enrollments` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `class_id` INT UNSIGNED NOT NULL COMMENT '牛师班ID',
-    `student_id` INT UNSIGNED NOT NULL COMMENT '学生ID',
-    `referrer_id` INT UNSIGNED DEFAULT NULL COMMENT '推荐人ID',
-    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1正常 0退出',
+    `student_id` INT UNSIGNED NOT NULL COMMENT '学生(家长)ID',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0待确认 1已确认 2试课中 3已正式报名 4已退课',
+    `trial_lesson` TINYINT DEFAULT 1 COMMENT '是否试课: 0否 1是',
+    `trial_time` DATETIME DEFAULT NULL COMMENT '试课时间',
+    `enrolled_at` DATETIME DEFAULT NULL COMMENT '正式报名时间',
+    `referrer_id` INT UNSIGNED DEFAULT NULL COMMENT '推荐人ID(分享链接锁定)',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_class_student` (`class_id`, `student_id`),
-    INDEX `idx_class` (`class_id`),
     INDEX `idx_student` (`student_id`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_referrer` (`referrer_id`)
+    INDEX `idx_referrer` (`referrer_id`),
+    CONSTRAINT `fk_enrollment_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_enrollment_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_enrollment_referrer` FOREIGN KEY (`referrer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='牛师班报名表';
 
 -- ------------------------------
--- 26. 牛师班课时记录表
+-- 19. 牛师班课时记录表
 -- ------------------------------
+DROP TABLE IF EXISTS `elite_class_lessons`;
 CREATE TABLE `elite_class_lessons` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `class_id` INT UNSIGNED NOT NULL COMMENT '牛师班ID',
@@ -567,12 +485,13 @@ CREATE TABLE `elite_class_lessons` (
     PRIMARY KEY (`id`),
     INDEX `idx_class` (`class_id`),
     INDEX `idx_lesson_time` (`lesson_time`),
-    INDEX `idx_status` (`status`)
+    CONSTRAINT `fk_lesson_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='牛师班课时记录表';
 
 -- ------------------------------
--- 27. 牛师班学生课时消耗表
+-- 20. 牛师班学生课时消耗表
 -- ------------------------------
+DROP TABLE IF EXISTS `elite_class_student_lessons`;
 CREATE TABLE `elite_class_student_lessons` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `lesson_id` INT UNSIGNED NOT NULL COMMENT '课时ID',
@@ -581,50 +500,74 @@ CREATE TABLE `elite_class_student_lessons` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_lesson` (`lesson_id`),
-    INDEX `idx_student` (`student_id`)
+    INDEX `idx_student` (`student_id`),
+    CONSTRAINT `fk_student_lesson_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `elite_class_lessons` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_student_lesson_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='牛师班学生课时消耗表';
 
 -- ============================================
--- 第三部分：添加外键约束
+-- 第三部分：分销关系锁定表（核心）
 -- ============================================
 
-ALTER TABLE `teacher_profiles` ADD CONSTRAINT `fk_teacher_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `organizations` ADD CONSTRAINT `fk_org_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `orders` ADD CONSTRAINT `fk_order_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `payments` ADD CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `earnings` ADD CONSTRAINT `fk_earning_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `withdrawals` ADD CONSTRAINT `fk_withdrawal_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `conversations` ADD CONSTRAINT `fk_conv_user1` FOREIGN KEY (`user1_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `conversations` ADD CONSTRAINT `fk_conv_user2` FOREIGN KEY (`user2_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE;
-ALTER TABLE `message_reminders` ADD CONSTRAINT `fk_reminder_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `notifications` ADD CONSTRAINT `fk_notif_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `teacher_moments` ADD CONSTRAINT `fk_moment_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_close_history` ADD CONSTRAINT `fk_close_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_close_history` ADD CONSTRAINT `fk_close_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `activity_signups` ADD CONSTRAINT `fk_signup_activity` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE;
-ALTER TABLE `activity_signups` ADD CONSTRAINT `fk_signup_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `products` ADD CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `product_categories` (`id`) ON DELETE SET NULL;
-ALTER TABLE `referral_locks` ADD CONSTRAINT `fk_lock_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `referral_locks` ADD CONSTRAINT `fk_lock_locker` FOREIGN KEY (`locker_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `share_records` ADD CONSTRAINT `fk_share_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_classes` ADD CONSTRAINT `fk_elite_class_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_referrer` FOREIGN KEY (`referrer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
-ALTER TABLE `elite_class_lessons` ADD CONSTRAINT `fk_lesson_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_student_lessons` ADD CONSTRAINT `fk_student_lesson_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `elite_class_lessons` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_student_lessons` ADD CONSTRAINT `fk_student_lesson_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `super_memberships` ADD CONSTRAINT `fk_super_member_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+-- ------------------------------
+-- 21. 分销关系锁定表
+-- ------------------------------
+DROP TABLE IF EXISTS `referral_locks`;
+CREATE TABLE `referral_locks` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` INT UNSIGNED NOT NULL COMMENT '被锁定的用户ID',
+    `locker_id` INT UNSIGNED NOT NULL COMMENT '锁定者ID(分享者)',
+    `lock_type` VARCHAR(50) NOT NULL COMMENT '锁定类型: teacher_profile/order/activity/elite_class/invite_link/qrcode',
+    `lock_source_id` INT UNSIGNED DEFAULT NULL COMMENT '锁定来源ID(如教师ID、订单ID等)',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_lock` (`user_id`),
+    INDEX `idx_locker` (`locker_id`),
+    INDEX `idx_lock_type` (`lock_type`),
+    CONSTRAINT `fk_referral_lock_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_referral_lock_locker` FOREIGN KEY (`locker_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分销关系锁定表';
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- ------------------------------
+-- 22. 分销关系锁定日志表
+-- ------------------------------
+DROP TABLE IF EXISTS `referral_lock_logs`;
+CREATE TABLE `referral_lock_logs` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` INT UNSIGNED NOT NULL COMMENT '被锁定的用户ID',
+    `locker_id` INT UNSIGNED NOT NULL COMMENT '锁定者ID',
+    `lock_type` VARCHAR(50) NOT NULL COMMENT '锁定类型',
+    `lock_source_id` INT UNSIGNED DEFAULT NULL COMMENT '锁定来源ID',
+    `ip` VARCHAR(50) COMMENT 'IP地址',
+    `user_agent` VARCHAR(500) COMMENT 'User-Agent',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_locker` (`locker_id`),
+    INDEX `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分销关系锁定日志表';
 
-SELECT '表结构创建完成！' AS message;
+-- ------------------------------
+-- 23. 超级会员表
+-- ------------------------------
+DROP TABLE IF EXISTS `super_memberships`;
+CREATE TABLE `super_memberships` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id` INT UNSIGNED NOT NULL COMMENT '用户ID',
+    `type` TINYINT NOT NULL COMMENT '类型: 1付费购买 2邀请达标(教师10人) 3邀请达标(家长10人)',
+    `start_at` DATETIME NOT NULL COMMENT '开始时间',
+    `expire_at` DATETIME NOT NULL COMMENT '过期时间',
+    `invite_teacher_count` INT DEFAULT 0 COMMENT '邀请教师数',
+    `invite_parent_count` INT DEFAULT 0 COMMENT '邀请家长数',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1有效 0失效',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_status` (`status`),
+    CONSTRAINT `fk_super_member_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='超级会员表';
 
 -- ============================================
 -- 第四部分：演示数据
@@ -694,11 +637,11 @@ INSERT INTO `orders` (`order_no`, `user_id`, `subject`, `student_grade`, `studen
 -- 牛师班演示数据
 -- ------------------------------
 INSERT INTO `elite_classes` (`teacher_id`, `class_name`, `subject`, `start_time`, `total_lessons`, `current_lesson`, `address`, `latitude`, `longitude`, `hourly_rate`, `max_students`, `current_students`, `description`, `status`) VALUES
-(100, '中考数学冲刺班', '数学', DATE_ADD(NOW(), INTERVAL 7 DAY), 20, 0, '北京市朝阳区望京西园四区', 39.991, 116.478, 180, 10, 3, '针对中考数学重点难点，系统讲解函数、几何、方程等核心知识点。', 0),
-(101, '英语口语提升班', '英语', DATE_ADD(NOW(), INTERVAL 10 DAY), 15, 0, '北京市海淀区中关村南大街', 40.012, 116.489, 150, 8, 2, '外教口语互动，提升英语口语表达能力。', 0),
-(106, '奥数竞赛班', '数学', DATE_ADD(NOW(), INTERVAL 5 DAY), 30, 0, '北京市西城区金融街', 39.978, 116.456, 250, 15, 5, '针对数学竞赛，培养数学思维和解题技巧。', 0),
-(108, '高考物理冲刺班', '物理', DATE_ADD(NOW(), INTERVAL 14 DAY), 25, 0, '北京市东城区东直门', 40.023, 116.512, 220, 12, 4, '高校教师主讲，深入浅出讲解高中物理重点难点。', 0),
-(105, '雅思口语特训班', '英语', DATE_ADD(NOW(), INTERVAL 3 DAY), 12, 0, '广州市天河区珠江新城', 23.121, 113.321, 200, 6, 2, '留英硕士授课，纯正英式发音，雅思口语7分冲刺。', 0);
+(100, '中考数学冲刺班', '数学', DATE_ADD(NOW(), INTERVAL 7 DAY), 20, 0, '北京市朝阳区望京西园四区', 39.991, 116.478, 180, 10, 3, '针对中考数学重点难点，系统讲解函数、几何、方程等核心知识点。\n\n课程特色：\n1. 小班教学，每班不超过10人\n2. 针对性训练，攻克薄弱环节\n3. 历年真题精讲，掌握解题技巧\n4. 课后一对一答疑\n\n适合学生：初三学生，目标中考数学110分以上', 0),
+(101, '英语口语提升班', '英语', DATE_ADD(NOW(), INTERVAL 10 DAY), 15, 0, '北京市海淀区中关村南大街', 40.012, 116.489, 150, 8, 2, '外教口语互动，提升英语口语表达能力。\n\n课程特色：\n1. 全英文授课环境\n2. 情景对话训练\n3. 纠正发音，提升语感\n4. 适合初高中生\n\n适合学生：希望提升口语能力的初高中学生', 0),
+(106, '奥数竞赛班', '数学', DATE_ADD(NOW(), INTERVAL 5 DAY), 30, 0, '北京市西城区金融街', 39.978, 116.456, 250, 15, 5, '针对数学竞赛，培养数学思维和解题技巧。\n\n课程特色：\n1. 竞赛题型专项训练\n2. 一题多解，拓展思维\n3. 历年真题分析\n4. 有奥数获奖经历者优先\n\n适合学生：有数学天赋，希望参加数学竞赛的学生', 0),
+(108, '高考物理冲刺班', '物理', DATE_ADD(NOW(), INTERVAL 14 DAY), 25, 0, '北京市东城区东直门', 40.023, 116.512, 220, 12, 4, '高校教师主讲，深入浅出讲解高中物理重点难点。\n\n课程特色：\n1. 重点知识串讲\n2. 难点专项突破\n3. 实验技巧训练\n4. 高考真题模拟\n\n适合学生：高三学生，目标高考物理90分以上', 0),
+(105, '雅思口语特训班', '英语', DATE_ADD(NOW(), INTERVAL 3 DAY), 12, 0, '广州市天河区珠江新城', 23.121, 113.321, 200, 6, 2, '留英硕士授课，纯正英式发音，雅思口语7分冲刺。\n\n课程特色：\n1. 雅思口语题型解析\n2. Part1/2/3专项训练\n3. 真题模拟演练\n4. 发音纠正\n\n适合学生：准备雅思考试，目标口语7分以上', 0);
 
 -- ------------------------------
 -- 活动演示数据
@@ -723,13 +666,37 @@ INSERT INTO `referral_locks` (`user_id`, `locker_id`, `lock_type`, `lock_source_
 (204, 106, 'teacher_profile', 106);
 
 -- ------------------------------
--- 超级会员演示数据
+-- 更新用户的邀请人数统计
 -- ------------------------------
-INSERT INTO `super_memberships` (`user_id`, `type`, `start_at`, `expire_at`, `invite_teacher_count`, `invite_parent_count`, `status`) VALUES
-(100, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 2, 2, 1),
-(103, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 1, 1, 1),
-(105, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 0, 1, 1),
-(106, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 1, 1, 1);
+-- 用户100的邀请统计
+INSERT INTO `super_memberships` (`user_id`, `type`, `start_at`, `expire_at`, `invite_teacher_count`, `invite_parent_count`, `status`)
+SELECT 100, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 100 AND role = 1),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 100 AND role = 0),
+  1;
+
+-- 用户103的邀请统计
+INSERT INTO `super_memberships` (`user_id`, `type`, `start_at`, `expire_at`, `invite_teacher_count`, `invite_parent_count`, `status`)
+SELECT 103, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 103 AND role = 1),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 103 AND role = 0),
+  1;
+
+-- 用户105的邀请统计
+INSERT INTO `super_memberships` (`user_id`, `type`, `start_at`, `expire_at`, `invite_teacher_count`, `invite_parent_count`, `status`)
+SELECT 105, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 105 AND role = 1),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 105 AND role = 0),
+  1;
+
+-- 用户106的邀请统计
+INSERT INTO `super_memberships` (`user_id`, `type`, `start_at`, `expire_at`, `invite_teacher_count`, `invite_parent_count`, `status`)
+SELECT 106, 2, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 106 AND role = 1),
+  (SELECT COUNT(*) FROM users WHERE inviter_id = 106 AND role = 0),
+  1);
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
 -- 数据导入完成提示
