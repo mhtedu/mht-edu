@@ -585,42 +585,9 @@ CREATE TABLE `elite_class_student_lessons` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='牛师班学生课时消耗表';
 
 -- ============================================
--- 第三部分：添加外键约束
+-- 第三部分：完成
+-- （已移除外键约束，通过应用层保证数据一致性）
 -- ============================================
-
-ALTER TABLE `teacher_profiles` ADD CONSTRAINT `fk_teacher_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `organizations` ADD CONSTRAINT `fk_org_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `orders` ADD CONSTRAINT `fk_order_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `payments` ADD CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `earnings` ADD CONSTRAINT `fk_earning_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `withdrawals` ADD CONSTRAINT `fk_withdrawal_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `conversations` ADD CONSTRAINT `fk_conv_user1` FOREIGN KEY (`user1_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `conversations` ADD CONSTRAINT `fk_conv_user2` FOREIGN KEY (`user2_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `messages` ADD CONSTRAINT `fk_msg_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE;
-ALTER TABLE `message_reminders` ADD CONSTRAINT `fk_reminder_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `notifications` ADD CONSTRAINT `fk_notif_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `teacher_moments` ADD CONSTRAINT `fk_moment_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_reviews` ADD CONSTRAINT `fk_review_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_close_history` ADD CONSTRAINT `fk_close_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE;
-ALTER TABLE `order_close_history` ADD CONSTRAINT `fk_close_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `activity_signups` ADD CONSTRAINT `fk_signup_activity` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE;
-ALTER TABLE `activity_signups` ADD CONSTRAINT `fk_signup_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `products` ADD CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `product_categories` (`id`) ON DELETE SET NULL;
-ALTER TABLE `referral_locks` ADD CONSTRAINT `fk_lock_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `referral_locks` ADD CONSTRAINT `fk_lock_locker` FOREIGN KEY (`locker_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `share_records` ADD CONSTRAINT `fk_share_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_classes` ADD CONSTRAINT `fk_elite_class_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_students` ADD CONSTRAINT `fk_enrollment_referrer` FOREIGN KEY (`referrer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
-ALTER TABLE `elite_class_lessons` ADD CONSTRAINT `fk_lesson_class` FOREIGN KEY (`class_id`) REFERENCES `elite_classes` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_student_lessons` ADD CONSTRAINT `fk_student_lesson_lesson` FOREIGN KEY (`lesson_id`) REFERENCES `elite_class_lessons` (`id`) ON DELETE CASCADE;
-ALTER TABLE `elite_class_student_lessons` ADD CONSTRAINT `fk_student_lesson_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-ALTER TABLE `super_memberships` ADD CONSTRAINT `fk_super_member_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

@@ -87,9 +87,9 @@ CREATE TABLE IF NOT EXISTS `admin_login_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员登录日志表';
 
 -- =====================================================
--- 添加外键约束（在所有表创建之后）
 -- =====================================================
-ALTER TABLE `admin_user` ADD CONSTRAINT `fk_admin_user_role` FOREIGN KEY (`role_id`) REFERENCES `admin_role`(`id`) ON DELETE SET NULL;
+-- 已移除外键约束，通过应用层保证数据一致性
+-- =====================================================
 
 SET FOREIGN_KEY_CHECKS = 1;
 

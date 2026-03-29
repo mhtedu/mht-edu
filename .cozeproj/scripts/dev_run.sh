@@ -134,6 +134,7 @@ start_service() {
     echo "Starting Taro H5 Dev Server and NestJS Server..."
 
     export PORT=${DEPLOY_RUN_PORT}
+    export SERVER_PORT=${SERVER_PORT}
     rm -f /tmp/coze-logs/dev.log
     mkdir -p /tmp/coze-logs
 

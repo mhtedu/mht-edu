@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import * as db from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/postgres-client';
 
 @Injectable()
 export class AuthService {
@@ -11,22 +11,22 @@ export class AuthService {
    * 验证用户
    */
   async validateUser(username: string, password: string): Promise<any> {
-    const [users] = await db.query(
+    const result = await db.query(
       `SELECT 
         au.id, au.username, au.password, au.real_name, au.email, au.phone, 
         au.avatar, au.role_id, au.status,
         ar.role_name, ar.role_code, ar.permissions
       FROM admin_user au
       LEFT JOIN admin_role ar ON au.role_id = ar.id
-      WHERE au.username = ? AND au.status = 1`,
+      WHERE au.username = $1 AND au.status = 1`,
       [username]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return null;
     }
 
-    const user = users[0];
+    const user = result.rows[0];
 
     // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -37,8 +37,8 @@ export class AuthService {
     // 更新最后登录信息
     await db.update(
       `UPDATE admin_user 
-       SET last_login_time = NOW(), login_count = login_count + 1
-       WHERE id = ?`,
+       SET last_login_at = NOW(), login_count = COALESCE(login_count, 0) + 1
+       WHERE id = $1`,
       [user.id]
     );
 
@@ -81,22 +81,22 @@ export class AuthService {
    * 获取用户详情
    */
   async getProfile(userId: number) {
-    const [users] = await db.query(
+    const result = await db.query(
       `SELECT 
         au.id, au.username, au.real_name, au.email, au.phone, 
-        au.avatar, au.role_id, au.last_login_time, au.login_count,
+        au.avatar, au.role_id, au.last_login_at, au.login_count,
         ar.role_name, ar.role_code
       FROM admin_user au
       LEFT JOIN admin_role ar ON au.role_id = ar.id
-      WHERE au.id = ?`,
+      WHERE au.id = $1`,
       [userId]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       throw new UnauthorizedException('用户不存在');
     }
 
-    return users[0];
+    return result.rows[0];
   }
 
   /**
@@ -110,8 +110,8 @@ export class AuthService {
   }) {
     await db.update(
       `UPDATE admin_user 
-       SET real_name = ?, email = ?, phone = ?, avatar = ?
-       WHERE id = ?`,
+       SET real_name = $1, email = $2, phone = $3, avatar = $4
+       WHERE id = $5`,
       [data.realName, data.email, data.phone, data.avatar, userId]
     );
 
@@ -123,17 +123,17 @@ export class AuthService {
    */
   async changePassword(userId: number, oldPassword: string, newPassword: string) {
     // 获取当前密码
-    const [users] = await db.query(
-      'SELECT password FROM admin_user WHERE id = ?',
+    const result = await db.query(
+      'SELECT password FROM admin_user WHERE id = $1',
       [userId]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       throw new UnauthorizedException('用户不存在');
     }
 
     // 验证旧密码
-    const isPasswordValid = await bcrypt.compare(oldPassword, users[0].password);
+    const isPasswordValid = await bcrypt.compare(oldPassword, result.rows[0].password);
     if (!isPasswordValid) {
       throw new BadRequestException('原密码错误');
     }
@@ -143,7 +143,7 @@ export class AuthService {
 
     // 更新密码
     await db.update(
-      'UPDATE admin_user SET password = ? WHERE id = ?',
+      'UPDATE admin_user SET password = $1 WHERE id = $2',
       [hashedPassword, userId]
     );
 
@@ -162,18 +162,18 @@ export class AuthService {
    * 获取用户权限列表
    */
   async getPermissions(userId: number) {
-    const [users] = await db.query(
+    const result = await db.query(
       `SELECT ar.permissions 
        FROM admin_user au
        LEFT JOIN admin_role ar ON au.role_id = ar.id
-       WHERE au.id = ?`,
+       WHERE au.id = $1`,
       [userId]
     );
 
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return [];
     }
 
-    return JSON.parse(users[0].permissions || '[]');
+    return JSON.parse(result.rows[0].permissions || '[]');
   }
 }
