@@ -1,0 +1,145 @@
+# ===================================
+# 棉花糖教育平台 - Nginx配置
+# ===================================
+# 域名: wx.dajiaopei.com
+# 后端端口: 3002
+
+server {
+    listen 80;
+    server_name wx.dajiaopei.com;
+    
+    # 强制跳转HTTPS（配置SSL后启用）
+    # return 301 https://$server_name$request_uri;
+    
+    root /www/wwwroot/mht-edu/dist-web;
+    index index.html;
+
+    # 开启gzip压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/json application/xml application/xhtml+xml;
+    gzip_disable "MSIE [1-6]\.";
+
+    # H5前端（主应用）
+    location / {
+        try_files $uri $uri/ /index.html;
+        
+        # HTML不缓存
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # API反向代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        
+        # WebSocket支持
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;
+        
+        # 代理头设置
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # 缓冲设置
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+
+    # PC管理后台
+    location /admin/ {
+        alias /www/wwwroot/mht-edu/admin/;
+        try_files $uri $uri/ /admin/admin.html;
+        
+        # 管理后台不缓存
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # 静态资源缓存（1年）
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # 禁止访问敏感文件和目录
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    location ~ /node_modules/ {
+        deny all;
+    }
+    
+    location ~ /\.(env|git|svn)/ {
+        deny all;
+    }
+    
+    # 禁止访问备份文件
+    location ~* \.(bak|backup|old|sql|tar|gz|zip|log)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # 错误页面
+    error_page 404 /index.html;
+    error_page 500 502 503 504 /50x.html;
+    
+    location = /50x.html {
+        root /www/wwwroot/mht-edu/dist-web;
+    }
+}
+
+# ===================================
+# HTTPS配置（配置SSL后启用）
+# ===================================
+# server {
+#     listen 443 ssl http2;
+#     server_name wx.dajiaopei.com;
+#     
+#     # SSL证书
+#     ssl_certificate /www/server/panel/vhost/cert/wx.dajiaopei.com/fullchain.pem;
+#     ssl_certificate_key /www/server/panel/vhost/cert/wx.dajiaopei.com/privkey.pem;
+#     
+#     # SSL配置
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+#     ssl_prefer_server_ciphers on;
+#     ssl_session_cache shared:SSL:10m;
+#     ssl_session_timeout 10m;
+#     
+#     # HSTS
+#     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+#     
+#     # 其余配置同上...
+#     root /www/wwwroot/mht-edu/dist-web;
+#     index index.html;
+#     
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#     
+#     location /api/ {
+#         proxy_pass http://127.0.0.1:3002;
+#         # ... 同上
+#     }
+#     
+#     location /admin/ {
+#         alias /www/wwwroot/mht-edu/admin/;
+#         # ... 同上
+#     }
+# }
