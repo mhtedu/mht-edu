@@ -1,7 +1,9 @@
 -- =====================================================
 -- 棉花糖教育平台 - 管理员系统数据库
--- 包含：管理员表、角色表、权限表、操作日志表
+-- 修复版：外键约束放到最后添加
 -- =====================================================
+
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. 管理员角色表
 CREATE TABLE IF NOT EXISTS `admin_role` (
@@ -17,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `admin_role` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员角色表';
 
--- 2. 管理员表
+-- 2. 管理员表（不带外键约束）
 CREATE TABLE IF NOT EXISTS `admin_user` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `username` VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
@@ -35,8 +37,7 @@ CREATE TABLE IF NOT EXISTS `admin_user` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_username` (`username`),
     INDEX `idx_role_id` (`role_id`),
-    INDEX `idx_status` (`status`),
-    FOREIGN KEY (`role_id`) REFERENCES `admin_role`(`id`) ON DELETE SET NULL
+    INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
 
 -- 3. 管理员操作日志表
@@ -70,9 +71,34 @@ CREATE TABLE IF NOT EXISTS `admin_permission` (
     INDEX `idx_module` (`module`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限定义表';
 
+-- 5. 管理员登录日志表
+CREATE TABLE IF NOT EXISTS `admin_login_log` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `admin_id` INT COMMENT '管理员ID',
+    `username` VARCHAR(50) COMMENT '用户名',
+    `login_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+    `login_ip` VARCHAR(50) COMMENT '登录IP',
+    `login_location` VARCHAR(100) COMMENT '登录地点',
+    `user_agent` VARCHAR(255) COMMENT '用户代理',
+    `login_status` TINYINT COMMENT '登录状态 1-成功 0-失败',
+    `fail_reason` VARCHAR(255) COMMENT '失败原因',
+    INDEX `idx_admin_id` (`admin_id`),
+    INDEX `idx_login_time` (`login_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员登录日志表';
+
+-- =====================================================
+-- 添加外键约束（在所有表创建之后）
+-- =====================================================
+ALTER TABLE `admin_user` ADD CONSTRAINT `fk_admin_user_role` FOREIGN KEY (`role_id`) REFERENCES `admin_role`(`id`) ON DELETE SET NULL;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
 -- =====================================================
 -- 初始化数据
 -- =====================================================
+
+-- 清空现有权限数据（重新导入）
+DELETE FROM `admin_permission` WHERE 1=1;
 
 -- 插入权限定义
 INSERT INTO `admin_permission` (`permission_name`, `permission_code`, `module`, `description`, `sort_order`) VALUES
@@ -159,35 +185,28 @@ INSERT INTO `admin_permission` (`permission_name`, `permission_code`, `module`, 
 ('编辑角色', 'role:edit', 'role', '编辑角色', 152),
 ('删除角色', 'role:delete', 'role', '删除角色', 153);
 
+-- 清空现有角色数据（重新导入）
+DELETE FROM `admin_role` WHERE 1=1;
+
 -- 插入默认角色
-INSERT INTO `admin_role` (`role_name`, `role_code`, `description`, `permissions`, `status`) VALUES
-('超级管理员', 'super_admin', '拥有所有权限', '["dashboard:view","user:list","user:detail","user:edit","user:disable","user:export","teacher:list","teacher:verify","teacher:edit","org:list","org:audit","org:edit","order:list","order:detail","order:assign","order:close","membership:list","membership:create","membership:edit","membership:delete","activity:list","activity:create","activity:edit","activity:delete","product:list","product:create","product:edit","product:delete","banner:list","banner:create","banner:edit","banner:delete","commission:list","commission:settle","withdrawal:list","withdrawal:audit","agent:list","agent:create","agent:edit","config:view","config:edit","payment:view","payment:edit","admin:list","admin:create","admin:edit","admin:delete","role:list","role:create","role:edit","role:delete"]', 1),
-('运营管理员', 'operator', '负责日常运营管理', '["dashboard:view","user:list","user:detail","teacher:list","teacher:verify","org:list","order:list","order:detail","membership:list","activity:list","activity:create","activity:edit","product:list","product:edit","banner:list","banner:create","banner:edit","commission:list","withdrawal:list"]', 1),
-('客服管理员', 'customer_service', '负责客服和用户管理', '["dashboard:view","user:list","user:detail","user:edit","order:list","order:detail","withdrawal:list"]', 1),
-('财务管理', 'finance', '负责财务和分佣管理', '["dashboard:view","order:list","commission:list","commission:settle","withdrawal:list","withdrawal:audit"]', 1),
-('内容管理', 'content_manager', '负责内容和活动管理', '["dashboard:view","activity:list","activity:create","activity:edit","product:list","product:create","product:edit","banner:list","banner:create","banner:edit"]', 1);
+INSERT INTO `admin_role` (`id`, `role_name`, `role_code`, `description`, `permissions`, `status`) VALUES
+(1, '超级管理员', 'super_admin', '拥有所有权限', '["dashboard:view","user:list","user:detail","user:edit","user:disable","user:export","teacher:list","teacher:verify","teacher:edit","org:list","org:audit","org:edit","order:list","order:detail","order:assign","order:close","membership:list","membership:create","membership:edit","membership:delete","activity:list","activity:create","activity:edit","activity:delete","product:list","product:create","product:edit","product:delete","banner:list","banner:create","banner:edit","banner:delete","commission:list","commission:settle","withdrawal:list","withdrawal:audit","agent:list","agent:create","agent:edit","config:view","config:edit","payment:view","payment:edit","admin:list","admin:create","admin:edit","admin:delete","role:list","role:create","role:edit","role:delete"]', 1),
+(2, '运营管理员', 'operator', '负责日常运营管理', '["dashboard:view","user:list","user:detail","teacher:list","teacher:verify","org:list","order:list","order:detail","membership:list","activity:list","activity:create","activity:edit","product:list","product:edit","banner:list","banner:create","banner:edit","commission:list","withdrawal:list"]', 1),
+(3, '客服管理员', 'customer_service', '负责客服和用户管理', '["dashboard:view","user:list","user:detail","user:edit","order:list","order:detail","withdrawal:list"]', 1),
+(4, '财务管理', 'finance', '负责财务和分佣管理', '["dashboard:view","order:list","commission:list","commission:settle","withdrawal:list","withdrawal:audit"]', 1),
+(5, '内容管理', 'content_manager', '负责内容和活动管理', '["dashboard:view","activity:list","activity:create","activity:edit","product:list","product:create","product:edit","banner:list","banner:create","banner:edit"]', 1);
+
+-- 清空现有管理员数据
+DELETE FROM `admin_user` WHERE 1=1;
 
 -- 插入默认超级管理员账号
--- 密码: admin123 (使用bcrypt加密)
-INSERT INTO `admin_user` (`username`, `password`, `real_name`, `role_id`, `status`) VALUES
-('admin', '$2b$10$YourBcryptHashHere', '超级管理员', 1, 1);
+-- 密码: admin123 (bcrypt加密后的哈希值)
+INSERT INTO `admin_user` (`id`, `username`, `password`, `real_name`, `role_id`, `status`) VALUES
+(1, 'admin', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '超级管理员', 1, 1);
 
--- 注意：上面的密码哈希需要在后端生成
--- 临时明文密码（仅用于测试，正式环境必须删除）
--- 账号: admin
+-- 默认账号信息:
+-- 用户名: admin
 -- 密码: admin123
 
--- 5. 管理员登录日志表
-CREATE TABLE IF NOT EXISTS `admin_login_log` (
-    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `admin_id` INT COMMENT '管理员ID',
-    `username` VARCHAR(50) COMMENT '用户名',
-    `login_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
-    `login_ip` VARCHAR(50) COMMENT '登录IP',
-    `login_location` VARCHAR(100) COMMENT '登录地点',
-    `user_agent` VARCHAR(255) COMMENT '用户代理',
-    `login_status` TINYINT COMMENT '登录状态 1-成功 0-失败',
-    `fail_reason` VARCHAR(255) COMMENT '失败原因',
-    INDEX `idx_admin_id` (`admin_id`),
-    INDEX `idx_login_time` (`login_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员登录日志表';
+SELECT '管理员系统初始化完成！' AS message;
+SELECT '默认账号: admin / admin123' AS account_info;
