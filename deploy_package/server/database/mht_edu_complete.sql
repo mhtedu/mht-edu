@@ -459,11 +459,11 @@ CREATE TABLE `products` (
 -- 21. 分销关系锁定表
 -- ------------------------------
 CREATE TABLE `referral_locks` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id` INT UNSIGNED NOT NULL COMMENT '被锁定的用户ID',
-    `locker_id` INT UNSIGNED NOT NULL COMMENT '锁定者ID',
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `user_id` INT NOT NULL COMMENT '被锁定的用户ID',
+    `locker_id` INT NOT NULL COMMENT '锁定者ID',
     `lock_type` VARCHAR(20) NOT NULL COMMENT '锁定类型: invite_link/teacher_profile/activity/elite_class',
-    `lock_source_id` INT UNSIGNED COMMENT '锁定来源ID',
+    `lock_source_id` INT COMMENT '锁定来源ID',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user` (`user_id`),
@@ -505,8 +505,8 @@ CREATE TABLE `cities` (
 -- 24. 牛师班表
 -- ------------------------------
 CREATE TABLE `elite_classes` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `teacher_id` INT UNSIGNED NOT NULL COMMENT '教师用户ID',
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `teacher_id` INT NOT NULL COMMENT '教师用户ID',
     `class_name` VARCHAR(100) NOT NULL COMMENT '班级名称',
     `subject` VARCHAR(50) NOT NULL COMMENT '科目',
     `start_time` DATETIME NOT NULL COMMENT '开课时间',
@@ -535,10 +535,10 @@ CREATE TABLE `elite_classes` (
 -- 25. 牛师班报名表
 -- ------------------------------
 CREATE TABLE `elite_class_students` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `class_id` INT UNSIGNED NOT NULL COMMENT '牛师班ID',
-    `student_id` INT UNSIGNED NOT NULL COMMENT '学生ID',
-    `referrer_id` INT UNSIGNED DEFAULT NULL COMMENT '推荐人ID',
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `class_id` INT NOT NULL COMMENT '牛师班ID',
+    `student_id` INT NOT NULL COMMENT '学生ID',
+    `referrer_id` INT DEFAULT NULL COMMENT '推荐人ID',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1正常 0退出',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -553,8 +553,8 @@ CREATE TABLE `elite_class_students` (
 -- 26. 牛师班课时记录表
 -- ------------------------------
 CREATE TABLE `elite_class_lessons` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `class_id` INT UNSIGNED NOT NULL COMMENT '牛师班ID',
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `class_id` INT NOT NULL COMMENT '牛师班ID',
     `lesson_no` INT NOT NULL COMMENT '课时序号',
     `lesson_time` DATETIME NOT NULL COMMENT '上课时间',
     `duration` INT DEFAULT 60 COMMENT '课时时长(分钟)',
@@ -574,9 +574,9 @@ CREATE TABLE `elite_class_lessons` (
 -- 27. 牛师班学生课时消耗表
 -- ------------------------------
 CREATE TABLE `elite_class_student_lessons` (
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `lesson_id` INT UNSIGNED NOT NULL COMMENT '课时ID',
-    `student_id` INT UNSIGNED NOT NULL COMMENT '学生ID',
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `lesson_id` INT NOT NULL COMMENT '课时ID',
+    `student_id` INT NOT NULL COMMENT '学生ID',
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0已签到 1已请假 2旷课',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
