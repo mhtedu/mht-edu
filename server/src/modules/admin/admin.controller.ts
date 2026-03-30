@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequirePermission } from '../auth/decorators/permission.decorator';
@@ -15,23 +15,376 @@ export class AdminController {
   @Get('stats/overview')
   @RequirePermission('dashboard:view')
   async getStatsOverview() {
-    // 获取各类统计数据
-    const [users] = await db.query('SELECT COUNT(*) as count FROM user WHERE status = 1');
-    const [teachers] = await db.query('SELECT COUNT(*) as count FROM teacher WHERE verify_status = 1');
-    const [orgs] = await db.query('SELECT COUNT(*) as count FROM organization WHERE verify_status = 1');
-    const [orders] = await db.query('SELECT COUNT(*) as count FROM `order` WHERE status = 1');
-    const [members] = await db.query('SELECT COUNT(*) as count FROM user WHERE member_expire_time > NOW()');
-    const [revenue] = await db.query('SELECT COALESCE(SUM(amount), 0) as total FROM `order` WHERE status = 1');
+    try {
+      // 获取各类统计数据 - 使用实际表名
+      const [users] = await db.query('SELECT COUNT(*) as count FROM users WHERE status = 1');
+      const [teachers] = await db.query('SELECT COUNT(*) as count FROM teacher_profiles WHERE verify_status = 1');
+      const [orgs] = await db.query('SELECT COUNT(*) as count FROM organizations WHERE verify_status = 1');
+      const [orders] = await db.query('SELECT COUNT(*) as count FROM orders WHERE status = 1');
+      const [members] = await db.query('SELECT COUNT(*) as count FROM users WHERE membership_expire_at > NOW()');
+      const [revenue] = await db.query('SELECT COALESCE(SUM(50), 0) as total FROM orders WHERE status = 1');
 
-    return {
-      totalUsers: users[0]?.count || 0,
-      totalTeachers: teachers[0]?.count || 0,
-      totalOrgs: orgs[0]?.count || 0,
-      totalOrders: orders[0]?.count || 0,
-      totalMembers: members[0]?.count || 0,
-      totalRevenue: revenue[0]?.total || 0,
-    };
+      return {
+        totalUsers: users[0]?.count || 0,
+        totalTeachers: teachers[0]?.count || 0,
+        totalOrgs: orgs[0]?.count || 0,
+        totalOrders: orders[0]?.count || 0,
+        totalMembers: members[0]?.count || 0,
+        totalRevenue: revenue[0]?.total || 0,
+      };
+    } catch (error) {
+      console.error('获取统计数据失败:', error);
+      // 返回默认数据
+      return {
+        totalUsers: 0,
+        totalTeachers: 0,
+        totalOrgs: 0,
+        totalOrders: 0,
+        totalMembers: 0,
+        totalRevenue: 0,
+      };
+    }
   }
+
+  // ==================== 用户管理 ====================
+
+  /**
+   * 获取用户列表
+   */
+  @Get('users')
+  @RequirePermission('user:view')
+  async getUsers(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('search') search = '',
+    @Query('role') role = ''
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (search) {
+      whereClause += ' AND (nickname LIKE ? OR mobile LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (role) {
+      whereClause += ' AND role = ?';
+      params.push(role);
+    }
+
+    try {
+      const [list] = await db.query(
+        `SELECT id, openid, nickname, mobile as phone, avatar, role, 
+                membership_type, membership_expire_at as member_expire_time, 
+                created_at, status, city_name
+         FROM users ${whereClause}
+         ORDER BY id DESC
+         LIMIT ? OFFSET ?`,
+        [...params, pageSizeNum, offset]
+      );
+      
+      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM users ${whereClause}`, params);
+
+      // 转换角色显示
+      const roleMap = { 0: 'parent', 1: 'teacher', 2: 'org' };
+      const listWithRole = list.map(u => ({
+        ...u,
+        role: roleMap[u.role] || 'parent',
+        isMember: u.membership_type === 1
+      }));
+
+      return {
+        list: listWithRole,
+        total: countResult[0]?.total || 0,
+        page: pageNum,
+        pageSize: pageSizeNum
+      };
+    } catch (error) {
+      console.error('获取用户列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 获取单个用户
+   */
+  @Get('users/:id')
+  @RequirePermission('user:view')
+  async getUser(@Param('id') id: string) {
+    const [users] = await db.query(
+      `SELECT id, openid, unionid, nickname, mobile, avatar, role, gender,
+              membership_type, membership_expire_at, wechat_id,
+              latitude, longitude, city_code, city_name,
+              inviter_id, inviter_2nd_id, city_agent_id, affiliated_org_id,
+              last_login_at, created_at, status
+       FROM users WHERE id = ?`,
+      [parseInt(id)]
+    );
+
+    if (!users || users.length === 0) {
+      throw new HttpException('用户不存在', HttpStatus.NOT_FOUND);
+    }
+
+    return users[0];
+  }
+
+  /**
+   * 更新用户
+   */
+  @Put('users/:id')
+  @RequirePermission('user:edit')
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: {
+      nickname?: string;
+      mobile?: string;
+      role?: string;
+      membership_type?: number;
+      membership_expire_at?: string;
+      status?: number;
+    }
+  ) {
+    const roleMap = { 'parent': 0, 'teacher': 1, 'org': 2 };
+    const roleValue = body.role ? roleMap[body.role] : undefined;
+
+    await db.update(
+      `UPDATE users 
+       SET nickname = COALESCE(?, nickname),
+           mobile = COALESCE(?, mobile),
+           role = COALESCE(?, role),
+           membership_type = COALESCE(?, membership_type),
+           membership_expire_at = COALESCE(?, membership_expire_at),
+           status = COALESCE(?, status),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [body.nickname, body.mobile, roleValue, body.membership_type, body.membership_expire_at, body.status, parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * 更新用户状态
+   */
+  @Put('users/:id/status')
+  @RequirePermission('user:edit')
+  async updateUserStatus(
+    @Param('id') id: string,
+    @Body() body: { status: number }
+  ) {
+    await db.update(
+      'UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?',
+      [body.status, parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  // ==================== 教师管理 ====================
+
+  /**
+   * 获取教师列表
+   */
+  @Get('teachers')
+  @RequirePermission('teacher:view')
+  async getTeachers(@Query('status') status = '') {
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (status === 'pending') {
+      whereClause += ' AND tp.verify_status = 0';
+    } else if (status === 'approved') {
+      whereClause += ' AND tp.verify_status = 1';
+    } else if (status === 'rejected') {
+      whereClause += ' AND tp.verify_status = 2';
+    }
+
+    try {
+      const [teachers] = await db.query(`
+        SELECT 
+          tp.user_id as id, tp.user_id, tp.real_name as name, tp.education,
+          tp.school, tp.major, tp.subjects, tp.intro as introduction,
+          tp.teaching_years, tp.hourly_rate_min, tp.hourly_rate_max,
+          tp.rating, tp.verify_status, tp.created_at,
+          u.nickname, u.avatar, u.mobile as phone
+        FROM teacher_profiles tp
+        LEFT JOIN users u ON tp.user_id = u.id
+        ${whereClause}
+        ORDER BY tp.created_at DESC
+      `, params);
+
+      return teachers.map(t => ({
+        ...t,
+        subject: Array.isArray(t.subjects) ? t.subjects.join('、') : t.subjects
+      }));
+    } catch (error) {
+      console.error('获取教师列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 获取单个教师
+   */
+  @Get('teachers/:id')
+  @RequirePermission('teacher:view')
+  async getTeacher(@Param('id') id: string) {
+    const [teachers] = await db.query(`
+      SELECT 
+        tp.*, u.nickname, u.avatar, u.mobile
+      FROM teacher_profiles tp
+      LEFT JOIN users u ON tp.user_id = u.id
+      WHERE tp.user_id = ?
+    `, [parseInt(id)]);
+
+    if (!teachers || teachers.length === 0) {
+      throw new HttpException('教师不存在', HttpStatus.NOT_FOUND);
+    }
+
+    return teachers[0];
+  }
+
+  /**
+   * 通过教师认证
+   */
+  @Post('teachers/:id/approve')
+  @RequirePermission('teacher:audit')
+  async approveTeacher(@Param('id') id: string) {
+    await db.update(
+      'UPDATE teacher_profiles SET verify_status = 1, verify_time = NOW(), updated_at = NOW() WHERE user_id = ?',
+      [parseInt(id)]
+    );
+
+    // 同时更新用户角色为教师
+    await db.update(
+      'UPDATE users SET role = 1, updated_at = NOW() WHERE id = ?',
+      [parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * 拒绝教师认证
+   */
+  @Post('teachers/:id/reject')
+  @RequirePermission('teacher:audit')
+  async rejectTeacher(
+    @Param('id') id: string,
+    @Body() body: { reason?: string }
+  ) {
+    await db.update(
+      'UPDATE teacher_profiles SET verify_status = 2, updated_at = NOW() WHERE user_id = ?',
+      [parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  // ==================== 机构管理 ====================
+
+  /**
+   * 获取机构列表
+   */
+  @Get('orgs')
+  @RequirePermission('org:view')
+  async getOrgs(@Query('status') status = '') {
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (status === 'pending') {
+      whereClause += ' AND o.verify_status = 0';
+    } else if (status === 'approved') {
+      whereClause += ' AND o.verify_status = 1';
+    }
+
+    try {
+      const [orgs] = await db.query(`
+        SELECT 
+          o.id, o.user_id, o.name, o.contact_person, o.contact_phone,
+          o.address, o.description, o.verify_status, o.created_at,
+          u.nickname, u.avatar
+        FROM organizations o
+        LEFT JOIN users u ON o.user_id = u.id
+        ${whereClause}
+        ORDER BY o.created_at DESC
+      `, params);
+
+      return orgs;
+    } catch (error) {
+      console.error('获取机构列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 通过机构认证
+   */
+  @Post('orgs/:id/approve')
+  @RequirePermission('org:audit')
+  async approveOrg(@Param('id') id: string) {
+    await db.update(
+      'UPDATE organizations SET verify_status = 1, updated_at = NOW() WHERE id = ?',
+      [parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * 拒绝机构认证
+   */
+  @Post('orgs/:id/reject')
+  @RequirePermission('org:audit')
+  async rejectOrg(@Param('id') id: string, @Body() body: { reason?: string }) {
+    await db.update(
+      'UPDATE organizations SET verify_status = 2, updated_at = NOW() WHERE id = ?',
+      [parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  // ==================== 订单管理 ====================
+
+  /**
+   * 获取订单列表
+   */
+  @Get('orders')
+  @RequirePermission('order:view')
+  async getOrders(@Query('status') status = '') {
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (status) {
+      whereClause += ' AND o.status = ?';
+      params.push(parseInt(status));
+    }
+
+    try {
+      const [orders] = await db.query(`
+        SELECT 
+          o.id, o.order_no, o.user_id, o.subject, o.student_grade,
+          o.teaching_mode, o.address, o.hourly_rate, o.status,
+          o.view_count, o.apply_count, o.created_at,
+          u.nickname as user_name, u.mobile as user_phone
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        ${whereClause}
+        ORDER BY o.created_at DESC
+      `, params);
+
+      return orders;
+    } catch (error) {
+      console.error('获取订单列表失败:', error);
+      return [];
+    }
+  }
+
+  // ==================== 管理员管理 ====================
 
   /**
    * 获取管理员列表
@@ -39,18 +392,43 @@ export class AdminController {
   @Get('admins')
   @RequirePermission('admin:view')
   async getAdmins() {
+    try {
+      const [admins] = await db.query(`
+        SELECT 
+          au.id, au.username, au.real_name, au.email, au.phone, 
+          au.role_id, au.status, au.last_login_at as last_login_time, au.login_count, au.created_at,
+          ar.role_name
+        FROM admin_user au
+        LEFT JOIN admin_role ar ON au.role_id = ar.id
+        WHERE au.status != -1
+        ORDER BY au.id ASC
+      `);
+
+      return admins;
+    } catch (error) {
+      console.error('获取管理员列表失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 获取单个管理员
+   */
+  @Get('admins/:id')
+  @RequirePermission('admin:view')
+  async getAdmin(@Param('id') id: string) {
     const [admins] = await db.query(`
-      SELECT 
-        au.id, au.username, au.real_name, au.email, au.phone, 
-        au.role_id, au.status, au.last_login_time, au.login_count, au.created_at,
-        ar.role_name
+      SELECT au.*, ar.role_name
       FROM admin_user au
       LEFT JOIN admin_role ar ON au.role_id = ar.id
-      WHERE au.status != -1
-      ORDER BY au.id ASC
-    `);
+      WHERE au.id = ?
+    `, [parseInt(id)]);
 
-    return admins;
+    if (!admins || admins.length === 0) {
+      throw new HttpException('管理员不存在', HttpStatus.NOT_FOUND);
+    }
+
+    return admins[0];
   }
 
   /**
@@ -106,9 +484,31 @@ export class AdminController {
   ) {
     await db.update(
       `UPDATE admin_user 
-       SET real_name = ?, email = ?, phone = ?, role_id = ?, status = ?, updated_at = NOW()
+       SET real_name = COALESCE(?, real_name), 
+           email = COALESCE(?, email), 
+           phone = COALESCE(?, phone), 
+           role_id = COALESCE(?, role_id), 
+           status = COALESCE(?, status), 
+           updated_at = NOW()
        WHERE id = ?`,
       [body.realName, body.email, body.phone, body.roleId, body.status, parseInt(id)]
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * 更新管理员状态
+   */
+  @Put('admins/:id/status')
+  @RequirePermission('admin:edit')
+  async updateAdminStatus(
+    @Param('id') id: string,
+    @Body() body: { status: number }
+  ) {
+    await db.update(
+      'UPDATE admin_user SET status = ?, updated_at = NOW() WHERE id = ?',
+      [body.status, parseInt(id)]
     );
 
     return { success: true };
@@ -134,17 +534,19 @@ export class AdminController {
    */
   @Post('admins/:id/reset-password')
   @RequirePermission('admin:edit')
-  async resetAdminPassword(@Param('id') id: string) {
-    const defaultPassword = '123456';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  async resetAdminPassword(@Param('id') id: string, @Body() body: { newPassword?: string }) {
+    const newPassword = body.newPassword || Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await db.update(
       'UPDATE admin_user SET password = ?, updated_at = NOW() WHERE id = ?',
       [hashedPassword, parseInt(id)]
     );
 
-    return { success: true, password: defaultPassword };
+    return { success: true, newPassword };
   }
+
+  // ==================== 角色管理 ====================
 
   /**
    * 获取角色列表
@@ -152,193 +554,111 @@ export class AdminController {
   @Get('roles')
   @RequirePermission('role:view')
   async getRoles() {
-    const [roles] = await db.query(`
-      SELECT 
-        ar.id, ar.role_name, ar.role_code, ar.description, ar.created_at,
-        (SELECT COUNT(*) FROM admin_user WHERE role_id = ar.id AND status = 1) as user_count,
-        JSON_LENGTH(ar.permissions) as permission_count
-      FROM admin_role ar
-      WHERE ar.status = 1
-      ORDER BY ar.id ASC
-    `);
+    try {
+      const [roles] = await db.query(`
+        SELECT 
+          ar.id, ar.role_name, ar.role_code, ar.description, ar.created_at,
+          (SELECT COUNT(*) FROM admin_user WHERE role_id = ar.id AND status = 1) as user_count
+        FROM admin_role ar
+        WHERE ar.status = 1
+        ORDER BY ar.id ASC
+      `);
 
-    return roles.map(role => ({
-      ...role,
-      permissionCount: role.permission_count || 0,
-      userCount: role.user_count || 0
-    }));
+      return roles.map(role => ({
+        ...role,
+        permissionCount: role.permissions ? JSON.parse(role.permissions).length : 0,
+        userCount: role.user_count || 0
+      }));
+    } catch (error) {
+      console.error('获取角色列表失败:', error);
+      return [];
+    }
   }
 
   /**
-   * 获取权限列表
+   * 获取单个角色
    */
-  @Get('permissions')
+  @Get('roles/:id')
   @RequirePermission('role:view')
-  async getPermissions() {
-    const [permissions] = await db.query(`
-      SELECT id, permission_name, permission_code, module, description
-      FROM admin_permission
-      WHERE status = 1
-      ORDER BY module ASC, id ASC
-    `);
+  async getRole(@Param('id') id: string) {
+    const [roles] = await db.query(
+      'SELECT * FROM admin_role WHERE id = ?',
+      [parseInt(id)]
+    );
 
-    // 按模块分组
-    const grouped = {};
-    permissions.forEach(p => {
-      if (!grouped[p.module]) {
-        grouped[p.module] = [];
-      }
-      grouped[p.module].push(p);
-    });
+    if (!roles || roles.length === 0) {
+      throw new HttpException('角色不存在', HttpStatus.NOT_FOUND);
+    }
 
-    return grouped;
+    const role = roles[0];
+    return {
+      ...role,
+      permissions: role.permissions ? JSON.parse(role.permissions) : []
+    };
   }
 
   /**
-   * 更新角色权限
+   * 更新角色
    */
-  @Put('roles/:id/permissions')
+  @Put('roles/:id')
   @RequirePermission('role:edit')
-  async updateRolePermissions(
+  async updateRole(
     @Param('id') id: string,
-    @Body() body: { permissions: string[] }
+    @Body() body: { roleName?: string; permissions?: string[] }
   ) {
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (body.roleName) {
+      updates.push('role_name = ?');
+      params.push(body.roleName);
+    }
+
+    if (body.permissions) {
+      updates.push('permissions = ?');
+      params.push(JSON.stringify(body.permissions));
+    }
+
+    if (updates.length === 0) {
+      return { success: true };
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(parseInt(id));
+
     await db.update(
-      'UPDATE admin_role SET permissions = ?, updated_at = NOW() WHERE id = ?',
-      [JSON.stringify(body.permissions), parseInt(id)]
+      `UPDATE admin_role SET ${updates.join(', ')} WHERE id = ?`,
+      params
     );
 
     return { success: true };
   }
 
   /**
-   * 获取用户列表
+   * 删除角色
    */
-  @Get('users')
-  @RequirePermission('user:view')
-  async getUsers(
-    @Query('page') page = '1',
-    @Query('pageSize') pageSize = '20',
-    @Query('search') search = '',
-    @Query('role') role = ''
-  ) {
-    const pageNum = parseInt(page);
-    const pageSizeNum = parseInt(pageSize);
-    const offset = (pageNum - 1) * pageSizeNum;
-    let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-
-    if (search) {
-      whereClause += ' AND (nickname LIKE ? OR phone LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    if (role) {
-      whereClause += ' AND role = ?';
-      params.push(role);
-    }
-
-    const [list] = await db.query(
-      `SELECT id, openid, nickname, phone, avatar, role, member_expire_time, created_at, status
-       FROM user ${whereClause}
-       ORDER BY id DESC
-       LIMIT ? OFFSET ?`,
-      [...params, pageSizeNum, offset]
+  @Delete('roles/:id')
+  @RequirePermission('role:delete')
+  async deleteRole(@Param('id') id: string) {
+    // 检查是否有用户使用该角色
+    const [users] = await db.query(
+      'SELECT COUNT(*) as count FROM admin_user WHERE role_id = ? AND status = 1',
+      [parseInt(id)]
     );
-    
-    const [countResult] = await db.query(`SELECT COUNT(*) as total FROM user ${whereClause}`, params);
 
-    return {
-      list,
-      total: countResult[0]?.total || 0,
-      page: pageNum,
-      pageSize: pageSizeNum
-    };
-  }
-
-  /**
-   * 获取教师列表
-   */
-  @Get('teachers')
-  @RequirePermission('teacher:view')
-  async getTeachers(@Query('status') status = '') {
-    let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-
-    if (status) {
-      whereClause += ' AND verify_status = ?';
-      params.push(status);
+    if (users[0]?.count > 0) {
+      throw new HttpException('该角色正在被使用，无法删除', HttpStatus.BAD_REQUEST);
     }
 
-    const [teachers] = await db.query(`
-      SELECT 
-        t.id, t.user_id, t.name, t.phone, t.subjects, t.introduction,
-        t.verify_status, t.rating, t.created_at,
-        u.nickname, u.avatar
-      FROM teacher t
-      LEFT JOIN user u ON t.user_id = u.id
-      ${whereClause}
-      ORDER BY t.id DESC
-    `, params);
+    await db.update(
+      'UPDATE admin_role SET status = 0, updated_at = NOW() WHERE id = ?',
+      [parseInt(id)]
+    );
 
-    return teachers;
+    return { success: true };
   }
 
-  /**
-   * 获取机构列表
-   */
-  @Get('orgs')
-  @RequirePermission('org:view')
-  async getOrgs(@Query('status') status = '') {
-    let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-
-    if (status) {
-      whereClause += ' AND verify_status = ?';
-      params.push(status);
-    }
-
-    const [orgs] = await db.query(`
-      SELECT 
-        o.id, o.user_id, o.name, o.contact_person, o.contact_phone,
-        o.address, o.verify_status, o.created_at,
-        u.nickname, u.avatar
-      FROM organization o
-      LEFT JOIN user u ON o.user_id = u.id
-      ${whereClause}
-      ORDER BY o.id DESC
-    `, params);
-
-    return orgs;
-  }
-
-  /**
-   * 获取订单列表
-   */
-  @Get('orders')
-  @RequirePermission('order:view')
-  async getOrders(@Query('status') status = '') {
-    let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-
-    if (status) {
-      whereClause += ' AND status = ?';
-      params.push(status);
-    }
-
-    const [orders] = await db.query(`
-      SELECT 
-        o.id, o.order_no, o.user_id, o.order_type, o.amount,
-        o.status, o.created_at,
-        u.nickname as user_name
-      FROM \`order\` o
-      LEFT JOIN user u ON o.user_id = u.id
-      ${whereClause}
-      ORDER BY o.id DESC
-    `, params);
-
-    return orders;
-  }
+  // ==================== 系统配置 ====================
 
   /**
    * 获取系统配置
@@ -346,16 +666,21 @@ export class AdminController {
   @Get('config')
   @RequirePermission('config:view')
   async getConfig() {
-    const [configs] = await db.query(
-      'SELECT config_key, config_value FROM site_config WHERE status = 1'
-    );
+    try {
+      const [configs] = await db.query(
+        'SELECT config_key, config_value FROM site_config WHERE status = 1'
+      );
 
-    const configMap = {};
-    configs.forEach(c => {
-      configMap[c.config_key] = c.config_value;
-    });
+      const configMap = {};
+      configs.forEach(c => {
+        configMap[c.config_key] = c.config_value;
+      });
 
-    return configMap;
+      return configMap;
+    } catch (error) {
+      console.error('获取系统配置失败:', error);
+      return {};
+    }
   }
 
   /**

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>棉花糖教育平台 - 管理后台</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- 左侧菜单栏 -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">棉花糖教育</h1>
+                <p class="subtitle">管理后台 v1.0</p>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-page="dashboard">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-text">数据概览</span>
+                </a>
+                <a href="#" class="menu-item" data-page="users">
+                    <span class="menu-icon">👥</span>
+                    <span class="menu-text">用户管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="teachers">
+                    <span class="menu-icon">👨‍🏫</span>
+                    <span class="menu-text">教师管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="orgs">
+                    <span class="menu-icon">🏢</span>
+                    <span class="menu-text">机构管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="orders">
+                    <span class="menu-icon">📋</span>
+                    <span class="menu-text">订单管理</span>
+                    <span class="menu-badge">23</span>
+                </a>
+                <a href="#" class="menu-item" data-page="elite-class">
+                    <span class="menu-icon">🎓</span>
+                    <span class="menu-text">牛师班管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="membership">
+                    <span class="menu-icon">💎</span>
+                    <span class="menu-text">会员套餐</span>
+                </a>
+                <a href="#" class="menu-item" data-page="activities">
+                    <span class="menu-icon">📅</span>
+                    <span class="menu-text">活动管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="products">
+                    <span class="menu-icon">🛍️</span>
+                    <span class="menu-text">商品管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="banners">
+                    <span class="menu-icon">🖼️</span>
+                    <span class="menu-text">广告位管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="commissions">
+                    <span class="menu-icon">💰</span>
+                    <span class="menu-text">分佣管理</span>
+                </a>
+                <a href="#" class="menu-item" data-page="withdrawals">
+                    <span class="menu-icon">💳</span>
+                    <span class="menu-text">提现审核</span>
+                </a>
+                <a href="#" class="menu-item" data-page="agents">
+                    <span class="menu-icon">📍</span>
+                    <span class="menu-text">代理商管理</span>
+                </a>
+                <div class="menu-divider"></div>
+                <a href="#" class="menu-item" data-page="config">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">系统配置</span>
+                </a>
+                <a href="#" class="menu-item" data-page="payment">
+                    <span class="menu-icon">🔐</span>
+                    <span class="menu-text">支付配置</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" onclick="handleLogout()">
+                    <span>🚪</span> 退出登录
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="admin-main">
+            <!-- 顶部导航栏 -->
+            <header class="admin-header">
+                <h2 class="page-title" id="pageTitle">数据概览</h2>
+                <div class="header-actions">
+                    <span class="admin-info">
+                        <span class="admin-avatar">👤</span>
+                        <span class="admin-name">管理员</span>
+                    </span>
+                </div>
+            </header>
+            
+            <!-- 内容区域 -->
+            <div class="admin-content" id="mainContent">
+                <!-- 内容将由JavaScript动态加载 -->
+            </div>
+        </main>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>

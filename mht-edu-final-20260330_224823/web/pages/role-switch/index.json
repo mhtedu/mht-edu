@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "角色切换",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "管理后台",
+  "navigationBarBackgroundColor": "#1e40af",
+  "navigationBarTextStyle": "white",
+  "navigationStyle": "custom",
+  "backgroundColor": "#f5f7fa",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

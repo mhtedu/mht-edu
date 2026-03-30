@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "课时管理",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

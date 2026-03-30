@@ -20,6 +20,7 @@ import { ReferralLockModule } from './modules/referral-lock/referral-lock.module
 import { ConfigModule } from './modules/config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SmsModule } from './modules/sms/sms.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AdminModule } from './modules/admin/admin.module';
     EliteClassModule,
     ReferralLockModule,
     ConfigModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

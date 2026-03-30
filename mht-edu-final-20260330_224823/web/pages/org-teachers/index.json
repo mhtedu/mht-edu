@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "教师管理",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

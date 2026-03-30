@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "教辅商城",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

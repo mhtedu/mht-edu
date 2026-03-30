@@ -1,0 +1,81 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/mall/index",
+    "pages/message/index",
+    "pages/profile/index",
+    "pages/role-switch/index",
+    "pages/teacher-workbench/index",
+    "pages/share-center/index",
+    "pages/publish/index",
+    "pages/teacher-detail/index",
+    "pages/orders/index",
+    "pages/order-detail/index",
+    "pages/membership/index",
+    "pages/distribution/index",
+    "pages/org-dashboard/index",
+    "pages/org-teachers/index",
+    "pages/org-courses/index",
+    "pages/org-invite/index",
+    "pages/org-settings/index",
+    "pages/agent-dashboard/index",
+    "pages/agent-apply/index",
+    "pages/admin/index",
+    "pages/login/index",
+    "pages/product-detail/index",
+    "pages/chat/index",
+    "pages/course-manage/index",
+    "pages/parent-profile/index",
+    "pages/activity-detail/index",
+    "pages/activities/index",
+    "pages/favorites/index",
+    "pages/students/index",
+    "pages/earnings/index",
+    "pages/settings/index",
+    "pages/elite-class/index",
+    "pages/elite-class-detail/index",
+    "pages/create-elite-class/index",
+    "pages/elite-class-manage/index",
+    "pages/org-elite-class/index",
+    "pages/admin-elite-class/index",
+    "pages/admin-config/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "棉花糖教育",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#2563EB",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "./assets/tabbar/home.png",
+        "selectedIconPath": "./assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/mall/index",
+        "text": "商城",
+        "iconPath": "./assets/tabbar/shopping-cart.png",
+        "selectedIconPath": "./assets/tabbar/shopping-cart-active.png"
+      },
+      {
+        "pagePath": "pages/message/index",
+        "text": "消息",
+        "iconPath": "./assets/tabbar/message-square.png",
+        "selectedIconPath": "./assets/tabbar/message-square-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "./assets/tabbar/user.png",
+        "selectedIconPath": "./assets/tabbar/user-active.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "教师主页",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

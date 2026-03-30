@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "邀请教师",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

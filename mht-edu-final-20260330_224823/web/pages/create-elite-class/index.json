@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "创建牛师班",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

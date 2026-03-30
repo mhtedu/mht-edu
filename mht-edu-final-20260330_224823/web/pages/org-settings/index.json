@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "机构设置",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}

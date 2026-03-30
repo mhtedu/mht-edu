@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "家长主页",
+  "usingComponents": {
+    "comp": "../../comp"
+  }
+}
