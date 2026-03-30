@@ -1,10 +1,73 @@
 import { Controller, Get, Post, Put, Body, Query, Param, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
+import { SmsService } from '../sms/sms.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly smsService: SmsService,
+  ) {}
+
+  /**
+   * 用户登录（验证码登录）
+   */
+  @Public()
+  @Post('login')
+  async login(@Body() body: { mobile: string; code: string }) {
+    if (!body.mobile || !/^1[3-9]\d{9}$/.test(body.mobile)) {
+      return { success: false, message: '请输入正确的手机号' };
+    }
+    if (!body.code || body.code.length !== 6) {
+      return { success: false, message: '请输入6位验证码' };
+    }
+
+    // 验证验证码
+    const isValid = await this.smsService.verifyCode(body.mobile, body.code);
+    if (!isValid) {
+      return { success: false, message: '验证码错误或已过期' };
+    }
+
+    return this.userService.login(body.mobile);
+  }
+
+  /**
+   * 用户注册
+   */
+  @Public()
+  @Post('register')
+  async register(@Body() body: { mobile: string; code: string; nickname?: string; role?: number }) {
+    if (!body.mobile || !/^1[3-9]\d{9}$/.test(body.mobile)) {
+      return { success: false, message: '请输入正确的手机号' };
+    }
+    if (!body.code || body.code.length !== 6) {
+      return { success: false, message: '请输入6位验证码' };
+    }
+
+    // 验证验证码
+    const isValid = await this.smsService.verifyCode(body.mobile, body.code);
+    if (!isValid) {
+      return { success: false, message: '验证码错误或已过期' };
+    }
+
+    return this.userService.register(body.mobile, body.nickname, body.role);
+  }
+
+  /**
+   * 发送验证码
+   */
+  @Public()
+  @Post('send-code')
+  async sendCode(@Body() body: { mobile: string; type?: string }) {
+    if (!body.mobile || !/^1[3-9]\d{9}$/.test(body.mobile)) {
+      return { success: false, message: '请输入正确的手机号' };
+    }
+
+    const result = await this.smsService.sendVerificationCode(body.mobile);
+    return result;
+  }
 
   /**
    * 获取当前用户信息

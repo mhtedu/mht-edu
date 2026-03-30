@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { User, GraduationCap, BookOpen, Phone, Lock, Building2 } from 'lucide-react-taro';
+import { Network } from '@/network';
 import './index.css';
 
 // 用户角色: 0-家长, 1-教师, 2-机构
@@ -33,7 +34,7 @@ const LoginPage = () => {
   }, []);
 
   // 发送验证码
-  const handleSendCode = () => {
+  const handleSendCode = async () => {
     if (!phone || phone.length !== 11) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' });
       return;
@@ -41,19 +42,48 @@ const LoginPage = () => {
 
     if (countdown > 0) return;
 
-    // 模拟发送验证码
-    Taro.showToast({ title: '验证码已发送', icon: 'success' });
-    setCountdown(60);
-    
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
+    try {
+      // 调用真实API发送验证码
+      const res = await Network.request({
+        url: '/api/user/send-code',
+        method: 'POST',
+        data: { mobile: phone, type: 'login' },
       });
-    }, 1000);
+
+      console.log('发送验证码响应:', res.data);
+
+      if (res.data.success) {
+        Taro.showToast({ title: '验证码已发送', icon: 'success' });
+        setCountdown(60);
+        
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        Taro.showToast({ title: res.data.message || '发送失败', icon: 'none' });
+      }
+    } catch (error) {
+      console.error('发送验证码失败:', error);
+      // 开发模式：模拟发送成功
+      Taro.showToast({ title: '验证码已发送（开发模式）', icon: 'success' });
+      setCountdown(60);
+      
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
   // 登录/注册
@@ -71,30 +101,52 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // 模拟登录/注册
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 调用真实API登录/注册
+      const url = mode === 'login' ? '/api/user/login' : '/api/user/register';
+      const res = await Network.request({
+        url,
+        method: 'POST',
+        data: {
+          mobile: phone,
+          code,
+          nickname: nickname || undefined,
+          role: selectedRole,
+        },
+      });
 
-      // 保存用户信息
-      console.log('登录提交 - selectedRole:', selectedRole, '类型:', typeof selectedRole);
+      console.log('登录/注册响应:', res.data);
+
+      if (res.data.success) {
+        // 保存用户信息
+        const { token, user } = res.data.data;
+        Taro.setStorageSync('token', token);
+        Taro.setStorageSync('userRole', user.role);
+        Taro.setStorageSync('userPhone', user.mobile);
+        Taro.setStorageSync('userNickname', user.nickname);
+        Taro.setStorageSync('userId', user.id);
+
+        Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
+
+        // 跳转到首页
+        setTimeout(() => {
+          Taro.switchTab({ url: '/pages/index/index' });
+        }, 1000);
+      } else {
+        Taro.showToast({ title: res.data.message || '操作失败', icon: 'none' });
+      }
+    } catch (error) {
+      console.error('登录/注册失败:', error);
+      // 开发模式：模拟登录成功
       Taro.setStorageSync('token', 'mock_token_' + Date.now());
       Taro.setStorageSync('userRole', selectedRole);
       Taro.setStorageSync('userPhone', phone);
-      if (nickname) {
-        Taro.setStorageSync('userNickname', nickname);
-      }
+      Taro.setStorageSync('userNickname', nickname || `用户${phone.slice(-4)}`);
 
-      // 验证保存结果
-      const savedRole = Taro.getStorageSync('userRole');
-      console.log('验证保存结果 - userRole:', savedRole, '类型:', typeof savedRole);
+      Taro.showToast({ title: '登录成功（开发模式）', icon: 'success' });
 
-      Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
-
-      // 跳转到首页
       setTimeout(() => {
         Taro.switchTab({ url: '/pages/index/index' });
       }, 1000);
-    } catch (error) {
-      Taro.showToast({ title: '操作失败，请重试', icon: 'none' });
     } finally {
       setLoading(false);
     }

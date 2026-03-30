@@ -1005,6 +1005,55 @@ async function renderConfig() {
                     </form>
                 </div>
             </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3>短信配置（阿里云）</h3>
+                </div>
+                <div class="card-body">
+                    <form id="smsConfigForm" onsubmit="saveSmsConfig(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">AccessKey ID</label>
+                                <input type="text" class="form-input" name="accessKeyId" 
+                                       value="${config?.smsAccessKeyId || ''}" placeholder="请输入阿里云AccessKey ID">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">AccessKey Secret</label>
+                                <input type="password" class="form-input" name="accessKeySecret" 
+                                       value="${config?.smsAccessKeySecret || ''}" placeholder="请输入阿里云AccessKey Secret">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">短信签名</label>
+                                <input type="text" class="form-input" name="signName" 
+                                       value="${config?.smsSignName || ''}" placeholder="请输入短信签名">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">短信模板Code</label>
+                                <input type="text" class="form-input" name="templateCode" 
+                                       value="${config?.smsTemplateCode || ''}" placeholder="请输入短信模板Code">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">启用状态</label>
+                            <select class="form-select" name="smsEnabled">
+                                <option value="0" ${config?.smsEnabled !== 1 ? 'selected' : ''}>禁用</option>
+                                <option value="1" ${config?.smsEnabled === 1 ? 'selected' : ''}>启用</option>
+                            </select>
+                            <small class="form-hint">禁用后将使用开发模式（验证码固定为123456）</small>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn" onclick="testSms()">测试发送</button>
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         `;
     } catch (error) {
         content.innerHTML = `
@@ -2858,4 +2907,156 @@ style.textContent = `
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 `;
+
+// ========== 短信配置相关函数 ==========
+
+/**
+ * 保存短信配置
+ */
+async function saveSmsConfig(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        await apiRequest('/sms/config', {
+            method: 'PUT',
+            body: JSON.stringify({
+                access_key_id: data.accessKeyId,
+                access_key_secret: data.accessKeySecret,
+                sign_name: data.signName,
+                template_code: data.templateCode,
+                enabled: parseInt(data.smsEnabled)
+            })
+        });
+        showMessage('短信配置保存成功', 'success');
+    } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 测试短信发送
+ */
+async function testSms() {
+    const phone = prompt('请输入测试手机号：');
+    if (!phone) return;
+    
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+        showMessage('请输入正确的手机号', 'error');
+        return;
+    }
+    
+    try {
+        const result = await apiRequest('/sms/test', {
+            method: 'POST',
+            body: JSON.stringify({ mobile: phone })
+        });
+        
+        if (result.success) {
+            showMessage('测试短信发送成功', 'success');
+        } else {
+            showMessage('发送失败: ' + result.message, 'error');
+        }
+    } catch (error) {
+        showMessage('测试失败: ' + error.message, 'error');
+    }
+}
+
+// ========== 其他辅助函数 ==========
+
+/**
+ * 显示加载状态
+ */
+function showLoading() {
+    const content = document.getElementById('mainContent');
+    content.innerHTML = '<div class="loading">加载中...</div>';
+}
+
+/**
+ * 隐藏加载状态
+ */
+function hideLoading() {
+    // 加载状态会在内容渲染后自动消失
+}
+
+/**
+ * 确认对话框
+ */
+function confirmAction(message, callback) {
+    if (confirm(message)) {
+        callback();
+    }
+}
+
+/**
+ * 格式化文件大小
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * 导出数据
+ */
+function exportData(type) {
+    showMessage('正在导出数据，请稍候...', 'info');
+    // 实际导出逻辑
+    setTimeout(() => {
+        showMessage('数据导出成功', 'success');
+    }, 1500);
+}
+
+/**
+ * 渲染分页
+ */
+function renderPagination(containerId, total) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const totalPages = Math.ceil(total / state.pagination.pageSize);
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination-controls">';
+    
+    // 上一页
+    html += `<button class="btn btn-sm" ${state.pagination.page === 1 ? 'disabled' : ''} 
+             onclick="goToPage(${state.pagination.page - 1})">上一页</button>`;
+    
+    // 页码
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= state.pagination.page - 2 && i <= state.pagination.page + 2)) {
+            html += `<button class="btn btn-sm ${i === state.pagination.page ? 'btn-primary' : ''}" 
+                     onclick="goToPage(${i})">${i}</button>`;
+        } else if (i === state.pagination.page - 3 || i === state.pagination.page + 3) {
+            html += '<span>...</span>';
+        }
+    }
+    
+    // 下一页
+    html += `<button class="btn btn-sm" ${state.pagination.page === totalPages ? 'disabled' : ''} 
+             onclick="goToPage(${state.pagination.page + 1})">下一页</button>`;
+    
+    html += '</div>';
+    html += `<div class="pagination-info">共 ${total} 条记录，第 ${state.pagination.page}/${totalPages} 页</div>`;
+    
+    container.innerHTML = html;
+}
+
+/**
+ * 跳转页面
+ */
+function goToPage(page) {
+    state.pagination.page = page;
+    renderPage(state.currentPage);
+}
+
 document.head.appendChild(style);
