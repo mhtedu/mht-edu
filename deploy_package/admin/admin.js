@@ -3069,7 +3069,7 @@ document.head.appendChild(style);
 async function renderSms() {
     const content = document.getElementById('mainContent');
     try {
-        const config = await apiRequest('/sms/config');
+        const config = await fetch('/api/sms/config', { headers: { 'Authorization': 'Bearer ' + state.token } }).then(r => r.json());
         content.innerHTML = `
 <div class="card">
     <div class="card-header"><h3>阿里云短信配置</h3></div>
@@ -3142,7 +3142,7 @@ async function saveSmsConfig(event) {
         enabled: parseInt(formData.get('enabled'))
     };
     try {
-        await apiRequest('/sms/config', { method: 'PUT', body: JSON.stringify(data) });
+        await fetch('/api/sms/config', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token }, body: JSON.stringify(data) });
         showMessage('短信配置保存成功', 'success');
     } catch (error) {
         showMessage('保存失败: ' + error.message, 'error');
@@ -3155,7 +3155,7 @@ async function testSmsSend(event) {
     const mobile = formData.get('testMobile');
     if (!mobile) { showMessage('请输入测试手机号', 'error'); return; }
     try {
-        const result = await apiRequest('/sms/test', { method: 'POST', body: JSON.stringify({ mobile }) });
+        const result = await fetch('/api/sms/test', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token }, body: JSON.stringify({ mobile }) });
         showMessage(result.message || '发送成功', 'success');
     } catch (error) {
         showMessage('发送失败: ' + error.message, 'error');
