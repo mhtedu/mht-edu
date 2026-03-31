@@ -205,6 +205,7 @@ function switchPage(pageName) {
         agents: '代理商管理',
         config: '系统配置',
         payment: '支付配置',
+        sms: '短信配置',
         admins: '管理员管理',
         roles: '角色权限'
     };
@@ -268,6 +269,9 @@ async function renderPage(pageName) {
                 break;
             case 'payment':
                 await renderPayment();
+                break;
+            case 'sms':
+                await renderSms();
                 break;
             case 'admins':
                 await renderAdmins();
@@ -3060,3 +3064,100 @@ function goToPage(page) {
 }
 
 document.head.appendChild(style);
+
+// ========== 短信配置页面 ==========
+async function renderSms() {
+    const content = document.getElementById('mainContent');
+    try {
+        const config = await apiRequest('/sms/config');
+        content.innerHTML = `
+<div class="card">
+    <div class="card-header"><h3>阿里云短信配置</h3></div>
+    <div class="card-body">
+        <form id="smsConfigForm" onsubmit="saveSmsConfig(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">AccessKey ID</label>
+                    <input type="text" class="form-input" name="access_key_id" value="${config?.access_key_id || ''}" placeholder="请输入阿里云AccessKey ID">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">AccessKey Secret</label>
+                    <input type="password" class="form-input" name="access_key_secret" value="${config?.access_key_secret || ''}" placeholder="请输入阿里云AccessKey Secret">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">短信签名</label>
+                    <input type="text" class="form-input" name="sign_name" value="${config?.sign_name || ''}" placeholder="如：棉花糖教育">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模板CODE</label>
+                    <input type="text" class="form-input" name="template_code" value="${config?.template_code || ''}" placeholder="如：SMS_123456789">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">启用状态</label>
+                <select class="form-input" name="enabled">
+                    <option value="0" ${config?.enabled != 1 ? 'selected' : ''}>关闭（开发模式，默认验证码123456）</option>
+                    <option value="1" ${config?.enabled == 1 ? 'selected' : ''}>启用（使用阿里云短信）</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存配置</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header"><h3>测试发送</h3></div>
+    <div class="card-body">
+        <form id="smsTestForm" onsubmit="testSmsSend(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">测试手机号</label>
+                    <input type="text" class="form-input" name="testMobile" placeholder="请输入测试手机号" style="width:200px">
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end">
+                    <button type="submit" class="btn btn-secondary">发送测试短信</button>
+                </div>
+            </div>
+        </form>
+        <p style="color:#666;margin-top:10px">提示：开发模式下验证码默认为 123456</p>
+    </div>
+</div>
+`;
+    } catch (error) {
+        content.innerHTML = '<div class="card"><div class="card-body"><p>加载失败: ' + error.message + '</p></div></div>';
+    }
+}
+
+async function saveSmsConfig(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = {
+        access_key_id: formData.get('access_key_id'),
+        access_key_secret: formData.get('access_key_secret'),
+        sign_name: formData.get('sign_name'),
+        template_code: formData.get('template_code'),
+        enabled: parseInt(formData.get('enabled'))
+    };
+    try {
+        await apiRequest('/sms/config', { method: 'PUT', body: JSON.stringify(data) });
+        showMessage('短信配置保存成功', 'success');
+    } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+    }
+}
+
+async function testSmsSend(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const mobile = formData.get('testMobile');
+    if (!mobile) { showMessage('请输入测试手机号', 'error'); return; }
+    try {
+        const result = await apiRequest('/sms/test', { method: 'POST', body: JSON.stringify({ mobile }) });
+        showMessage(result.message || '发送成功', 'success');
+    } catch (error) {
+        showMessage('发送失败: ' + error.message, 'error');
+    }
+}
