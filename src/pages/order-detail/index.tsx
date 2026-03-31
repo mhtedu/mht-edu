@@ -3,6 +3,7 @@ import Taro, { useLoad, useRouter, useShareAppMessage, useShareTimeline } from '
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { autoLockOnPageLoad } from '@/utils/referral-lock';
+import { useSiteConfig } from '@/store';
 import { Share2, MapPin, Phone, Lock, Eye, Gift, Clock, MessageCircle } from 'lucide-react-taro';
 import './index.css';
 
@@ -27,6 +28,7 @@ interface OrderDetail {
  * 订单详情页 - 支持分享
  */
 const OrderDetailPage = () => {
+  const siteName = useSiteConfig(state => state.getSiteName)();
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ const OrderDetailPage = () => {
   // 配置分享到朋友圈
   useShareTimeline(() => {
     return {
-      title: `【${order?.subject}】${order?.student_grade}学生找老师，时薪${order?.hourly_rate}元 - 棉花糖教育`,
+      title: `【${order?.subject}】${order?.student_grade}学生找老师，时薪${order?.hourly_rate}元 - ${siteName}`,
       query: `id=${order?.id}&from=share`,
       imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
     };

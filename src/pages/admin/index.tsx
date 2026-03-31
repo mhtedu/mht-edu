@@ -378,7 +378,7 @@ const AdminPage = () => {
     } catch (error) {
       // 模拟数据
       setSiteConfig({
-        site_name: '棉花糖教育平台',
+        site_name: '教育平台',
         site_logo: '',
         site_description: '专业的教育信息撮合平台',
         contact_phone: '400-888-8888',
@@ -1302,7 +1302,7 @@ const AdminPage = () => {
       {/* 左侧菜单 */}
       <View className="admin-sidebar">
         <View className="admin-sidebar-header">
-          <Text className="text-xl font-bold text-blue-600">棉花糖教育</Text>
+          <Text className="text-xl font-bold text-blue-600">{siteConfig.site_name || '管理后台'}</Text>
           <Text className="text-xs text-gray-400 mt-1">管理后台</Text>
         </View>
 

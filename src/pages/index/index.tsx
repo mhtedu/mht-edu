@@ -1,11 +1,12 @@
 import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components';
 import Taro, { useLoad, useDidShow, useShareAppMessage, useShareTimeline } from '@tarojs/taro';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, Lock, Building2, ChevronDown, Users, Share2, GraduationCap, BookOpen, Gift } from 'lucide-react-taro';
 import CitySelector from '@/components/city-selector';
+import { useSiteConfig } from '@/store';
 import './index.css';
 
 // 订单类型
@@ -211,6 +212,9 @@ const CITY_DATA: Record<string, { lat: number; lng: number; teachers: Teacher[];
  * 教师角色：显示需求订单
  */
 const IndexPage = () => {
+  // 获取站点配置
+  const siteName = useSiteConfig(state => state.getSiteName)();
+  
   // 用户状态
   const [isMember, setIsMember] = useState(false);
   const [userRole, setUserRole] = useState(0); // 0-家长, 1-教师
@@ -230,12 +234,12 @@ const IndexPage = () => {
 
   const subjects = ['全部', '语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理'];
 
-  // 模拟轮播图数据
-  const mockBanners: Banner[] = [
-    { id: 1, image_url: 'https://placehold.co/750x300/2563EB/white?text=棉花糖教育', title: '欢迎来到棉花糖教育', link_url: '' },
+  // 模拟轮播图数据（使用动态站点名称）
+  const mockBanners: Banner[] = useMemo(() => [
+    { id: 1, image_url: `https://placehold.co/750x300/2563EB/white?text=${encodeURIComponent(siteName)}`, title: `欢迎来到${siteName}`, link_url: '' },
     { id: 2, image_url: 'https://placehold.co/750x300/F59E0B/white?text=会员特权', title: '开通会员享更多权益', link_url: '/pages/membership/index' },
     { id: 3, image_url: 'https://placehold.co/750x300/10B981/white?text=邀请好友', title: '邀请好友赚佣金', link_url: '/pages/distribution/index' },
-  ];
+  ], [siteName]);
 
   // 模拟信息流广告数据
   const mockFeedAds: FeedAd[] = [
@@ -250,21 +254,21 @@ const IndexPage = () => {
   // 配置分享给好友
   useShareAppMessage(() => {
     const title = userRole === 0 
-      ? '棉花糖教育 - 找好老师，上棉花糖' 
-      : '棉花糖教育 - 接好需求，上棉花糖';
+      ? `${siteName} - 找好老师，上${siteName}` 
+      : `${siteName} - 接好需求，上${siteName}`;
     return {
       title,
       path: '/pages/index/index?invite=1',
-      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+      imageUrl: `https://placehold.co/500x400/2563EB/white?text=${encodeURIComponent(siteName)}`,
     };
   });
 
   // 配置分享到朋友圈
   useShareTimeline(() => {
     return {
-      title: '棉花糖教育成长平台 - 专业家教信息撮合',
+      title: `${siteName}成长平台 - 专业家教信息撮合`,
       query: 'invite=1',
-      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+      imageUrl: `https://placehold.co/500x400/2563EB/white?text=${encodeURIComponent(siteName)}`,
     };
   });
 

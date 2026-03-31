@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useSiteConfig } from '@/store';
 import { 
   TrendingUp, MapPin, Users, Gift, Check,
   DollarSign
@@ -20,6 +21,7 @@ interface AgentBenefit {
  * 代理申请页面
  */
 const AgentApplyPage = () => {
+  const siteName = useSiteConfig(state => state.getSiteName)();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -79,7 +81,7 @@ const AgentApplyPage = () => {
           <Text className="text-white text-xl font-bold ml-2">城市代理招募</Text>
         </View>
         <Text className="text-white text-opacity-80 text-center text-sm">
-          加入棉花糖教育，成为本地教育服务领导者
+          加入{siteName}，成为本地教育服务领导者
         </Text>
       </View>
 

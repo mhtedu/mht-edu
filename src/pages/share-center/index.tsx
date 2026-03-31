@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSiteConfig } from '@/store';
 import { 
   Share2, Gift, Users, Copy, ChevronRight,
   DollarSign, Award, Send, Link
@@ -32,6 +33,7 @@ interface ShareStats {
  * 分享中心 - 转发需求赚佣金
  */
 const ShareCenterPage = () => {
+  const siteName = useSiteConfig(state => state.getSiteName)();
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<ShareStats>({
     total_shared: 0,
@@ -53,7 +55,7 @@ const ShareCenterPage = () => {
   }));
 
   useShareTimeline(() => ({
-    title: '棉花糖教育 - 找好老师，上棉花糖',
+    title: `${siteName} - 找好老师，上${siteName}`,
     query: 'from=share_center',
     imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
   }));

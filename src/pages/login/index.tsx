@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { User, GraduationCap, BookOpen, Phone, Lock, Building2 } from 'lucide-react-taro';
 import { Network } from '@/network';
+import { useSiteConfig } from '@/store';
 import './index.css';
 
 // 用户角色: 0-家长, 1-教师, 2-机构
@@ -15,6 +16,7 @@ type UserRole = 0 | 1 | 2;
  * 登录注册页面
  */
 const LoginPage = () => {
+  const siteName = useSiteConfig(state => state.getSiteName)();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [selectedRole, setSelectedRole] = useState<UserRole>(0);
   const [phone, setPhone] = useState('');
@@ -173,9 +175,9 @@ const LoginPage = () => {
       {/* Logo区域 */}
       <View className="flex flex-col items-center pt-20 pb-10">
         <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-4">
-          <Text className="text-blue-500 text-3xl font-bold">棉</Text>
+          <Text className="text-blue-500 text-3xl font-bold">{siteName.charAt(0)}</Text>
         </View>
-        <Text className="text-white text-2xl font-bold">棉花糖教育</Text>
+        <Text className="text-white text-2xl font-bold">{siteName}</Text>
         <Text className="text-blue-100 text-sm mt-2">专业家教信息撮合平台</Text>
       </View>
 

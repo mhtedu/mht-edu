@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { autoLockOnPageLoad } from '@/utils/referral-lock'
+import { useSiteConfig } from '@/store'
 import { 
   Calendar, Clock, MapPin, Users, Phone
 } from 'lucide-react-taro'
@@ -35,6 +36,7 @@ interface Activity {
  */
 export default function ActivityDetailPage() {
   const router = useRouter()
+  const siteName = useSiteConfig(state => state.getSiteName)()
   const activityId = router.params.id ? parseInt(router.params.id) : 0
   
   const [activity, setActivity] = useState<Activity | null>(null)
@@ -68,7 +70,7 @@ export default function ActivityDetailPage() {
       description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
       status: 'upcoming',
       contact_phone: '400-888-8888',
-      organizer: '棉花糖教育',
+      organizer: siteName,
       schedule: ['09:00-09:15 签到入场', '09:15-10:15 校园参观', '10:15-10:45 学校介绍', '10:45-11:15 招生解读', '11:15-12:00 互动答疑']
     }
     setActivity(mockActivity)

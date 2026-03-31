@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSiteConfig } from '@/store';
 import { 
   Wallet, Users, FileText, Share2, Gift,
   TrendingUp, ChevronRight, Plus, MessageCircle,
@@ -34,6 +35,7 @@ interface RecentOrder {
  * 教师工作台 - 教师端核心功能入口
  */
 const TeacherWorkbenchPage = () => {
+  const siteName = useSiteConfig(state => state.getSiteName)();
   const [stats, setStats] = useState<Stats>({
     today_earnings: 0,
     month_earnings: 0,
@@ -52,15 +54,15 @@ const TeacherWorkbenchPage = () => {
 
   // 配置分享
   useShareAppMessage(() => ({
-    title: '棉花糖教育 - 找好老师，上棉花糖',
+    title: `${siteName} - 找好老师，上${siteName}`,
     path: '/pages/index/index?from=teacher_share',
-    imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+    imageUrl: `https://placehold.co/500x400/2563EB/white?text=${encodeURIComponent(siteName)}`,
   }));
 
   useShareTimeline(() => ({
-    title: '棉花糖教育 - 找好老师，上棉花糖',
+    title: `${siteName} - 找好老师，上${siteName}`,
     query: 'from=teacher_share',
-    imageUrl: 'https://placehold.co/500x400/2563EB/white?text=棉花糖教育',
+    imageUrl: `https://placehold.co/500x400/2563EB/white?text=${encodeURIComponent(siteName)}`,
   }));
 
   const loadData = () => {

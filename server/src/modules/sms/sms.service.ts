@@ -160,33 +160,36 @@ export class SmsService {
     mobile: string, 
     code: string
   ): Promise<{ success: boolean; message?: string }> {
-    // 如果没有安装阿里云SDK，返回错误
     try {
-      const Core = require('@alicloud/pop-rpc');
+      // 使用新版阿里云短信SDK
+      const Dysmsapi20170525 = require('@alicloud/dysmsapi20170525');
+      const OpenApi = require('@alicloud/openapi-client');
       
-      const client = new Core({
+      const clientConfig = new OpenApi.Config({
         accessKeyId: config.access_key_id,
         accessKeySecret: config.access_key_secret,
-        endpoint: 'https://dysmsapi.aliyuncs.com',
-        apiVersion: '2017-05-25'
+        endpoint: 'dysmsapi.aliyuncs.com',
       });
 
-      const params = {
-        PhoneNumbers: mobile,
-        SignName: config.sign_name,
-        TemplateCode: config.template_code,
-        TemplateParam: JSON.stringify({ code }),
-      };
+      const client = new Dysmsapi20170525(clientConfig);
 
-      const result = await client.request('SendSms', params, { method: 'POST' });
+      const sendSmsRequest = new Dysmsapi20170525.SendSmsRequest({
+        phoneNumbers: mobile,
+        signName: config.sign_name,
+        templateCode: config.template_code,
+        templateParam: JSON.stringify({ code }),
+      });
+
+      const result = await client.sendSms(sendSmsRequest);
       
-      if (result.Code === 'OK') {
+      if (result.body?.code === 'OK') {
         return { success: true };
       } else {
-        return { success: false, message: result.Message };
+        console.error('阿里云短信发送失败:', result.body?.message);
+        return { success: false, message: result.body?.message || '发送失败' };
       }
     } catch (error) {
-      console.error('阿里云短信发送失败:', error);
+      console.error('阿里云短信发送异常:', error);
       // 如果SDK未安装或调用失败，记录日志并返回模拟成功
       console.log(`[SMS Mock] 阿里云调用失败，模拟发送验证码到 ${mobile}，验证码: ${code}`);
       return { success: true, message: '验证码已发送（模拟模式）' };
