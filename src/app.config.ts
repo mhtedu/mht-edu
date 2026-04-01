@@ -1,9 +1,10 @@
 export default defineAppConfig({
   pages: [
-    // 登录和首页
-    'pages/login/index',
+    // 首页（必须是第一项）
     'pages/index/index',
-    
+    // 登录
+    'pages/login/index',
+
     // 角色切换
     'pages/role-switch/index',
     
