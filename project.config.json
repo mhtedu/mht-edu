@@ -1,16 +1,16 @@
 {
-  "miniprogramRoot": "./dist-weapp",
-  "projectname": "mianhuatang-edu",
-  "description": "棉花糖教育成长平台",
-  "appid": "wx46c4d031889bdb3e",
+  "miniprogramRoot": "./dist",
+  "projectname": "coze-mini-program",
+  "description": "test",
+  "appid": "touristappid",
   "setting": {
-    "urlCheck": false,
+    "urlCheck": true,
     "es6": false,
     "enhance": false,
-    "compileHotReLoad": true,
+    "compileHotReLoad": false,
     "postcss": false,
     "minified": false
   },
   "compileType": "miniprogram",
-  "condition": {}
+  "packOptions": {"ignore": [{"type": "folder","value": "./assets"}]}
 }

@@ -1,50 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { UserModule } from './modules/user/user.module';
-import { OrderModule } from './modules/order/order.module';
-import { PaymentModule } from './modules/payment/payment.module';
-import { MemberModule } from './modules/member/member.module';
-import { DistributionModule } from './modules/distribution/distribution.module';
-import { AgentModule } from './modules/agent/agent.module';
-import { MessageModule } from './modules/message/message.module';
-import { RobotModule } from './modules/robot/robot.module';
-import { TeacherProfileModule } from './modules/teacher-profile/teacher-profile.module';
-import { OrderCloseModule } from './modules/order-close/order-close.module';
-import { CityModule } from './modules/city/city.module';
-import { OrgModule } from './modules/org/org.module';
-import { ActivityModule } from './modules/activity/activity.module';
-import { ShareModule } from './modules/share/share.module';
-import { EliteClassModule } from './modules/elite-class/elite-class.module';
-import { ReferralLockModule } from './modules/referral-lock/referral-lock.module';
-import { ConfigModule } from './modules/config/config.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { AdminModule } from './modules/admin/admin.module';
-import { SmsModule } from './modules/sms/sms.module';
+import { AppController } from '@/app.controller';
+import { AppService } from '@/app.service';
 
 @Module({
-  imports: [
-    AuthModule,
-    AdminModule,
-    UserModule,
-    OrderModule,
-    PaymentModule,
-    MemberModule,
-    DistributionModule,
-    AgentModule,
-    MessageModule,
-    RobotModule,
-    TeacherProfileModule,
-    OrderCloseModule,
-    CityModule,
-    OrgModule,
-    ActivityModule,
-    ShareModule,
-    EliteClassModule,
-    ReferralLockModule,
-    ConfigModule,
-    SmsModule,
-  ],
+  imports: [],
   controllers: [AppController],
   providers: [AppService],
 })

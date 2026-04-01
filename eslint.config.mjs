@@ -9,6 +9,40 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+const REMOTE_CSS_IMPORT_PATTERN =
+  /@import\s+(?:url\(\s*['"]?((?:https?:)?\/\/[^'")\s]+)['"]?\s*\)|['"]((?:https?:)?\/\/[^'"\s]+)['"])/g;
+
+const cssImportGuardPlugin = {
+  processors: {
+    css: {
+      preprocess(text) {
+        const lines = text.split('\n');
+        const virtualLines = lines.map(line => {
+          const matches = [...line.matchAll(REMOTE_CSS_IMPORT_PATTERN)];
+
+          if (matches.length === 0) {
+            return '';
+          }
+
+          return matches
+            .map(match => {
+              const url = match[1] ?? match[2];
+
+              return `__cssExternalImport(${JSON.stringify(url)});`;
+            })
+            .join(' ');
+        });
+
+        return [virtualLines.join('\n')];
+      },
+      postprocess(messages) {
+        return messages.flat();
+      },
+      supportsAutofix: false,
+    },
+  },
+};
+
 const baseRestrictedSyntaxRules = [
   {
     selector: "MemberExpression[object.name='process'][property.name='env']",
@@ -71,6 +105,12 @@ const baseRestrictedSyntaxRules = [
     selector:
       ":matches(JSXAttribute[name.name='className'], CallExpression[callee.name=/^(cn|cva)$/]) :matches(Literal[value=/\\[[^\\]]*&[^\\]]*~[^\\]]*\\]/], TemplateElement[value.raw=/\\[[^\\]]*&[^\\]]*~[^\\]]*\\]/])",
     message: '微信小程序兼容性：WXSS 不支持 ~（会导致预览上传失败）。',
+  },
+  {
+    selector:
+      "CallExpression[callee.name='__cssExternalImport'] > Literal[value=/^(?:https?:)?\\/\\//]",
+    message:
+      '微信小程序兼容性：禁止在 CSS/WXSS 中使用远程 @import（如 Google Fonts）。请改为本地静态资源或删除该导入。',
   },
   {
     selector:
@@ -171,6 +211,17 @@ export default [
             "工程规范：请使用 Network.downloadFile 替代 Taro.downloadFile，导入方式: import { Network } from '@/network'",
         },
       ],
+    },
+  },
+  {
+    files: ['src/**/*.css'],
+    plugins: {
+      local: cssImportGuardPlugin,
+    },
+    processor: 'local/css',
+    rules: {
+      'no-undef': 'off',
+      'no-restricted-syntax': ['error', ...baseRestrictedSyntaxRules],
     },
   },
   {
