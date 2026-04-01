@@ -143,6 +143,43 @@ const LoginPage: FC = () => {
     setCode('')
   }
 
+  // 模拟登录（开发环境使用）
+  const handleMockLogin = async () => {
+    try {
+      setLoading(true)
+      setPhone('13800138000')
+      setCode('123456')
+
+      console.log('模拟登录请求:', { url: '/api/user/login', method: 'POST', data: { mobile: '13800138000', code: '123456' } })
+      const res = await Network.request({
+        url: '/api/user/login',
+        method: 'POST',
+        data: { mobile: '13800138000', code: '123456' }
+      })
+      console.log('模拟登录响应:', res.data)
+
+      const result = res.data
+      if (result.success || result.code === 200) {
+        const { token, user } = result.data || result
+        setToken(token)
+        setUserInfo(user)
+        Taro.showToast({ title: '登录成功', icon: 'success' })
+        
+        // 跳转到首页
+        setTimeout(() => {
+          Taro.switchTab({ url: '/pages/index/index' })
+        }, 1000)
+      } else {
+        Taro.showToast({ title: result.message || '登录失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('模拟登录失败:', error)
+      Taro.showToast({ title: '登录失败，请重试', icon: 'none' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <View className="login-page">
       <View className="login-header">
@@ -253,6 +290,18 @@ const LoginPage: FC = () => {
               isRegister ? '注册' : '登录'
             )}
           </Button>
+
+          {/* 模拟登录按钮（开发环境） */}
+          {!isRegister && (
+            <Button
+              className="mock-login-btn"
+              variant="outline"
+              disabled={loading}
+              onClick={handleMockLogin}
+            >
+              <Text className="mock-login-text">测试登录</Text>
+            </Button>
+          )}
 
           {/* 切换登录/注册 */}
           <View className="switch-mode">

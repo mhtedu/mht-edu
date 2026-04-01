@@ -26,14 +26,14 @@
 }
 
 .city-name {
-  font-size: 16px;
+  font-size: 18px;
   color: #2563EB;
   font-weight: 500;
   margin-left: 4px;
 }
 
 .page-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1F2937;
 }
@@ -42,13 +42,13 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 6px 12px;
+  padding: 8px 14px;
   background: #EFF6FF;
-  border-radius: 16px;
+  border-radius: 18px;
 }
 
 .role-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #2563EB;
   margin-left: 4px;
 }
@@ -64,7 +64,7 @@
   display: flex;
   flex-direction: row;
   justify-content: space-around;
-  padding: 20px 16px;
+  padding: 24px 16px;
   background: #fff;
 }
 
@@ -75,13 +75,13 @@
 }
 
 .entry-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .entry-icon.publish {
@@ -101,9 +101,10 @@
 }
 
 .entry-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #374151;
   margin-top: 6px;
+  font-weight: 500;
 }
 
 /* 轮播图区域 */
@@ -113,7 +114,7 @@
 }
 
 .banner-swiper {
-  height: 160px;
+  height: 180px;
   border-radius: 16px;
   overflow: hidden;
 }
@@ -123,7 +124,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 24px;
+  padding: 28px;
 }
 
 .banner-green {
@@ -139,14 +140,14 @@
 }
 
 .banner-title {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .banner-desc {
-  font-size: 15px;
+  font-size: 17px;
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -158,11 +159,11 @@
 }
 
 .section-header {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1F2937;
 }
@@ -171,16 +172,16 @@
 .filter-tabs {
   display: flex;
   flex-direction: row;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 .filter-tab {
-  padding: 8px 18px;
+  padding: 10px 20px;
   background: #F3F4F6;
-  border-radius: 20px;
-  margin-right: 10px;
+  border-radius: 22px;
+  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -189,7 +190,7 @@
 }
 
 .filter-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #6B7280;
 }
 
@@ -203,10 +204,10 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 16px 18px;
   background: #FEF3C7;
-  border-radius: 12px;
-  margin-bottom: 16px;
+  border-radius: 14px;
+  margin-bottom: 18px;
 }
 
 .tip-left {
@@ -216,19 +217,19 @@
 }
 
 .tip-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #92400E;
   margin-left: 8px;
 }
 
 .tip-btn {
   background: #F59E0B;
-  border-radius: 16px;
-  padding: 6px 14px;
+  border-radius: 18px;
+  padding: 8px 16px;
 }
 
 .tip-btn-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #fff;
   font-weight: 500;
 }
@@ -242,18 +243,18 @@
 .teacher-card {
   display: flex;
   flex-direction: row;
-  padding: 18px;
+  padding: 20px;
   background: #F9FAFB;
   border-radius: 16px;
   border: 1px solid #E5E7EB;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .teacher-avatar {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  margin-right: 16px;
+  margin-right: 18px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -273,7 +274,7 @@
 }
 
 .avatar-text {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   color: #fff;
 }
@@ -287,7 +288,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .name-row {
@@ -297,15 +298,15 @@
 }
 
 .teacher-name {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   color: #1F2937;
 }
 
 .teacher-gender {
-  font-size: 14px;
+  font-size: 15px;
   color: #6B7280;
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
 .rating-row {
@@ -315,60 +316,60 @@
 }
 
 .rating-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #F59E0B;
   margin-left: 4px;
   font-weight: 500;
 }
 
 .teacher-edu {
-  font-size: 13px;
+  font-size: 14px;
   color: #6B7280;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .teacher-subjects {
   display: flex;
   flex-direction: row;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .subject-tag {
   background: #EFF6FF;
-  padding: 4px 10px;
-  border-radius: 12px;
-  margin-right: 6px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  margin-right: 8px;
 }
 
 .subject-tag-text {
-  font-size: 12px;
+  font-size: 13px;
   color: #2563EB;
 }
 
 .teacher-price {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #EF4444;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .teacher-intro {
-  font-size: 13px;
+  font-size: 14px;
   color: #6B7280;
   line-height: 1.6;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   display: block;
 }
 
 .detail-btn {
   align-self: flex-start;
   background: #2563EB;
-  padding: 8px 16px;
-  border-radius: 16px;
+  padding: 10px 20px;
+  border-radius: 18px;
 }
 
 .detail-btn-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #fff;
   font-weight: 500;
 }
@@ -382,6 +383,6 @@
 }
 
 .empty-text {
-  font-size: 15px;
+  font-size: 16px;
   color: #9CA3AF;
 }
