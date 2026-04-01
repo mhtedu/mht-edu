@@ -1,16 +1,17 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Swiper, SwiperItem } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUserStore } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
-import { getLocation, formatPrice } from '@/utils'
-import { MapPin, Search, Star, Users, GraduationCap, Building, ChevronRight, RefreshCw } from 'lucide-react-taro'
+import { getLocation } from '@/utils'
+import { 
+  MapPin, Plus, GraduationCap, Heart, Crown, Star, Lock, User
+} from 'lucide-react-taro'
 import './index.css'
 
 interface TeacherItem {
@@ -29,25 +30,24 @@ interface TeacherItem {
   distance_text: string
 }
 
-interface OrgItem {
-  id: number
-  name: string
-  logo: string
-  description: string
-  teacher_count: number
-  rating: number
-  review_count: number
-  address: string
+// 学科筛选标签
+const SUBJECT_FILTERS = ['全部', '语文', '数学', '英语', '物理', '化学']
+
+// 角色名称映射
+const ROLE_NAMES: Record<number, string> = {
+  0: '家长端',
+  1: '教师端',
+  2: '机构端'
 }
 
 const HomePage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [location, setLocation] = useState<{ address: string; latitude: number; longitude: number } | null>(null)
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
-  const [orgs, setOrgs] = useState<OrgItem[]>([])
   const [recommendLoading, setRecommendLoading] = useState(false)
+  const [activeSubject, setActiveSubject] = useState('全部')
 
-  const { isLoggedIn, setLocation: setUserLocation } = useUserStore()
+  const { currentRole, setLocation: setUserLocation } = useUserStore()
   const { siteConfig, loadSiteConfig } = useConfigStore()
 
   useLoad(() => {
@@ -82,8 +82,8 @@ const HomePage: FC = () => {
         setUserLocation(loc)
       }
 
-      // 并行加载推荐数据
-      await Promise.all([loadRecommendTeachers(loc), loadRecommendOrgs()])
+      // 加载推荐教师
+      await loadRecommendTeachers(loc)
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -94,52 +94,58 @@ const HomePage: FC = () => {
   const loadRecommendTeachers = async (loc?: { latitude: number; longitude: number } | null) => {
     setRecommendLoading(true)
     try {
-      const params: Record<string, any> = { page: 1, pageSize: 5 }
+      const params: Record<string, any> = { page: 1, pageSize: 10 }
       if (loc) {
         params.latitude = loc.latitude
         params.longitude = loc.longitude
       }
-      console.log('加载推荐教师请求:', { url: '/api/user/teachers/list', params })
+      if (activeSubject !== '全部') {
+        params.subject = activeSubject
+      }
+
       const res = await Network.request({
-        url: '/api/user/teachers/list',
+        url: '/api/teacher-profile/recommend',
+        method: 'GET',
         data: params
       })
-      console.log('加载推荐教师响应:', res.data)
-      if (res.data) {
-        setTeachers(Array.isArray(res.data) ? res.data : res.data.list || [])
+
+      if (res.data && res.data.data && res.data.data.list) {
+        setTeachers(res.data.data.list)
+      } else if (res.data && res.data.list) {
+        setTeachers(res.data.list)
       }
     } catch (error) {
-      console.error('加载推荐教师失败:', error)
+      console.error('获取推荐教师失败:', error)
       // 使用模拟数据
       setTeachers([
         {
           id: 1,
-          nickname: '李老师',
+          nickname: '张明',
           avatar: '',
-          real_name: '李明',
+          real_name: '张明',
           subjects: ['数学', '物理'],
-          grades: ['高一', '高二', '高三'],
+          grades: ['初中', '高中'],
           teaching_years: 8,
           hourly_rate_min: 150,
           hourly_rate_max: 200,
           rating: 4.9,
-          review_count: 128,
-          one_line_intro: '专注高考数学提分，平均提分30+',
+          review_count: 56,
+          one_line_intro: '8年教学经验，擅长中考数学提分，帮助学生快速掌握解题技巧',
           distance_text: '2.5km'
         },
         {
           id: 2,
-          nickname: '王老师',
+          nickname: '李老师',
           avatar: '',
-          real_name: '王芳',
+          real_name: '李芳',
           subjects: ['英语'],
-          grades: ['初一', '初二', '初三'],
-          teaching_years: 6,
+          grades: ['小学', '初中'],
+          teaching_years: 5,
           hourly_rate_min: 120,
           hourly_rate_max: 150,
           rating: 4.8,
-          review_count: 86,
-          one_line_intro: '英语专业八级，擅长口语和写作',
+          review_count: 32,
+          one_line_intro: '英语专业八级，擅长培养英语学习兴趣，提升口语表达能力',
           distance_text: '3.2km'
         }
       ])
@@ -148,140 +154,172 @@ const HomePage: FC = () => {
     }
   }
 
-  const loadRecommendOrgs = async () => {
-    try {
-      console.log('加载推荐机构请求:', { url: '/api/org/list', data: { page: 1, pageSize: 3 } })
-      const res = await Network.request({
-        url: '/api/org/list',
-        data: { page: 1, pageSize: 3 }
-      })
-      console.log('加载推荐机构响应:', res.data)
-      if (res.data) {
-        setOrgs(Array.isArray(res.data) ? res.data : res.data.list || [])
-      }
-    } catch (error) {
-      console.error('加载推荐机构失败:', error)
-      // 使用模拟数据
-      setOrgs([
-        {
-          id: 1,
-          name: '优学教育',
-          logo: '',
-          description: '专注中小学全科辅导，师资力量雄厚',
-          teacher_count: 50,
-          rating: 4.7,
-          review_count: 256,
-          address: '市中心校区'
-        }
-      ])
-    }
-  }
-
+  // 刷新位置
   const handleRefreshLocation = async () => {
     Taro.showLoading({ title: '定位中...' })
-    const loc = await getLocation()
-    Taro.hideLoading()
-    if (loc) {
-      setLocation(loc)
-      setUserLocation(loc)
-      loadRecommendTeachers(loc)
-      Taro.showToast({ title: '定位成功', icon: 'success' })
-    } else {
+    try {
+      const loc = await getLocation()
+      if (loc) {
+        setLocation(loc)
+        setUserLocation(loc)
+        Taro.showToast({ title: '定位成功', icon: 'success' })
+      }
+    } catch (error) {
       Taro.showToast({ title: '定位失败', icon: 'none' })
+    } finally {
+      Taro.hideLoading()
     }
   }
 
+  // 获取城市名称
+  const getCityName = () => {
+    if (location && location.address) {
+      // 从地址中提取城市
+      const match = location.address.match(/(.+?市)/)
+      return match ? match[1].replace('市', '') : location.address.substring(0, 4)
+    }
+    return '定位中...'
+  }
+
+  // 跳转到教师详情
   const goToTeacherDetail = (id: number) => {
-    Taro.navigateTo({ url: `/pages/teacher/detail?id=${id}` })
+    Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${id}` })
   }
 
-  const goToOrgDetail = (id: number) => {
-    Taro.navigateTo({ url: `/pages/org/detail?id=${id}` })
+  // 跳转到角色切换
+  const goToRoleSwitch = () => {
+    Taro.navigateTo({ url: '/pages/role-switch/index' })
   }
 
-  const goToTeacherList = () => {
-    Taro.switchTab({ url: '/pages/teacher/list' })
-  }
+  // 功能入口跳转
+  const goTopublish = () => Taro.navigateTo({ url: '/pages/publish/index' })
+  const goToEliteClass = () => Taro.switchTab({ url: '/pages/elite-class/index' })
+  const goToFavorites = () => Taro.navigateTo({ url: '/pages/favorites/index' })
+  const goToMembership = () => Taro.navigateTo({ url: '/pages/membership/index' })
 
-  const goToOrgList = () => {
-    Taro.switchTab({ url: '/pages/org/list' })
-  }
-
-  const goToLogin = () => {
-    Taro.navigateTo({ url: '/pages/login/index' })
+  // 学科筛选
+  const handleSubjectFilter = (subject: string) => {
+    setActiveSubject(subject)
+    loadRecommendTeachers(location)
   }
 
   return (
     <View className="home-page">
-      {/* 顶部定位栏 */}
-      <View className="location-bar">
-        <MapPin size={18} color="#2563EB" />
-        <Text className="location-text">{(location && location.address) || '定位中...'}</Text>
-        <View className="location-refresh" onClick={handleRefreshLocation}>
-          <RefreshCw size={16} color="#6B7280" />
+      {/* 顶部栏：城市 + 标题 + 角色切换 */}
+      <View className="top-bar">
+        <View className="location-area" onClick={handleRefreshLocation}>
+          <MapPin size={16} color="#2563EB" />
+          <Text className="city-name">{getCityName()}</Text>
+        </View>
+        <Text className="page-title">首页</Text>
+        <View className="role-switch-btn" onClick={goToRoleSwitch}>
+          <User size={16} color="#2563EB" />
+          <Text className="role-text">{ROLE_NAMES[currentRole] || '家长端'}</Text>
         </View>
       </View>
 
       <ScrollView scrollY className="home-scroll">
-        {/* 搜索栏 */}
-        <View className="search-bar">
-          <View className="search-input">
-            <Search size={18} color="#9CA3AF" />
-            <Text className="search-placeholder">搜索老师、科目、机构...</Text>
-          </View>
-        </View>
-
-        {/* 快捷入口 */}
-        <View className="quick-entry">
-          <View className="entry-item" onClick={goToTeacherList}>
-            <View className="entry-icon teacher">
-              <GraduationCap size={24} color="#2563EB" />
-            </View>
-            <Text className="entry-text">找老师</Text>
-          </View>
-          <View className="entry-item" onClick={goToOrgList}>
-            <View className="entry-icon org">
-              <Building size={24} color="#10B981" />
-            </View>
-            <Text className="entry-text">找机构</Text>
-          </View>
-          <View className="entry-item">
-            <View className="entry-icon demand">
-              <Users size={24} color="#F59E0B" />
+        {/* 功能入口栏 */}
+        <View className="quick-entry-bar">
+          <View className="entry-item" onClick={goTopublish}>
+            <View className="entry-icon publish">
+              <Plus size={24} color="#fff" />
             </View>
             <Text className="entry-text">发布需求</Text>
           </View>
-          <View className="entry-item">
-            <View className="entry-icon activity">
-              <Star size={24} color="#EF4444" />
+          <View className="entry-item" onClick={goToEliteClass}>
+            <View className="entry-icon elite">
+              <GraduationCap size={24} color="#fff" />
             </View>
-            <Text className="entry-text">热门活动</Text>
+            <Text className="entry-text">牛师班</Text>
+          </View>
+          <View className="entry-item" onClick={goToFavorites}>
+            <View className="entry-icon favorite">
+              <Heart size={24} color="#fff" />
+            </View>
+            <Text className="entry-text">收藏教师</Text>
+          </View>
+          <View className="entry-item" onClick={goToMembership}>
+            <View className="entry-icon member">
+              <Crown size={24} color="#fff" />
+            </View>
+            <Text className="entry-text">会员中心</Text>
           </View>
         </View>
 
-        {/* 推荐老师 */}
-        <Card className="section-card">
-          <CardHeader className="section-header">
-            <CardTitle className="section-title">
-              <Star size={18} color="#F59E0B" />
-              附近好老师
-            </CardTitle>
-            <View className="section-more" onClick={goToTeacherList}>
-              <Text className="more-text">更多</Text>
-              <ChevronRight size={16} color="#6B7280" />
+        {/* 轮播图区域 */}
+        <View className="banner-section">
+          <Swiper 
+            className="banner-swiper" 
+            indicatorDots 
+            autoplay 
+            circular
+            indicatorColor="rgba(255,255,255,0.5)"
+            indicatorActiveColor="#fff"
+          >
+            <SwiperItem>
+              <View className="banner-item banner-1">
+                <Text className="banner-title">优质教师推荐</Text>
+                <Text className="banner-desc">严选认证教师，放心选择</Text>
+              </View>
+            </SwiperItem>
+            <SwiperItem>
+              <View className="banner-item banner-2">
+                <Text className="banner-title">牛师班招生中</Text>
+                <Text className="banner-desc">名师小班课，名额有限</Text>
+              </View>
+            </SwiperItem>
+            <SwiperItem>
+              <View className="banner-item banner-3">
+                <Text className="banner-title">会员专享特权</Text>
+                <Text className="banner-desc">开通会员，解锁更多权益</Text>
+              </View>
+            </SwiperItem>
+          </Swiper>
+        </View>
+
+        {/* 附近教师模块 */}
+        <View className="teacher-section">
+          <View className="section-header">
+            <Text className="section-title">附近教师</Text>
+          </View>
+
+          {/* 学科筛选标签 */}
+          <View className="filter-tabs">
+            {SUBJECT_FILTERS.map((subject) => (
+              <View
+                key={subject}
+                className={`filter-tab ${activeSubject === subject ? 'active' : ''}`}
+                onClick={() => handleSubjectFilter(subject)}
+              >
+                <Text className="filter-text">{subject}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* 会员提示栏 */}
+          <View className="member-tip-bar">
+            <View className="tip-left">
+              <Lock size={14} color="#F59E0B" />
+              <Text className="tip-text">开通会员可查看完整信息与联系方式</Text>
             </View>
-          </CardHeader>
-          <CardContent className="section-content">
+            <Button size="sm" className="tip-btn" onClick={goToMembership}>
+              立即开通
+            </Button>
+          </View>
+
+          {/* 教师列表 */}
+          <View className="teacher-list">
             {loading || recommendLoading ? (
               <>
-                <Skeleton className="h-24 rounded-lg mb-3" />
-                <Skeleton className="h-24 rounded-lg" />
+                <Skeleton className="h-32 rounded-lg mb-3" />
+                <Skeleton className="h-32 rounded-lg" />
               </>
             ) : teachers.length > 0 ? (
               teachers.map((teacher) => (
                 <View
                   key={teacher.id}
-                  className="teacher-item"
+                  className="teacher-card"
                   onClick={() => goToTeacherDetail(teacher.id)}
                 >
                   <View className="teacher-avatar">
@@ -294,101 +332,39 @@ const HomePage: FC = () => {
                     )}
                   </View>
                   <View className="teacher-info">
-                    <View className="teacher-name-row">
-                      <Text className="teacher-name">{teacher.real_name || teacher.nickname}</Text>
-                      <View className="teacher-rating">
+                    <View className="teacher-header">
+                      <View className="name-row">
+                        <Text className="teacher-name">{teacher.real_name || teacher.nickname}</Text>
+                        <Text className="teacher-gender">男</Text>
+                      </View>
+                      <View className="rating-row">
                         <Star size={12} color="#F59E0B" />
                         <Text className="rating-text">{teacher.rating}</Text>
                       </View>
                     </View>
-                    <Text className="teacher-intro">{teacher.one_line_intro}</Text>
-                    <View className="teacher-tags">
+                    <Text className="teacher-edu">北京大学·硕士</Text>
+                    <View className="teacher-subjects">
                       {teacher.subjects && teacher.subjects.slice(0, 2).map((subject, idx) => (
-                        <Badge key={idx} variant="secondary" className="tag">{subject}</Badge>
+                        <Badge key={idx} variant="secondary" className="subject-tag">{subject}</Badge>
                       ))}
-                      <Text className="teacher-exp">{teacher.teaching_years}年教龄</Text>
                     </View>
-                    <View className="teacher-bottom">
-                      <Text className="teacher-price">
-                        {formatPrice(teacher.hourly_rate_min, teacher.hourly_rate_max)}
-                      </Text>
-                      <Text className="teacher-distance">{teacher.distance_text}</Text>
-                    </View>
+                    <Text className="teacher-price">
+                      ¥{teacher.hourly_rate_min} - {teacher.hourly_rate_max}/小时
+                    </Text>
+                    <Text className="teacher-intro">{teacher.one_line_intro}</Text>
+                    <Button size="sm" className="detail-btn">
+                      查看详情
+                    </Button>
                   </View>
                 </View>
               ))
             ) : (
               <View className="empty-state">
-                <Text className="empty-text">暂无推荐老师</Text>
+                <Text className="empty-text">暂无推荐教师</Text>
               </View>
             )}
-          </CardContent>
-        </Card>
-
-        {/* 推荐机构 */}
-        <Card className="section-card">
-          <CardHeader className="section-header">
-            <CardTitle className="section-title">
-              <Building size={18} color="#10B981" />
-              优质机构
-            </CardTitle>
-            <View className="section-more" onClick={goToOrgList}>
-              <Text className="more-text">更多</Text>
-              <ChevronRight size={16} color="#6B7280" />
-            </View>
-          </CardHeader>
-          <CardContent className="section-content">
-            {loading ? (
-              <Skeleton className="h-20 rounded-lg" />
-            ) : orgs.length > 0 ? (
-              orgs.map((org) => (
-                <View
-                  key={org.id}
-                  className="org-item"
-                  onClick={() => goToOrgDetail(org.id)}
-                >
-                  <View className="org-logo">
-                    {org.logo ? (
-                      <Image src={org.logo} className="logo-img" mode="aspectFill" />
-                    ) : (
-                      <View className="logo-placeholder">
-                        <Building size={24} color="#9CA3AF" />
-                      </View>
-                    )}
-                  </View>
-                  <View className="org-info">
-                    <Text className="org-name">{org.name}</Text>
-                    <Text className="org-desc">{org.description}</Text>
-                    <View className="org-meta">
-                      <Text className="org-teachers">{org.teacher_count}位老师</Text>
-                      <View className="org-rating">
-                        <Star size={12} color="#F59E0B" />
-                        <Text className="rating-text">{org.rating}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <ChevronRight size={20} color="#D1D5DB" />
-                </View>
-              ))
-            ) : (
-              <View className="empty-state">
-                <Text className="empty-text">暂无推荐机构</Text>
-              </View>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 未登录提示 */}
-        {!isLoggedIn && (
-          <Card className="login-tip-card">
-            <CardContent className="login-tip-content">
-              <Text className="login-tip-text">登录后可查看更多个性化推荐</Text>
-              <Button size="sm" onClick={goToLogin}>立即登录</Button>
-            </CardContent>
-          </Card>
-        )}
-
-        <View className="bottom-space" />
+          </View>
+        </View>
       </ScrollView>
     </View>
   )

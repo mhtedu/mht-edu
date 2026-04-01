@@ -1,28 +1,30 @@
 .profile-page {
   min-height: 100vh;
-  background: #F3F4F6;
+  background: #F5F5F5;
 }
 
 .profile-scroll {
   height: 100vh;
 }
 
+/* 用户信息区域 - 蓝色背景 */
 .user-header {
-  background: linear-gradient(180deg, #2563EB 0%, #3B82F6 100%);
-  padding: 30px 16px 20px;
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  padding: 40px 20px 30px;
 }
 
-.user-info, .login-prompt {
+.user-info,
+.login-prompt {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
 .user-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  background: #fff;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -30,14 +32,13 @@
 }
 
 .avatar-img {
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  height: 100%;
 }
 
 .avatar-placeholder {
-  width: 64px;
-  height: 64px;
-  background: #DBEAFE;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,124 +50,73 @@
 }
 
 .user-name {
-  font-size: 18px;
+  display: block;
+  font-size: 20px;
   font-weight: 600;
   color: #fff;
+  margin-bottom: 4px;
 }
 
-.user-role {
-  margin-top: 6px;
-}
-
-.login-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.login-hint {
-  font-size: 13px;
+.user-phone {
+  display: block;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
-  margin-top: 4px;
 }
 
-.member-card {
-  margin: -20px 12px 12px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-}
-
-.member-content {
+/* 会员特权卡片 */
+.member-privilege-card {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  margin: -15px 16px 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.member-info {
+.privilege-left {
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 10px;
 }
 
-.member-icon {
-  width: 48px;
-  height: 48px;
-  background: #fff;
-  border-radius: 24px;
+.privilege-text {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.member-text {
-  margin-left: 12px;
-}
-
-.member-title {
+.privilege-title {
   font-size: 15px;
   font-weight: 600;
-  color: #92400E;
+  color: #1F2937;
 }
 
-.member-desc {
+.privilege-desc {
   font-size: 12px;
-  color: #B45309;
+  color: #6B7280;
   margin-top: 2px;
 }
 
-.member-btn {
+.privilege-btn {
   background: #F59E0B;
   color: #fff;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 16px;
 }
 
-.menu-card {
-  margin: 0 12px 12px;
+/* 功能菜单区域 */
+.menu-section {
+  background: #fff;
+  margin: 12px 16px;
   border-radius: 12px;
-}
-
-.menu-content {
-  padding: 16px;
-}
-
-.menu-grid {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
+  overflow: hidden;
 }
 
 .menu-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.menu-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-.menu-text {
-  font-size: 13px;
-  color: #374151;
-}
-
-.setting-card {
-  margin: 0 12px 12px;
-  border-radius: 12px;
-}
-
-.setting-content {
-  padding: 8px 0;
-}
-
-.setting-item {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -175,43 +125,120 @@
   border-bottom: 1px solid #F3F4F6;
 }
 
-.setting-item:last-child {
+.menu-item:last-child {
   border-bottom: none;
 }
 
-.setting-left {
+.menu-left {
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 12px;
 }
 
-.setting-text {
+.menu-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-text-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-title {
   font-size: 15px;
-  color: #374151;
-  margin-left: 12px;
+  font-weight: 500;
+  color: #1F2937;
 }
 
+.menu-subtitle {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 2px;
+}
+
+.menu-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-open-btn {
+  background: #2563EB;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.open-btn-text {
+  font-size: 12px;
+  color: #fff;
+}
+
+/* 退出登录 */
 .logout-section {
-  padding: 20px 16px;
+  margin: 16px;
 }
 
 .logout-btn {
-  width: 100%;
+  background: #fff;
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.logout-text {
+  font-size: 15px;
+  color: #EF4444;
+  font-weight: 500;
+}
+
+/* 切换身份 */
+.switch-role-section {
+  margin: 16px;
+  margin-bottom: 100px;
+}
+
+.switch-role-item {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  padding: 12px;
-  border-radius: 20px;
-  border-color: #FCA5A5;
+  gap: 8px;
+  padding: 14px;
+  background: #fff;
+  border-radius: 12px;
 }
 
-.logout-text {
+.switch-role-text {
   font-size: 14px;
-  color: #EF4444;
-  margin-left: 8px;
+  color: #6B7280;
 }
 
-.bottom-space {
-  height: 40px;
+.current-role {
+  font-size: 14px;
+  color: #2563EB;
+  font-weight: 500;
+}
+
+/* 旧样式隐藏 */
+.role-switch-card {
+  display: none;
+}
+
+.member-card {
+  display: none;
+}
+
+.menu-card {
+  display: none;
+}
+
+.menu-grid {
+  display: none;
 }

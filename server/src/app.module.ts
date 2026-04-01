@@ -9,6 +9,7 @@ import { OrgModule } from '@/modules/org/org.module';
 import { MessageModule } from '@/modules/message/message.module';
 import { AdminModule } from '@/modules/admin/admin.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { VisionModule } from '@/modules/vision/vision.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     MessageModule,
     AdminModule,
     AuthModule,
+    VisionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

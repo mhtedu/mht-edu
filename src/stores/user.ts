@@ -7,6 +7,7 @@ interface UserState {
   userInfo: UserInfo | null
   token: string
   isLoggedIn: boolean
+  currentRole: number // 0-家长 1-教师 2-机构
   location: {
     latitude: number
     longitude: number
@@ -15,6 +16,7 @@ interface UserState {
   setUserInfo: (info: UserInfo) => void
   setToken: (token: string) => void
   setLocation: (location: { latitude: number; longitude: number; address: string }) => void
+  setCurrentRole: (role: number) => void
   logout: () => void
 }
 
@@ -42,10 +44,12 @@ export const useUserStore = create<UserState>()(
       userInfo: null,
       token: '',
       isLoggedIn: false,
+      currentRole: 0,
       location: null,
       setUserInfo: (info) => set({ userInfo: info, isLoggedIn: true }),
       setToken: (token) => set({ token }),
       setLocation: (location) => set({ location }),
+      setCurrentRole: (role) => set({ currentRole: role }),
       logout: () => set({ userInfo: null, token: '', isLoggedIn: false }),
     }),
     {

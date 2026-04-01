@@ -2,14 +2,12 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState } from 'react'
 import Taro, { useLoad, useDidShow } from '@tarojs/taro'
 import type { FC } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import {
-  User, Settings, Star, CreditCard, Users,
-  ChevronRight, LogOut, Award, FileText, Bell, Info, RefreshCw, BookOpen, Building2
+  User, ChevronRight, Crown, FileText, Heart,
+  Gift, Info, Phone, BookOpen, Building2
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -48,11 +46,9 @@ const ProfilePage: FC = () => {
 
   const loadMembershipInfo = async () => {
     try {
-      console.log('加载会员信息请求:', { url: '/api/user/membership' })
       const res = await Network.request({
         url: '/api/user/membership'
       })
-      console.log('加载会员信息响应:', res.data)
       if (res.data) {
         setMembershipInfo(res.data)
       }
@@ -86,183 +82,146 @@ const ProfilePage: FC = () => {
     Taro.navigateTo({ url: page })
   }
 
+  // 功能菜单项
   const menuItems = [
-    { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
-    { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
-    { icon: CreditCard, title: '我的订单', path: '/pages/profile/orders', color: '#2563EB' },
-    { icon: Users, title: '我的邀请', path: '/pages/profile/invite', color: '#8B5CF6' },
+    { icon: FileText, title: '我的需求', subtitle: '已发布的需求', path: '/pages/orders/index', color: '#2563EB' },
+    { icon: Heart, title: '收藏教师', subtitle: '已收藏的教师', path: '/pages/favorites/index', color: '#EF4444' },
+    { icon: Crown, title: '会员中心', subtitle: membershipInfo && membershipInfo.is_member ? `剩余${membershipInfo.remaining_days}天` : '未开通', path: '/pages/membership/index', color: '#F59E0B', showBtn: !(membershipInfo && membershipInfo.is_member) },
+    { icon: Gift, title: '邀请有礼', subtitle: '赚佣金', path: '/pages/distribution/index', color: '#8B5CF6' },
   ]
 
-  const settingItems = [
-    { icon: Award, title: '教师认证', path: '/pages/profile/teacher-auth', color: '#10B981' },
-    { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
-    { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
-    { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+  // 底部菜单项
+  const bottomItems = [
+    { icon: Info, title: '关于我们', path: '/pages/settings/index', color: '#6B7280' },
+    { icon: Phone, title: '联系客服', subtitle: '400-888-8888', path: '', color: '#10B981' },
   ]
 
   return (
     <View className="profile-page">
       <ScrollView scrollY className="profile-scroll">
-        {/* 用户信息卡片 */}
+        {/* 用户信息区域 - 蓝色背景 */}
         <View className="user-header">
           {isLoggedIn ? (
-            <View className="user-info" onClick={() => goToPage('/pages/profile/edit')}>
+            <View className="user-info" onClick={() => goToPage('/pages/settings/index')}>
               <View className="user-avatar">
                 {userInfo && userInfo.avatar ? (
                   <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
                 ) : (
                   <View className="avatar-placeholder">
-                    <User size={24} color="#2563EB" />
+                    <User size={28} color="#fff" />
                   </View>
                 )}
               </View>
               <View className="user-basic">
                 <Text className="user-name">{(userInfo && userInfo.nickname) || '用户'}</Text>
-                <View className="user-role">
-                  <Badge variant="outline">
-                    {(roleConfig[currentRole] && roleConfig[currentRole].name) || '用户'}
-                  </Badge>
-                </View>
+                <Text className="user-phone">未绑定手机</Text>
               </View>
-              <ChevronRight size={20} color="#9CA3AF" />
+              <ChevronRight size={20} color="rgba(255,255,255,0.8)" />
             </View>
           ) : (
             <View className="login-prompt" onClick={goToLogin}>
               <View className="user-avatar">
-                <User size={24} color="#9CA3AF" />
+                <User size={28} color="#fff" />
               </View>
               <View className="user-basic">
-                <Text className="login-text">点击登录</Text>
-                <Text className="login-hint">登录享受更多服务</Text>
+                <Text className="user-name">点击登录</Text>
+                <Text className="user-phone">登录享受更多服务</Text>
               </View>
-              <ChevronRight size={20} color="#9CA3AF" />
+              <ChevronRight size={20} color="rgba(255,255,255,0.8)" />
             </View>
           )}
         </View>
 
-        {/* 角色切换入口 */}
+        {/* 家长会员特权卡片 */}
         {isLoggedIn && (
-          <Card className="role-switch-card" style={{ margin: '12px 16px' }}>
-            <CardContent style={{ padding: '16px' }}>
-              <View 
-                className="role-switch-entry" 
-                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                onClick={() => Taro.navigateTo({ url: '/pages/role-switch/index' })}
-              >
-                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
-                  <View 
-                    style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '10px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      background: `linear-gradient(135deg, ${(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'}20, ${(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'}40)`
-                    }}
-                  >
-                    {(() => {
-                      const RoleIcon = (roleConfig[currentRole] && roleConfig[currentRole].icon) || User
-                      return <RoleIcon size={22} color={(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'} />
-                    })()}
-                  </View>
-                  <View>
-                    <Text style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>
-                      当前身份：{(roleConfig[currentRole] && roleConfig[currentRole].name) || '用户'}
-                    </Text>
-                    <Text style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                      点击切换身份，享受不同权益
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }}>
-                  <RefreshCw size={16} color="#2563EB" />
-                  <Text style={{ fontSize: '14px', color: '#2563EB' }}>切换</Text>
-                </View>
+          <View className="member-privilege-card">
+            <View className="privilege-left">
+              <Crown size={20} color="#F59E0B" />
+              <View className="privilege-text">
+                <Text className="privilege-title">{roleConfig[currentRole] && roleConfig[currentRole].name}会员特权</Text>
+                <Text className="privilege-desc">开通会员解锁更多权益</Text>
               </View>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 会员卡片 */}
-        {isLoggedIn && (
-          <Card className="member-card">
-            <CardContent className="member-content">
-              <View className="member-info">
-                <View className="member-icon">
-                  <Award size={24} color="#F59E0B" />
-                </View>
-                <View className="member-text">
-                  {(membershipInfo && membershipInfo.is_member) ? (
-                    <>
-                      <Text className="member-title">会员有效</Text>
-                      <Text className="member-desc">剩余{membershipInfo.remaining_days}天</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text className="member-title">开通会员</Text>
-                      <Text className="member-desc">解锁更多权益</Text>
-                    </>
-                  )}
-                </View>
-              </View>
-              <Button size="sm" className="member-btn">
-                {(membershipInfo && membershipInfo.is_member) ? '续费' : '立即开通'}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* 功能菜单 */}
-        <Card className="menu-card">
-          <CardContent className="menu-content">
-            <View className="menu-grid">
-              {menuItems.map((item, idx) => (
-                <View
-                  key={idx}
-                  className="menu-item"
-                  onClick={() => goToPage(item.path)}
-                >
-                  <View className="menu-icon" style={{ background: `${item.color}20` }}>
-                    <item.icon size={22} color={item.color} />
-                  </View>
-                  <Text className="menu-text">{item.title}</Text>
-                </View>
-              ))}
             </View>
-          </CardContent>
-        </Card>
-
-        {/* 设置菜单 */}
-        <Card className="setting-card">
-          <CardContent className="setting-content">
-            {settingItems.map((item, idx) => (
-              <View
-                key={idx}
-                className="setting-item"
-                onClick={() => goToPage(item.path)}
-              >
-                <View className="setting-left">
-                  <item.icon size={20} color={item.color} />
-                  <Text className="setting-text">{item.title}</Text>
-                </View>
-                <ChevronRight size={20} color="#D1D5DB" />
-              </View>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* 退出登录 */}
-        {isLoggedIn && (
-          <View className="logout-section">
-            <Button variant="outline" className="logout-btn" onClick={handleLogout}>
-              <LogOut size={18} color="#EF4444" />
-              <Text className="logout-text">退出登录</Text>
+            <Button 
+              size="sm" 
+              className="privilege-btn"
+              onClick={() => goToPage('/pages/membership/index')}
+            >
+              立即开通
             </Button>
           </View>
         )}
 
-        <View className="bottom-space" />
+        {/* 功能菜单列表 */}
+        <View className="menu-section">
+          {menuItems.map((item, idx) => (
+            <View
+              key={idx}
+              className="menu-item"
+              onClick={() => goToPage(item.path)}
+            >
+              <View className="menu-left">
+                <View className="menu-icon" style={{ backgroundColor: `${item.color}15` }}>
+                  <item.icon size={20} color={item.color} />
+                </View>
+                <View className="menu-text-area">
+                  <Text className="menu-title">{item.title}</Text>
+                  {item.subtitle && <Text className="menu-subtitle">{item.subtitle}</Text>}
+                </View>
+              </View>
+              <View className="menu-right">
+                {item.showBtn && (
+                  <View className="menu-open-btn">
+                    <Text className="open-btn-text">开通</Text>
+                  </View>
+                )}
+                <ChevronRight size={18} color="#9CA3AF" />
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* 底部菜单 */}
+        <View className="menu-section">
+          {bottomItems.map((item, idx) => (
+            <View
+              key={idx}
+              className="menu-item"
+              onClick={() => item.path && goToPage(item.path)}
+            >
+              <View className="menu-left">
+                <View className="menu-icon" style={{ backgroundColor: `${item.color}15` }}>
+                  <item.icon size={20} color={item.color} />
+                </View>
+                <View className="menu-text-area">
+                  <Text className="menu-title">{item.title}</Text>
+                  {item.subtitle && <Text className="menu-subtitle">{item.subtitle}</Text>}
+                </View>
+              </View>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </View>
+          ))}
+        </View>
+
+        {/* 退出登录 */}
+        {isLoggedIn && (
+          <View className="logout-section">
+            <View className="logout-btn" onClick={handleLogout}>
+              <Text className="logout-text">退出登录</Text>
+            </View>
+          </View>
+        )}
+
+        {/* 切换身份入口 */}
+        <View className="switch-role-section">
+          <View 
+            className="switch-role-item"
+            onClick={() => Taro.navigateTo({ url: '/pages/role-switch/index' })}
+          >
+            <Text className="switch-role-text">切换身份</Text>
+            <Text className="current-role">当前：{roleConfig[currentRole] && roleConfig[currentRole].name}</Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   )
