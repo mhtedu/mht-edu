@@ -92,7 +92,7 @@ export default function TeacherDetailPage() {
       })
 
       console.log('教师信息:', res.data)
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setTeacher(res.data.data)
       }
     } catch (error) {
@@ -113,7 +113,7 @@ export default function TeacherDetailPage() {
       })
 
       console.log('教师动态:', res.data)
-      if (res.data?.data?.list) {
+      if (res.data && res.data.data && res.data.data.list) {
         setMoments(res.data.data.list)
       }
     } catch (error) {
@@ -134,7 +134,7 @@ export default function TeacherDetailPage() {
       })
 
       console.log('教师评价:', res.data)
-      if (res.data?.data?.list) {
+      if (res.data && res.data.data && res.data.data.list) {
         setReviews(res.data.data.list)
       }
     } catch (error) {
@@ -193,7 +193,7 @@ export default function TeacherDetailPage() {
       })
 
       console.log('解锁结果:', res.data)
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         // 更新教师信息
         setTeacher({
           ...teacher,
@@ -297,7 +297,7 @@ export default function TeacherDetailPage() {
           <View className="flex flex-col items-center">
             <View className="flex items-center gap-1 text-yellow-500">
               <Star size={16} color="#EAB308" />
-              <Text className="font-bold">{teacher.rating?.toFixed(1) || '5.0'}</Text>
+              <Text className="font-bold">{(teacher.rating && teacher.rating.toFixed(1)) || '5.0'}</Text>
             </View>
             <Text className="text-xs text-gray-500 mt-1">评分</Text>
           </View>

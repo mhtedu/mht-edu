@@ -91,7 +91,7 @@ export default function CitySelector({ visible, currentCity, onClose, onSelect }
       })
       console.log('热门城市API响应:', hotRes)
       
-      if (allRes?.data?.data) {
+      if (allRes && allRes.data && allRes.data.data) {
         setGroupedCities(allRes.data.data)
         setUseLocalData(false)
       } else {
@@ -99,7 +99,7 @@ export default function CitySelector({ visible, currentCity, onClose, onSelect }
         initLocalCities()
       }
       
-      if (hotRes?.data?.data) {
+      if (hotRes && hotRes.data && hotRes.data.data) {
         setHotCities(hotRes.data.data)
       }
     } catch (error) {
@@ -169,7 +169,7 @@ export default function CitySelector({ visible, currentCity, onClose, onSelect }
         data: { keyword },
       })
       console.log('搜索结果:', res)
-      if (res?.data?.data) {
+      if (res && res.data && res.data.data) {
         setSearchResults(res.data.data)
       }
     } catch (error) {
@@ -217,7 +217,7 @@ export default function CitySelector({ visible, currentCity, onClose, onSelect }
         },
       })
       console.log('最近城市:', res)
-      if (res?.data?.data) {
+      if (res && res.data && res.data.data) {
         setCurrentLocation(res.data.data)
         Taro.showToast({ title: `定位成功: ${res.data.data.name}`, icon: 'success' })
       } else {

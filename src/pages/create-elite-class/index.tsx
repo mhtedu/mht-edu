@@ -43,9 +43,8 @@ export default function CreateEliteClass() {
         method: 'GET'
       })
       console.log('检查超级会员:', res.data)
-      setIsSuperMember(res.data?.data?.isSuper || false)
-      setIsSuperMember(res.data?.data?.isSuper || false)
-      setSuperMemberReason(res.data?.data?.reason || '')
+      setIsSuperMember(res.data && res.data.data && res.data.data.isSuper || false)
+      setSuperMemberReason(res.data && res.data.data && res.data.data.reason || '')
     } catch (error) {
       console.error('检查会员失败:', error)
       // 开发环境默认为true方便测试
@@ -215,7 +214,7 @@ export default function CreateEliteClass() {
               {/* 开课时间 */}
               <View>
                 <Text className="text-sm text-gray-500 mb-2">开课时间 *</Text>
-                <Picker mode="date" value={formData.start_time?.split(' ')[0] || ''} onChange={handleDateChange}>
+                <Picker mode="date" value={(formData.start_time && formData.start_time.split(' ')[0]) || ''} onChange={handleDateChange}>
                   <View className="bg-gray-50 rounded-lg px-3 py-2 flex flex-row justify-between items-center">
                     <Text className={formData.start_time ? 'text-gray-800' : 'text-gray-400'}>
                       {formData.start_time || '请选择开课日期'}

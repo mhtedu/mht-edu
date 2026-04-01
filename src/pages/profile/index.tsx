@@ -108,7 +108,7 @@ const ProfilePage: FC = () => {
           {isLoggedIn ? (
             <View className="user-info" onClick={() => goToPage('/pages/profile/edit')}>
               <View className="user-avatar">
-                {userInfo?.avatar ? (
+                {userInfo && userInfo.avatar ? (
                   <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
                 ) : (
                   <View className="avatar-placeholder">
@@ -117,10 +117,10 @@ const ProfilePage: FC = () => {
                 )}
               </View>
               <View className="user-basic">
-                <Text className="user-name">{userInfo?.nickname || '用户'}</Text>
+                <Text className="user-name">{(userInfo && userInfo.nickname) || '用户'}</Text>
                 <View className="user-role">
                   <Badge variant="outline">
-                    {roleConfig[currentRole]?.name || '用户'}
+                    {(roleConfig[currentRole] && roleConfig[currentRole].name) || '用户'}
                   </Badge>
                 </View>
               </View>
@@ -158,17 +158,17 @@ const ProfilePage: FC = () => {
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      background: `linear-gradient(135deg, ${roleConfig[currentRole]?.color}20, ${roleConfig[currentRole]?.color}40)`
+                      background: `linear-gradient(135deg, ${(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'}20, ${(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'}40)`
                     }}
                   >
                     {(() => {
-                      const RoleIcon = roleConfig[currentRole]?.icon || User
-                      return <RoleIcon size={22} color={roleConfig[currentRole]?.color} />
+                      const RoleIcon = (roleConfig[currentRole] && roleConfig[currentRole].icon) || User
+                      return <RoleIcon size={22} color={(roleConfig[currentRole] && roleConfig[currentRole].color) || '#2563EB'} />
                     })()}
                   </View>
                   <View>
                     <Text style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>
-                      当前身份：{roleConfig[currentRole]?.name}
+                      当前身份：{(roleConfig[currentRole] && roleConfig[currentRole].name) || '用户'}
                     </Text>
                     <Text style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
                       点击切换身份，享受不同权益
@@ -193,7 +193,7 @@ const ProfilePage: FC = () => {
                   <Award size={24} color="#F59E0B" />
                 </View>
                 <View className="member-text">
-                  {membershipInfo?.is_member ? (
+                  {(membershipInfo && membershipInfo.is_member) ? (
                     <>
                       <Text className="member-title">会员有效</Text>
                       <Text className="member-desc">剩余{membershipInfo.remaining_days}天</Text>
@@ -207,7 +207,7 @@ const ProfilePage: FC = () => {
                 </View>
               </View>
               <Button size="sm" className="member-btn">
-                {membershipInfo?.is_member ? '续费' : '立即开通'}
+                {(membershipInfo && membershipInfo.is_member) ? '续费' : '立即开通'}
               </Button>
             </CardContent>
           </Card>

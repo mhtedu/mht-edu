@@ -202,13 +202,13 @@ const OrgDetailPage: FC = () => {
           </CardHeader>
           <CardContent className="card-content">
             <View className="tag-list">
-              {org.subjects?.map((subject, idx) => (
+              {org.subjects && org.subjects.map((subject, idx) => (
                 <Badge key={idx} className="subject-tag">{subject}</Badge>
               ))}
             </View>
             <View className="grade-row">
               <Text className="grade-label">授课年级：</Text>
-              <Text className="grade-value">{org.grades?.join('、')}</Text>
+              <Text className="grade-value">{org.grades && org.grades.join('、')}</Text>
             </View>
           </CardContent>
         </Card>
@@ -234,14 +234,14 @@ const OrgDetailPage: FC = () => {
                       <Image src={teacher.avatar} className="avatar-img" mode="aspectFill" />
                     ) : (
                       <View className="avatar-placeholder">
-                        <Text className="avatar-text">{teacher.real_name?.[0]}</Text>
+                        <Text className="avatar-text">{teacher.real_name && teacher.real_name[0]}</Text>
                       </View>
                     )}
                   </View>
                   <View className="teacher-info">
                     <Text className="teacher-name">{teacher.real_name}</Text>
                     <View className="teacher-subjects">
-                      {teacher.subjects?.map((s, idx) => (
+                      {teacher.subjects && teacher.subjects.map((s, idx) => (
                         <Badge key={idx} variant="secondary" className="tag">{s}</Badge>
                       ))}
                     </View>

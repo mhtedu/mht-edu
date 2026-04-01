@@ -216,7 +216,7 @@ const HomePage: FC = () => {
       {/* 顶部定位栏 */}
       <View className="location-bar">
         <MapPin size={18} color="#2563EB" />
-        <Text className="location-text">{location?.address || '定位中...'}</Text>
+        <Text className="location-text">{(location && location.address) || '定位中...'}</Text>
         <View className="location-refresh" onClick={handleRefreshLocation}>
           <RefreshCw size={16} color="#6B7280" />
         </View>
@@ -289,7 +289,7 @@ const HomePage: FC = () => {
                       <Image src={teacher.avatar} className="avatar-img" mode="aspectFill" />
                     ) : (
                       <View className="avatar-placeholder">
-                        <Text className="avatar-text">{(teacher.real_name || teacher.nickname)?.[0]}</Text>
+                        <Text className="avatar-text">{((teacher.real_name || teacher.nickname) && (teacher.real_name || teacher.nickname)[0]) || ''}</Text>
                       </View>
                     )}
                   </View>
@@ -303,7 +303,7 @@ const HomePage: FC = () => {
                     </View>
                     <Text className="teacher-intro">{teacher.one_line_intro}</Text>
                     <View className="teacher-tags">
-                      {teacher.subjects?.slice(0, 2).map((subject, idx) => (
+                      {teacher.subjects && teacher.subjects.slice(0, 2).map((subject, idx) => (
                         <Badge key={idx} variant="secondary" className="tag">{subject}</Badge>
                       ))}
                       <Text className="teacher-exp">{teacher.teaching_years}年教龄</Text>

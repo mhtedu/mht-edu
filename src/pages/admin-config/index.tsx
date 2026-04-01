@@ -155,7 +155,7 @@ export default function AdminConfigPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {tabs.find(t => t.key === activeTab)?.label}
+              {(() => { const tab = tabs.find(t => t.key === activeTab); return tab ? tab.label : ''; })()}
             </CardTitle>
           </CardHeader>
           <CardContent>

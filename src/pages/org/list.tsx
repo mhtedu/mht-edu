@@ -161,7 +161,7 @@ const OrgListPage: FC = () => {
                     <Image src={org.logo} className="logo-img" mode="aspectFill" />
                   ) : (
                     <View className="logo-placeholder">
-                      <Text className="logo-text">{org.name?.[0]}</Text>
+                      <Text className="logo-text">{org.name && org.name[0]}</Text>
                     </View>
                   )}
                 </View>

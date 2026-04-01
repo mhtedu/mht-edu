@@ -197,7 +197,7 @@ const MembershipPage = () => {
             <Card 
               key={plan.id}
               className={`cursor-pointer transition-all ${
-                selectedPlan?.id === plan.id 
+                (selectedPlan && selectedPlan.id) === plan.id 
                   ? 'ring-2 ring-yellow-500 bg-yellow-50' 
                   : 'bg-white'
               }`}
@@ -219,7 +219,7 @@ const MembershipPage = () => {
                       <Text className="text-gray-400 text-sm line-through ml-2">¥{plan.original_price}</Text>
                     </View>
                   </View>
-                  {selectedPlan?.id === plan.id && (
+                  {(selectedPlan && selectedPlan.id) === plan.id && (
                     <View className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center">
                       <Check size={16} color="white" />
                     </View>
@@ -245,7 +245,7 @@ const MembershipPage = () => {
         <View className="flex flex-row items-center justify-between">
           <View>
             <Text className="text-gray-500 text-xs">应付金额</Text>
-            <Text className="text-yellow-500 text-2xl font-bold">¥{selectedPlan?.price || 0}</Text>
+            <Text className="text-yellow-500 text-2xl font-bold">¥{(selectedPlan && selectedPlan.price) || 0}</Text>
           </View>
           <Button 
             className="flex-1 ml-4 bg-gradient-to-r from-yellow-400 to-orange-500"

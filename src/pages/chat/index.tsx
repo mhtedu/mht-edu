@@ -242,7 +242,7 @@ export default function ChatPage() {
           <View className="msg-card-header">
             <Phone size={16} color="#2563EB" />
             <Text className="font-semibold ml-1">
-              {msg.extra?.contact_type === 'wechat' ? '交换微信' : '交换手机号'}
+              {(msg.extra && msg.extra.contact_type) === 'wechat' ? '交换微信' : '交换手机号'}
             </Text>
           </View>
           <Text className="text-sm text-gray-500 mt-2">
@@ -288,13 +288,13 @@ export default function ChatPage() {
           <View className="mt-3 space-y-2">
             <View className="flex items-center gap-2">
               <Clock size={14} color="#6B7280" />
-              <Text className="text-sm">{msg.extra?.trial_time}</Text>
+              <Text className="text-sm">{msg.extra && msg.extra.trial_time}</Text>
             </View>
             <View className="flex items-center gap-2">
               <MapPin size={14} color="#6B7280" />
-              <Text className="text-sm">{msg.extra?.trial_address}</Text>
+              <Text className="text-sm">{msg.extra && msg.extra.trial_address}</Text>
             </View>
-            <Text className="text-xs text-gray-400">时长：{msg.extra?.trial_duration}小时</Text>
+            <Text className="text-xs text-gray-400">时长：{msg.extra && msg.extra.trial_duration}小时</Text>
           </View>
           {!isSelf && (
             <View className="flex gap-2 mt-3">
@@ -323,8 +323,8 @@ export default function ChatPage() {
             <Text className="font-semibold ml-1 text-green-600">已接受试课邀请</Text>
           </View>
           <View className="mt-2 text-sm text-gray-500">
-            <Text>时间：{msg.extra?.trial_time}</Text>
-            <Text>地点：{msg.extra?.trial_address}</Text>
+            <Text>时间：{msg.extra && msg.extra.trial_time}</Text>
+            <Text>地点：{msg.extra && msg.extra.trial_address}</Text>
           </View>
         </View>
       )

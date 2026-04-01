@@ -205,7 +205,7 @@ const AdminPage = () => {
   const loadStats = async () => {
     try {
       const res = await Network.request({ url: '/api/admin/stats', method: 'GET' });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setStats(res.data.data);
       }
     } catch (error) {
@@ -226,7 +226,7 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, role: roleFilter, keyword, status: statusFilter }
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setUsers(res.data.data.list || []);
         setTotal(res.data.data.total || 0);
       }
@@ -248,7 +248,7 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, keyword, verifyStatus: statusFilter }
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setTeachers(res.data.data.list || []);
         setTotal(res.data.data.total || 0);
       }
@@ -269,7 +269,7 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, status: statusFilter }
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setOrgs(res.data.data.list || []);
         setTotal(res.data.data.total || 0);
       }
@@ -290,7 +290,7 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, keyword, status: statusFilter }
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setOrders(res.data.data.list || []);
         setTotal(res.data.data.total || 0);
       }
@@ -310,7 +310,7 @@ const AdminPage = () => {
         url: '/api/admin/membership-plans',
         method: 'GET',
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setMembershipPlans(res.data.data || []);
       }
     } catch (error) {
@@ -331,7 +331,7 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize }
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setActivities(res.data.data.list || []);
         setTotal(res.data.data.total || 0);
       }
@@ -350,7 +350,7 @@ const AdminPage = () => {
         url: '/api/admin/banners',
         method: 'GET',
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setBanners(res.data.data || []);
       }
     } catch (error) {
@@ -368,7 +368,7 @@ const AdminPage = () => {
         url: '/api/admin/config',
         method: 'GET',
       });
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         const config: SiteConfig = {};
         res.data.data.forEach((item: any) => {
           config[item.config_key] = item.config_value;
@@ -470,8 +470,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">总用户数</Text>
-                <Text className="text-2xl font-bold mt-1">{stats?.users?.total || 0}</Text>
-                <Text className="text-xs text-green-500 mt-1">今日+{stats?.users?.todayNew || 0}</Text>
+                <Text className="text-2xl font-bold mt-1">{(stats && stats.users && stats.users.total) || 0}</Text>
+                <Text className="text-xs text-green-500 mt-1">今日+{(stats && stats.users && stats.users.todayNew) || 0}</Text>
               </View>
               <Users size={32} color="#2563EB" />
             </View>
@@ -483,8 +483,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">教师数量</Text>
-                <Text className="text-2xl font-bold mt-1">{stats?.users?.teachers || 0}</Text>
-                <Text className="text-xs text-gray-400 mt-1">会员{stats?.users?.members || 0}</Text>
+                <Text className="text-2xl font-bold mt-1">{(stats && stats.users && stats.users.teachers) || 0}</Text>
+                <Text className="text-xs text-gray-400 mt-1">会员{(stats && stats.users && stats.users.members) || 0}</Text>
               </View>
               <UserPlus size={32} color="#10B981" />
             </View>
@@ -496,8 +496,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">待处理订单</Text>
-                <Text className="text-2xl font-bold mt-1 text-orange-500">{stats?.orders?.pending || 0}</Text>
-                <Text className="text-xs text-gray-400 mt-1">进行中{stats?.orders?.ongoing || 0}</Text>
+                <Text className="text-2xl font-bold mt-1 text-orange-500">{(stats && stats.orders && stats.orders.pending) || 0}</Text>
+                <Text className="text-xs text-gray-400 mt-1">进行中{(stats && stats.orders && stats.orders.ongoing) || 0}</Text>
               </View>
               <FileText size={32} color="#F59E0B" />
             </View>
@@ -509,8 +509,8 @@ const AdminPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">本月营收</Text>
-                <Text className="text-2xl font-bold mt-1">¥{(stats?.payments?.monthAmount || 0).toLocaleString()}</Text>
-                <Text className="text-xs text-green-500 mt-1">今日¥{(stats?.payments?.todayAmount || 0).toLocaleString()}</Text>
+                <Text className="text-2xl font-bold mt-1">¥{((stats && stats.payments && stats.payments.monthAmount) || 0).toLocaleString()}</Text>
+                <Text className="text-xs text-green-500 mt-1">今日¥{((stats && stats.payments && stats.payments.todayAmount) || 0).toLocaleString()}</Text>
               </View>
               <DollarSign size={32} color="#EC4899" />
             </View>
@@ -526,19 +526,19 @@ const AdminPage = () => {
             <View className="flex flex-col gap-3">
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">家长用户</Text>
-                <Text className="font-semibold">{stats?.users?.parents || 0}</Text>
+                <Text className="font-semibold">{(stats && stats.users && stats.users.parents) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">教师用户</Text>
-                <Text className="font-semibold">{stats?.users?.teachers || 0}</Text>
+                <Text className="font-semibold">{(stats && stats.users && stats.users.teachers) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">机构用户</Text>
-                <Text className="font-semibold">{stats?.users?.orgs || 0}</Text>
+                <Text className="font-semibold">{(stats && stats.users && stats.users.orgs) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">会员用户</Text>
-                <Text className="font-semibold text-blue-500">{stats?.users?.members || 0}</Text>
+                <Text className="font-semibold text-blue-500">{(stats && stats.users && stats.users.members) || 0}</Text>
               </View>
             </View>
           </CardContent>
@@ -550,19 +550,19 @@ const AdminPage = () => {
             <View className="flex flex-col gap-3">
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">总订单数</Text>
-                <Text className="font-semibold">{stats?.orders?.total || 0}</Text>
+                <Text className="font-semibold">{(stats && stats.orders && stats.orders.total) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">待抢单</Text>
-                <Text className="font-semibold text-orange-500">{stats?.orders?.pending || 0}</Text>
+                <Text className="font-semibold text-orange-500">{(stats && stats.orders && stats.orders.pending) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">已完成</Text>
-                <Text className="font-semibold text-green-500">{stats?.orders?.completed || 0}</Text>
+                <Text className="font-semibold text-green-500">{(stats && stats.orders && stats.orders.completed) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">今日新增</Text>
-                <Text className="font-semibold">{stats?.orders?.todayNew || 0}</Text>
+                <Text className="font-semibold">{(stats && stats.orders && stats.orders.todayNew) || 0}</Text>
               </View>
             </View>
           </CardContent>
@@ -574,15 +574,15 @@ const AdminPage = () => {
             <View className="flex flex-col gap-3">
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">待结算</Text>
-                <Text className="font-semibold text-orange-500">¥{(stats?.commissions?.pending || 0).toLocaleString()}</Text>
+                <Text className="font-semibold text-orange-500">¥{((stats && stats.commissions && stats.commissions.pending) || 0).toLocaleString()}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">已结算</Text>
-                <Text className="font-semibold text-green-500">¥{(stats?.commissions?.settled || 0).toLocaleString()}</Text>
+                <Text className="font-semibold text-green-500">¥{((stats && stats.commissions && stats.commissions.settled) || 0).toLocaleString()}</Text>
               </View>
               <View className="flex justify-between items-center">
                 <Text className="text-gray-600">已提现</Text>
-                <Text className="font-semibold">¥{(stats?.commissions?.withdrawn || 0).toLocaleString()}</Text>
+                <Text className="font-semibold">¥{((stats && stats.commissions && stats.commissions.withdrawn) || 0).toLocaleString()}</Text>
               </View>
             </View>
           </CardContent>
@@ -713,7 +713,7 @@ const AdminPage = () => {
                     <Text className="text-xs text-gray-500">{teacher.phone}</Text>
                   </View>
                 </View>
-                <Text className="w-32">{teacher.subjects?.join(', ')}</Text>
+                <Text className="w-32">{teacher.subjects && teacher.subjects.join(', ')}</Text>
                 <Text className="w-20">{teacher.rating || '-'}</Text>
                 <Text className="w-20">{teacher.order_count}</Text>
                 <View className="w-20">
@@ -885,7 +885,7 @@ const AdminPage = () => {
                 </View>
                 <Text className="text-xs text-gray-500 mt-1">{plan.duration_days}天</Text>
                 <View className="flex flex-wrap gap-1 mt-2">
-                  {plan.features?.slice(0, 2).map((f, i) => (
+                  {plan.features && plan.features.slice(0, 2).map((f, i) => (
                     <Badge key={i} variant="secondary"><Text className="text-xs">{f}</Text></Badge>
                   ))}
                 </View>
@@ -1333,7 +1333,7 @@ const AdminPage = () => {
       {/* 右侧内容区 */}
       <View className="admin-main">
         <View className="admin-header">
-          <Text className="text-lg font-semibold">{MENUS.find(m => m.id === currentMenu)?.label}</Text>
+          <Text className="text-lg font-semibold">{(() => { const menu = MENUS.find(m => m.id === currentMenu); return menu ? menu.label : ''; })()}</Text>
           <View className="flex items-center gap-4">
             <Text className="text-sm text-gray-500">管理员</Text>
             <View className="w-8 h-8 rounded-full bg-blue-500" />

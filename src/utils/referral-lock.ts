@@ -37,7 +37,7 @@ export async function lockByShareCode(shareCode: string): Promise<boolean> {
       data: { shareCode }
     }) as any
 
-    if (res.code === 200 && res.data?.locked) {
+    if (res.code === 200 && res.data && res.data.locked) {
       console.log('[分销锁定] 锁定成功')
       return true
     } else {
@@ -70,7 +70,7 @@ export async function lockByInviteCode(inviteCode: string): Promise<boolean> {
       data: { inviteCode }
     }) as any
 
-    if (res.code === 200 && res.data?.locked) {
+    if (res.code === 200 && res.data && res.data.locked) {
       console.log('[分销锁定] 锁定成功')
       return true
     } else {
@@ -109,7 +109,7 @@ export async function lockRelation(
       data: { lockerId, lockType, sourceId }
     }) as any
 
-    if (res.code === 200 && res.data?.locked) {
+    if (res.code === 200 && res.data && res.data.locked) {
       console.log('[分销锁定] 锁定成功')
       return true
     } else {
@@ -132,7 +132,7 @@ export async function checkIsLocked(): Promise<boolean> {
       method: 'GET'
     }) as any
 
-    return res.code === 200 && res.data?.is_locked === true
+    return res.code === 200 && res.data && res.data.is_locked === true
   } catch (error) {
     console.error('[分销锁定] 检查状态异常:', error)
     return false
@@ -188,7 +188,7 @@ export async function getMyInviteCode(): Promise<string | null> {
       method: 'GET'
     }) as any
 
-    return res.code === 200 ? res.data?.invite_code : null
+    return res.code === 200 ? (res.data && res.data.invite_code) : null
   } catch (error) {
     console.error('[分销锁定] 获取邀请码异常:', error)
     return null

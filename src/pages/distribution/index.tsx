@@ -105,12 +105,12 @@ const DistributionPage = () => {
             <View className="flex flex-row justify-around">
               <View className="flex flex-col items-center">
                 <Text className="text-white text-opacity-80 text-sm">累计佣金</Text>
-                <Text className="text-white text-2xl font-bold mt-1">¥{inviteInfo?.total_commission || 0}</Text>
+                <Text className="text-white text-2xl font-bold mt-1">¥{(inviteInfo && inviteInfo.total_commission) || 0}</Text>
               </View>
               <View className="w-px bg-white bg-opacity-20" />
               <View className="flex flex-col items-center">
                 <Text className="text-white text-opacity-80 text-sm">邀请人数</Text>
-                <Text className="text-white text-2xl font-bold mt-1">{inviteInfo?.total_invited || 0}</Text>
+                <Text className="text-white text-2xl font-bold mt-1">{(inviteInfo && inviteInfo.total_invited) || 0}</Text>
               </View>
             </View>
           </CardContent>
@@ -124,7 +124,7 @@ const DistributionPage = () => {
             <View className="flex flex-row items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">我的邀请码</Text>
-                <Text className="text-2xl font-bold text-purple-500 mt-1">{inviteInfo?.invite_code}</Text>
+                <Text className="text-2xl font-bold text-purple-500 mt-1">{(inviteInfo && inviteInfo.invite_code) || ''}</Text>
               </View>
               <Button size="sm" onClick={handleCopyCode}>
                 <Copy size={14} color="white" className="mr-1" />
@@ -181,12 +181,12 @@ const DistributionPage = () => {
             <View className="flex flex-row justify-around">
               <View className="flex flex-col items-center">
                 <Users size={24} color="#FCD34D" />
-                <Text className="font-semibold mt-1">{inviteInfo?.level1_count || 0}</Text>
+                <Text className="font-semibold mt-1">{(inviteInfo && inviteInfo.level1_count) || 0}</Text>
                 <Text className="text-gray-500 text-xs">一级成员</Text>
               </View>
               <View className="flex flex-col items-center">
                 <Users size={24} color="#60A5FA" />
-                <Text className="font-semibold mt-1">{inviteInfo?.level2_count || 0}</Text>
+                <Text className="font-semibold mt-1">{(inviteInfo && inviteInfo.level2_count) || 0}</Text>
                 <Text className="text-gray-500 text-xs">二级成员</Text>
               </View>
             </View>

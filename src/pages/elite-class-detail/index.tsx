@@ -37,7 +37,7 @@ export default function EliteClassDetail() {
         method: 'GET'
       })
       console.log('牛师班详情:', res.data)
-      setClassInfo(res.data?.data)
+      setClassInfo(res.data && res.data.data)
     } catch (error) {
       console.error('加载详情失败:', error)
       // 使用模拟数据
@@ -134,7 +134,7 @@ export default function EliteClassDetail() {
 
   const handleContact = () => {
     Taro.navigateTo({ 
-      url: `/pages/chat/index?targetId=${classInfo?.teacher_id}` 
+      url: `/pages/chat/index?targetId=${classInfo && classInfo.teacher_id}` 
     })
   }
 
@@ -189,7 +189,7 @@ export default function EliteClassDetail() {
           <View className="flex flex-row items-center gap-3">
             <View className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
               <Text className="text-blue-600 font-bold text-lg">
-                {classInfo.teacher_nickname?.charAt(0) || '师'}
+                {classInfo.teacher_nickname && classInfo.teacher_nickname.charAt(0) || '师'}
               </Text>
             </View>
             <View className="flex-1">

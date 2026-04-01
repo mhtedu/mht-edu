@@ -58,7 +58,7 @@ export default function OrgCoursesPage() {
       })
 
       console.log('课程列表:', res.data)
-      if (res.data?.data) {
+      if (res.data && res.data.data) {
         setCourses(res.data.data.list || [])
         setStats(res.data.data.stats || stats)
       }

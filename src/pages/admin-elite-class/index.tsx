@@ -261,7 +261,7 @@ export default function AdminEliteClass() {
                   <View className="flex flex-row items-center justify-between mb-3 py-2 border-y border-gray-100">
                     <View className="flex flex-row items-center gap-2">
                       <View className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Text className="text-blue-600 text-sm">{item.teacher_real_name?.charAt(0) || '师'}</Text>
+                        <Text className="text-blue-600 text-sm">{item.teacher_real_name && item.teacher_real_name.charAt(0) || '师'}</Text>
                       </View>
                       <View>
                         <Text className="text-sm font-medium">{item.teacher_real_name || item.teacher_nickname}</Text>

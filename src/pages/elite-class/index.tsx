@@ -43,7 +43,7 @@ export default function EliteClassList() {
           pageSize: 20,
         }
       })
-      const data = (res as any).data?.data || []
+      const data = (res as any).data && (res as any).data.data || []
       console.log('牛师班列表:', data)
       setClasses(data)
     } catch (error) {
@@ -216,7 +216,7 @@ export default function EliteClassList() {
                   <View className="flex flex-row items-center gap-3 mb-3 pb-3 border-b border-gray-100">
                     <View className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                       <Text className="text-blue-600 font-semibold text-sm">
-                        {item.teacher_nickname?.charAt(0) || '师'}
+                        {item.teacher_nickname && item.teacher_nickname.charAt(0) || '师'}
                       </Text>
                     </View>
                     <View className="flex-1">
