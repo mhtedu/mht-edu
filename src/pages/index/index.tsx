@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation, formatPrice } from '@/utils'
 import { MapPin, Search, Star, Users, GraduationCap, Building, ChevronRight, RefreshCw } from 'lucide-react-taro'
@@ -47,12 +48,21 @@ const HomePage: FC = () => {
   const [recommendLoading, setRecommendLoading] = useState(false)
 
   const { isLoggedIn, setLocation: setUserLocation } = useUserStore()
+  const { siteConfig, loadSiteConfig } = useConfigStore()
 
   useLoad(() => {
     console.log('Home page loaded.')
   })
 
+  // 动态设置导航栏标题
+  useEffect(() => {
+    if (siteConfig.site_name) {
+      Taro.setNavigationBarTitle({ title: siteConfig.site_name })
+    }
+  }, [siteConfig.site_name])
+
   useDidShow(() => {
+    loadSiteConfig()
     loadInitData()
   })
 

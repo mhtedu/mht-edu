@@ -1,12 +1,26 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { AdminGuard } from '@/common/guards/admin.guard';
+import { Public } from '../auth/decorators/public.decorator';
 
-@Controller('admin/config')
+@Controller('config')
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
+  // 获取公开配置（不需要登录）
+  @Public()
+  @Get('public')
+  async getPublicSiteConfig() {
+    return this.configService.getPublicSiteConfig();
+  }
+}
+
+@Controller('admin/config')
+export class AdminConfigController {
+  constructor(private readonly configService: ConfigService) {}
+
   // 获取公开配置（不需要管理员权限）
+  @Public()
   @Get('public/site')
   async getPublicSiteConfig() {
     return this.configService.getPublicSiteConfig();

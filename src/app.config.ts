@@ -12,7 +12,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: '棉花糖教育',
+    navigationBarTitleText: '', // 标题由各页面动态设置
     navigationBarTextStyle: 'black'
   },
   tabBar: {

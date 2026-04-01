@@ -1,11 +1,12 @@
 import { View, Text } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Taro, { useLoad } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { validatePhone, validateCode } from '@/utils'
 import { Phone, ShieldCheck, Loader } from 'lucide-react-taro'
@@ -19,10 +20,19 @@ const LoginPage: FC = () => {
   const [isRegister, setIsRegister] = useState(false)
 
   const { setUserInfo, setToken } = useUserStore()
+  const { siteConfig, loadSiteConfig } = useConfigStore()
 
   useLoad(() => {
     console.log('Login page loaded.')
+    loadSiteConfig()
   })
+
+  // 动态设置导航栏标题
+  useEffect(() => {
+    if (siteConfig.site_name) {
+      Taro.setNavigationBarTitle({ title: `登录 - ${siteConfig.site_name}` })
+    }
+  }, [siteConfig.site_name])
 
   // 发送验证码
   const handleSendCode = async () => {

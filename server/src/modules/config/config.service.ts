@@ -100,26 +100,40 @@ export class ConfigService {
 
   // 获取公开的站点配置（不需要登录）
   async getPublicSiteConfig() {
-    const publicKeys = [
-      'site_name',
-      'site_domain',
-      'site_logo',
-      'site_description',
-      'contact_phone',
-      'contact_wechat',
-    ];
+    const defaultConfig = {
+      site_name: '棉花糖教育',
+      site_domain: '',
+      site_logo: '',
+      site_description: '连接优质教育资源，助力孩子成长',
+      contact_phone: '',
+      contact_wechat: '',
+    };
 
-    const [rows]: any = await db.query(
-      `SELECT config_key, config_value FROM site_config WHERE config_key IN (${publicKeys.map(() => '?').join(',')})`,
-      publicKeys
-    );
+    try {
+      const publicKeys = [
+        'site_name',
+        'site_domain',
+        'site_logo',
+        'site_description',
+        'contact_phone',
+        'contact_wechat',
+      ];
 
-    const result: Record<string, string> = {};
-    for (const row of rows) {
-      result[row.config_key] = row.config_value;
+      const [rows]: any = await db.query(
+        `SELECT config_key, config_value FROM site_config WHERE config_key IN (${publicKeys.map(() => '?').join(',')})`,
+        publicKeys
+      );
+
+      const result: Record<string, string> = {};
+      for (const row of rows) {
+        result[row.config_key] = row.config_value;
+      }
+
+      return { ...defaultConfig, ...result };
+    } catch (error) {
+      console.error('获取站点配置失败，使用默认配置:', error);
+      return defaultConfig;
     }
-
-    return result;
   }
 
   // 获取微信支付配置
