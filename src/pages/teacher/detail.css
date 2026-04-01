@@ -1,0 +1,290 @@
+.teacher-detail-page {
+  min-height: 100vh;
+  background: #F3F4F6;
+}
+
+.detail-scroll {
+  height: calc(100vh - 70px);
+}
+
+.teacher-header {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.header-bg {
+  height: 100px;
+  background: linear-gradient(180deg, #2563EB 0%, #3B82F6 100%);
+}
+
+.header-content {
+  display: flex;
+  flex-direction: row;
+  padding: 0 16px 16px;
+  margin-top: -40px;
+}
+
+.teacher-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 40px;
+  border: 4px solid #fff;
+  overflow: hidden;
+  margin-right: 16px;
+  background: #fff;
+}
+
+.avatar-img {
+  width: 80px;
+  height: 80px;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  background: #DBEAFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-text {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2563EB;
+}
+
+.teacher-basic {
+  flex: 1;
+  padding-top: 48px;
+}
+
+.name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.teacher-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rating-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.rating-text {
+  font-size: 14px;
+  color: #F59E0B;
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.review-count {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-left: 4px;
+}
+
+.teacher-intro {
+  font-size: 13px;
+  color: #6B7280;
+  margin-bottom: 8px;
+}
+
+.tag-row {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.subject-tag {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-size: 12px;
+}
+
+.stats-row {
+  display: flex;
+  flex-direction: row;
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 4px;
+}
+
+.info-card {
+  margin: 0 12px 12px;
+  border-radius: 12px;
+}
+
+.card-header {
+  padding: 16px;
+  padding-bottom: 12px;
+}
+
+.card-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card-title svg {
+  margin-right: 8px;
+}
+
+.card-content {
+  padding: 0 16px 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  width: 80px;
+  font-size: 13px;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+}
+
+.bio-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.cert-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cert-item {
+  margin-bottom: 4px;
+}
+
+.cert-tag {
+  font-size: 12px;
+}
+
+.empty-state {
+  padding: 100px 20px;
+  text-align: center;
+}
+
+.empty-text {
+  display: block;
+  font-size: 14px;
+  color: #9CA3AF;
+  margin-bottom: 16px;
+}
+
+.bottom-space {
+  height: 20px;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #fff;
+  padding: 12px 16px;
+  border-top: 1px solid #E5E7EB;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+.price-section {
+  flex: 1;
+}
+
+.price-label {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.price-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #EF4444;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 20px;
+}
+
+.action-btn.message {
+  background: #fff;
+  border: 1px solid #2563EB;
+}
+
+.action-btn.contact {
+  background: #2563EB;
+}
+
+.btn-text {
+  font-size: 14px;
+  color: #2563EB;
+  margin-left: 6px;
+}
+
+.btn-text-light {
+  font-size: 14px;
+  color: #fff;
+  margin-left: 6px;
+}

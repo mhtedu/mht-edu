@@ -1,365 +1,215 @@
-import { View, Text } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { User, GraduationCap, BookOpen, Phone, Lock, Building2 } from 'lucide-react-taro';
-import { Network } from '@/network';
-import { useSiteConfig } from '@/store';
-import './index.css';
+import { View, Text } from '@tarojs/components'
+import { useState } from 'react'
+import Taro, { useLoad } from '@tarojs/taro'
+import type { FC } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useUserStore } from '@/stores/user'
+import { Network } from '@/network'
+import { validatePhone, validateCode } from '@/utils'
+import { Phone, ShieldCheck, Loader } from 'lucide-react-taro'
+import './index.css'
 
-// 用户角色: 0-家长, 1-教师, 2-机构
-type UserRole = 0 | 1 | 2;
+const LoginPage: FC = () => {
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [isRegister, setIsRegister] = useState(false)
 
-/**
- * 登录注册页面
- */
-const LoginPage = () => {
-  const siteName = useSiteConfig(state => state.getSiteName)();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [selectedRole, setSelectedRole] = useState<UserRole>(0);
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  const { setUserInfo, setToken } = useUserStore()
 
-  // 初始化：读取之前保存的角色
-  useEffect(() => {
-    const savedRole = Taro.getStorageSync('userRole');
-    if (savedRole !== '' && savedRole !== undefined && savedRole !== null) {
-      // 确保转换为数字
-      const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : savedRole;
-      setSelectedRole(role as UserRole);
-    }
-  }, []);
+  useLoad(() => {
+    console.log('Login page loaded.')
+  })
 
   // 发送验证码
   const handleSendCode = async () => {
-    if (!phone || phone.length !== 11) {
-      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' });
-      return;
+    if (!validatePhone(phone)) {
+      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      return
     }
 
-    if (countdown > 0) return;
+    if (countdown > 0) return
 
     try {
-      // 调用真实API发送验证码
+      setLoading(true)
+      console.log('发送验证码请求:', { url: '/api/user/send-code', method: 'POST', data: { mobile: phone } })
       const res = await Network.request({
         url: '/api/user/send-code',
         method: 'POST',
-        data: { mobile: phone, type: 'login' },
-      });
+        data: { mobile: phone }
+      })
+      console.log('发送验证码响应:', res.data)
 
-      console.log('发送验证码响应:', res.data);
-
-      if (res.data.success) {
-        Taro.showToast({ title: '验证码已发送', icon: 'success' });
-        setCountdown(60);
-        
+      if (res.data.success || res.data.code === 200) {
+        Taro.showToast({ title: '验证码已发送', icon: 'success' })
+        // 开始倒计时
+        setCountdown(60)
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
+              clearInterval(timer)
+              return 0
             }
-            return prev - 1;
-          });
-        }, 1000);
+            return prev - 1
+          })
+        }, 1000)
       } else {
-        Taro.showToast({ title: res.data.message || '发送失败', icon: 'none' });
+        Taro.showToast({ title: res.data.message || '发送失败', icon: 'none' })
       }
     } catch (error) {
-      console.error('发送验证码失败:', error);
-      // 开发模式：模拟发送成功
-      Taro.showToast({ title: '验证码已发送（开发模式）', icon: 'success' });
-      setCountdown(60);
-      
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      console.error('发送验证码失败:', error)
+      Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   // 登录/注册
   const handleSubmit = async () => {
-    if (!phone || phone.length !== 11) {
-      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' });
-      return;
+    if (!validatePhone(phone)) {
+      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      return
     }
 
-    if (!code || code.length < 4) {
-      Taro.showToast({ title: '请输入验证码', icon: 'none' });
-      return;
+    if (!validateCode(code)) {
+      Taro.showToast({ title: '请输入6位验证码', icon: 'none' })
+      return
     }
-
-    setLoading(true);
 
     try {
-      // 调用真实API登录/注册
-      const url = mode === 'login' ? '/api/user/login' : '/api/user/register';
+      setLoading(true)
+      const url = isRegister ? '/api/user/register' : '/api/user/login'
+      console.log('登录/注册请求:', { url, method: 'POST', data: { mobile: phone, code } })
       const res = await Network.request({
         url,
         method: 'POST',
-        data: {
-          mobile: phone,
-          code,
-          nickname: nickname || undefined,
-          role: selectedRole,
-        },
-      });
+        data: { mobile: phone, code }
+      })
+      console.log('登录/注册响应:', res.data)
 
-      console.log('登录/注册响应:', res.data);
-
-      if (res.data.success) {
-        // 保存用户信息
-        const { token, user } = res.data.data;
-        Taro.setStorageSync('token', token);
-        Taro.setStorageSync('userRole', user.role);
-        Taro.setStorageSync('userPhone', user.mobile);
-        Taro.setStorageSync('userNickname', user.nickname);
-        Taro.setStorageSync('userId', user.id);
-
-        Taro.showToast({ title: mode === 'login' ? '登录成功' : '注册成功', icon: 'success' });
-
+      const result = res.data
+      if (result.success || result.code === 200) {
+        const { token, user } = result.data || result
+        setToken(token)
+        setUserInfo(user)
+        Taro.showToast({ title: isRegister ? '注册成功' : '登录成功', icon: 'success' })
+        
         // 跳转到首页
         setTimeout(() => {
-          Taro.switchTab({ url: '/pages/index/index' });
-        }, 1000);
+          Taro.switchTab({ url: '/pages/index/index' })
+        }, 1000)
       } else {
-        Taro.showToast({ title: res.data.message || '操作失败', icon: 'none' });
+        Taro.showToast({ title: result.message || '操作失败', icon: 'none' })
       }
     } catch (error) {
-      console.error('登录/注册失败:', error);
-      // 开发模式：模拟登录成功
-      Taro.setStorageSync('token', 'mock_token_' + Date.now());
-      Taro.setStorageSync('userRole', selectedRole);
-      Taro.setStorageSync('userPhone', phone);
-      Taro.setStorageSync('userNickname', nickname || `用户${phone.slice(-4)}`);
-
-      Taro.showToast({ title: '登录成功（开发模式）', icon: 'success' });
-
-      setTimeout(() => {
-        Taro.switchTab({ url: '/pages/index/index' });
-      }, 1000);
+      console.error('登录/注册失败:', error)
+      Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // 微信登录
-  const handleWechatLogin = () => {
-    Taro.showModal({
-      title: '微信登录',
-      content: '即将使用微信账号登录',
-      success: (res) => {
-        if (res.confirm) {
-          // 模拟微信登录
-          Taro.setStorageSync('token', 'wechat_token_' + Date.now());
-          Taro.setStorageSync('userRole', selectedRole);
-          Taro.switchTab({ url: '/pages/index/index' });
-        }
-      },
-    });
-  };
+  // 切换登录/注册模式
+  const toggleMode = () => {
+    setIsRegister(!isRegister)
+    setCode('')
+  }
 
   return (
-    <View className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-600">
-      {/* Logo区域 */}
-      <View className="flex flex-col items-center pt-20 pb-10">
-        <View className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-4">
-          <Text className="text-blue-500 text-3xl font-bold">{siteName.charAt(0)}</Text>
-        </View>
-        <Text className="text-white text-2xl font-bold">{siteName}</Text>
-        <Text className="text-blue-100 text-sm mt-2">专业家教信息撮合平台</Text>
+    <View className="login-page">
+      <View className="login-header">
+        <Text className="login-title">棉花糖教育成长平台</Text>
+        <Text className="login-subtitle">连接优质教育资源，助力孩子成长</Text>
       </View>
 
-      {/* 表单卡片 */}
-      <View className="mx-4">
-        <Card className="rounded-2xl overflow-hidden">
-          <CardContent className="p-6">
-            {/* 模式切换 */}
-            <View className="flex flex-row mb-6">
-              <View
-                className={`flex-1 py-2 border-b-2 ${
-                  mode === 'login' ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => setMode('login')}
-              >
-                <Text className={`text-center ${mode === 'login' ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}>
-                  登录
-                </Text>
-              </View>
-              <View
-                className={`flex-1 py-2 border-b-2 ${
-                  mode === 'register' ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => setMode('register')}
-              >
-                <Text className={`text-center ${mode === 'register' ? 'text-blue-500 font-semibold' : 'text-gray-400'}`}>
-                  注册
-                </Text>
-              </View>
+      <Card className="login-card">
+        <CardHeader>
+          <CardTitle>{isRegister ? '注册账号' : '欢迎回来'}</CardTitle>
+          <CardDescription>
+            {isRegister ? '创建账号，开启教育之旅' : '使用手机号验证码登录'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="login-form">
+          {/* 手机号输入 */}
+          <View className="input-wrapper">
+            <View className="input-icon">
+              <Phone size={20} color="#6B7280" />
             </View>
+            <Input
+              className="login-input"
+              type="number"
+              maxlength={11}
+              placeholder="请输入手机号"
+              value={phone}
+              onInput={(e) => setPhone(e.detail.value)}
+            />
+          </View>
 
-            {/* 角色选择 - 登录和注册都显示 */}
-            <View className="mb-6">
-              <Text className="text-gray-600 text-sm mb-3">
-                请选择您的身份（必选）
-              </Text>
-              <View className="flex flex-row gap-2">
-                <View
-                  className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
-                    selectedRole === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
-                  onClick={() => {
-                    console.log('点击选择家长，当前 selectedRole:', selectedRole);
-                    setSelectedRole(0);
-                  }}
-                >
-                  <GraduationCap size={28} color={selectedRole === 0 ? '#2563EB' : '#9CA3AF'} />
-                  <Text className={`mt-1 text-sm ${selectedRole === 0 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
-                    家长
-                  </Text>
-                </View>
-                <View
-                  className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
-                    selectedRole === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
-                  onClick={() => {
-                    console.log('点击选择教师，当前 selectedRole:', selectedRole);
-                    setSelectedRole(1);
-                  }}
-                >
-                  <BookOpen size={28} color={selectedRole === 1 ? '#2563EB' : '#9CA3AF'} />
-                  <Text className={`mt-1 text-sm ${selectedRole === 1 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
-                    教师
-                  </Text>
-                </View>
-                <View
-                  className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center ${
-                    selectedRole === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
-                  onClick={() => {
-                    console.log('点击选择机构，当前 selectedRole:', selectedRole);
-                    setSelectedRole(2);
-                  }}
-                >
-                  <Building2 size={28} color={selectedRole === 2 ? '#2563EB' : '#9CA3AF'} />
-                  <Text className={`mt-1 text-sm ${selectedRole === 2 ? 'text-blue-500 font-semibold' : 'text-gray-500'}`}>
-                    机构
-                  </Text>
-                </View>
-              </View>
+          {/* 验证码输入 */}
+          <View className="input-wrapper">
+            <View className="input-icon">
+              <ShieldCheck size={20} color="#6B7280" />
             </View>
-
-            {/* 手机号输入 */}
-            <View className="mb-4">
-              <View className="flex flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
-                <Phone size={20} color="#9CA3AF" className="mr-3" />
-                <Input
-                  className="flex-1 bg-transparent"
-                  type="number"
-                  placeholder="请输入手机号"
-                  maxlength={11}
-                  value={phone}
-                  onInput={(e) => setPhone(e.detail.value)}
-                />
-              </View>
-            </View>
-
-            {/* 验证码输入 */}
-            <View className="mb-4">
-              <View className="flex flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
-                <Lock size={20} color="#9CA3AF" className="mr-3" />
-                <Input
-                  className="flex-1 bg-transparent"
-                  type="number"
-                  placeholder="请输入验证码"
-                  maxlength={6}
-                  value={code}
-                  onInput={(e) => setCode(e.detail.value)}
-                />
-                <View
-                  className={`px-3 py-1 rounded ${countdown > 0 ? 'bg-gray-300' : 'bg-blue-500'}`}
-                  onClick={handleSendCode}
-                >
-                  <Text className="text-white text-sm">
-                    {countdown > 0 ? `${countdown}s` : '获取验证码'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* 昵称输入 - 注册时显示 */}
-            {mode === 'register' && (
-              <View className="mb-4">
-                <View className="flex flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
-                  <User size={20} color="#9CA3AF" className="mr-3" />
-                  <Input
-                    className="flex-1 bg-transparent"
-                    placeholder="请输入昵称"
-                    maxlength={20}
-                    value={nickname}
-                    onInput={(e) => setNickname(e.detail.value)}
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* 登录/注册按钮 */}
+            <Input
+              className="login-input code-input"
+              type="number"
+              maxlength={6}
+              placeholder="请输入验证码"
+              value={code}
+              onInput={(e) => setCode(e.detail.value)}
+            />
             <Button
-              className="w-full bg-blue-500 rounded-xl py-4 mt-4"
-              onClick={handleSubmit}
-              disabled={loading}
+              className="code-btn"
+              variant="outline"
+              size="sm"
+              disabled={countdown > 0 || loading}
+              onClick={handleSendCode}
             >
-              <Text className="text-white font-semibold">
-                {loading ? '处理中...' : mode === 'login' ? '登录' : '注册'}
-              </Text>
+              {countdown > 0 ? `${countdown}s` : '获取验证码'}
             </Button>
+          </View>
 
-            {/* 微信登录 */}
-            <View className="flex flex-col items-center mt-6">
-              <View className="flex flex-row items-center w-full">
-                <View className="flex-1 h-px bg-gray-200" />
-                <Text className="px-4 text-gray-400 text-sm">其他登录方式</Text>
-                <View className="flex-1 h-px bg-gray-200" />
+          {/* 提交按钮 */}
+          <Button
+            className="submit-btn"
+            disabled={loading}
+            onClick={handleSubmit}
+          >
+            {loading ? (
+              <View className="loading-wrapper">
+                <Loader size={20} color="#fff" className="animate-spin" />
+                <Text className="loading-text">处理中...</Text>
               </View>
-              <View
-                className="mt-4 w-12 h-12 rounded-full bg-green-500 flex items-center justify-center"
-                onClick={handleWechatLogin}
-              >
-                <Text className="text-white text-xl font-bold">微</Text>
-              </View>
-            </View>
+            ) : (
+              isRegister ? '注册' : '登录'
+            )}
+          </Button>
 
-            {/* 协议 */}
-            <View className="flex flex-row items-center justify-center mt-6">
-              <Text className="text-gray-400 text-xs">
-                {mode === 'register' ? '注册即表示同意' : '登录即表示同意'}
-              </Text>
-              <Text className="text-blue-500 text-xs ml-1">《用户协议》</Text>
-              <Text className="text-gray-400 text-xs mx-1">和</Text>
-              <Text className="text-blue-500 text-xs">《隐私政策》</Text>
-            </View>
-          </CardContent>
-        </Card>
-      </View>
+          {/* 切换登录/注册 */}
+          <View className="switch-mode">
+            <Text className="switch-text">
+              {isRegister ? '已有账号？' : '没有账号？'}
+            </Text>
+            <Text className="switch-link" onClick={toggleMode}>
+              {isRegister ? '立即登录' : '立即注册'}
+            </Text>
+          </View>
+        </CardContent>
+      </Card>
 
-      {/* 底部信息 */}
-      <View className="flex flex-col items-center mt-10 pb-10">
-        <Text className="text-blue-100 text-xs">客服热线：400-888-8888</Text>
-        <Text className="text-blue-100 text-xs mt-2">工作时间：9:00-21:00</Text>
+      <View className="login-footer">
+        <Text className="footer-text">
+          登录即表示同意
+          <Text className="link">《用户协议》</Text>
+          和
+          <Text className="link">《隐私政策》</Text>
+        </Text>
       </View>
     </View>
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

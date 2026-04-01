@@ -1,7 +1,7 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '消息',
+      navigationBarTitleText: '机构详情',
     })
   : {
-      navigationBarTitleText: '消息',
+      navigationBarTitleText: '机构详情',
     }
