@@ -21,7 +21,7 @@ const defaultConfig: SiteConfig = {
   site_name: '棉花糖教育',
   site_domain: '',
   site_logo: '',
-  site_description: '',
+  site_description: '连接优质教育资源，助力孩子成长',
   contact_phone: '',
   contact_wechat: '',
 }
@@ -33,7 +33,7 @@ export const useSiteConfig = create<SiteConfigState>((set, get) => ({
   loadConfig: async () => {
     try {
       const res = await Network.request({
-        url: '/api/admin/config/public/site',
+        url: '/api/config/public',
         method: 'GET',
       })
 
@@ -44,7 +44,7 @@ export const useSiteConfig = create<SiteConfigState>((set, get) => ({
             site_name: data.site_name || defaultConfig.site_name,
             site_domain: data.site_domain || '',
             site_logo: data.site_logo || '',
-            site_description: data.site_description || '',
+            site_description: data.site_description || defaultConfig.site_description,
             contact_phone: data.contact_phone || '',
             contact_wechat: data.contact_wechat || '',
           },

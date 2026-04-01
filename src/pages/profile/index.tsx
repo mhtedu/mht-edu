@@ -9,7 +9,7 @@ import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import {
   User, Settings, Star, CreditCard, Users,
-  ChevronRight, LogOut, Award, FileText, Bell, Info
+  ChevronRight, LogOut, Award, FileText, Bell, Info, RefreshCw, BookOpen, Building2
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -19,8 +19,16 @@ interface MembershipInfo {
   remaining_days: number
 }
 
+// 角色配置
+const roleConfig: Record<number, { name: string; icon: typeof User; color: string }> = {
+  0: { name: '家长', icon: User, color: '#2563EB' },
+  1: { name: '教师', icon: BookOpen, color: '#22C55E' },
+  2: { name: '机构', icon: Building2, color: '#9333EA' },
+}
+
 const ProfilePage: FC = () => {
   const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null)
+  const [currentRole, setCurrentRole] = useState(0)
 
   const { isLoggedIn, userInfo, logout } = useUserStore()
 
@@ -29,6 +37,10 @@ const ProfilePage: FC = () => {
   })
 
   useDidShow(() => {
+    // 读取当前角色
+    const savedRole = Taro.getStorageSync('userRole') || 0
+    setCurrentRole(typeof savedRole === 'string' ? parseInt(savedRole, 10) : savedRole)
+    
     if (isLoggedIn) {
       loadMembershipInfo()
     }
@@ -108,7 +120,7 @@ const ProfilePage: FC = () => {
                 <Text className="user-name">{userInfo?.nickname || '用户'}</Text>
                 <View className="user-role">
                   <Badge variant="outline">
-                    {userInfo?.role === 'parent' ? '家长' : userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'org' ? '机构' : '用户'}
+                    {roleConfig[currentRole]?.name || '用户'}
                   </Badge>
                 </View>
               </View>
@@ -127,6 +139,50 @@ const ProfilePage: FC = () => {
             </View>
           )}
         </View>
+
+        {/* 角色切换入口 */}
+        {isLoggedIn && (
+          <Card className="role-switch-card" style={{ margin: '12px 16px' }}>
+            <CardContent style={{ padding: '16px' }}>
+              <View 
+                className="role-switch-entry" 
+                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                onClick={() => Taro.navigateTo({ url: '/pages/role-switch/index' })}
+              >
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+                  <View 
+                    style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '10px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      background: `linear-gradient(135deg, ${roleConfig[currentRole]?.color}20, ${roleConfig[currentRole]?.color}40)`
+                    }}
+                  >
+                    {(() => {
+                      const RoleIcon = roleConfig[currentRole]?.icon || User
+                      return <RoleIcon size={22} color={roleConfig[currentRole]?.color} />
+                    })()}
+                  </View>
+                  <View>
+                    <Text style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>
+                      当前身份：{roleConfig[currentRole]?.name}
+                    </Text>
+                    <Text style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                      点击切换身份，享受不同权益
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }}>
+                  <RefreshCw size={16} color="#2563EB" />
+                  <Text style={{ fontSize: '14px', color: '#2563EB' }}>切换</Text>
+                </View>
+              </View>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 会员卡片 */}
         {isLoggedIn && (
