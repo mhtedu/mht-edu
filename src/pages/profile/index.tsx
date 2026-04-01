@@ -1,227 +1,225 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState } from 'react'
-import Taro, { useLoad, useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/stores/user'
-import { Network } from '@/network'
 import {
-  User, ChevronRight, Crown, FileText, Heart,
-  Gift, Info, Phone, BookOpen, Building2
+  User, Crown, FileText, Heart, Users, Info, MessageCircle, Settings
 } from 'lucide-react-taro'
 import './index.css'
 
-interface MembershipInfo {
-  is_member: boolean
-  expire_at: string
-  remaining_days: number
+// 会员等级名称映射
+const VIP_LEVEL_NAMES: Record<number, string> = {
+  0: '普通会员',
+  1: '月度会员',
+  2: '季度会员',
+  3: '年度会员',
+  4: '终身会员'
 }
 
-// 角色配置
-const roleConfig: Record<number, { name: string; icon: typeof User; color: string }> = {
-  0: { name: '家长', icon: User, color: '#2563EB' },
-  1: { name: '教师', icon: BookOpen, color: '#22C55E' },
-  2: { name: '机构', icon: Building2, color: '#9333EA' },
+// 会员等级颜色
+const VIP_LEVEL_COLORS: Record<number, string> = {
+  0: '#9CA3AF',
+  1: '#60A5FA',
+  2: '#34D399',
+  3: '#F59E0B',
+  4: '#8B5CF6'
 }
 
 const ProfilePage: FC = () => {
-  const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null)
-  const [currentRole, setCurrentRole] = useState(0)
-
-  const { isLoggedIn, userInfo, logout } = useUserStore()
-
-  useLoad(() => {
-    console.log('Profile page loaded.')
-  })
+  const { currentRole, userInfo } = useUserStore()
 
   useDidShow(() => {
-    // 读取当前角色
-    const savedRole = Taro.getStorageSync('userRole') || 0
-    setCurrentRole(typeof savedRole === 'string' ? parseInt(savedRole, 10) : savedRole)
-    
-    if (isLoggedIn) {
-      loadMembershipInfo()
-    }
+    // 可以在这里加载用户信息
   })
 
-  const loadMembershipInfo = async () => {
-    try {
-      const res = await Network.request({
-        url: '/api/user/membership'
-      })
-      if (res.data) {
-        setMembershipInfo(res.data)
+  // 获取角色名称
+  const getRoleName = () => {
+    const roleNames: Record<number, string> = {
+      0: '家长',
+      1: '教师',
+      2: '机构'
+    }
+    return roleNames[currentRole] || '家长'
+  }
+
+  // 跳转到编辑资料
+  const goToEditProfile = () => {
+    Taro.navigateTo({ url: '/pages/edit-profile/index' })
+  }
+
+  // 跳转到会员中心
+  const goToMembership = () => {
+    Taro.navigateTo({ url: '/pages/membership/index' })
+  }
+
+  // 跳转到需求管理
+  const goToMyNeeds = () => {
+    Taro.navigateTo({ url: '/pages/my-needs/index' })
+  }
+
+  // 跳转到收藏教师
+  const goToFavorites = () => {
+    Taro.navigateTo({ url: '/pages/favorites/index' })
+  }
+
+  // 跳转到邀请有礼
+  const goToInvite = () => {
+    Taro.navigateTo({ url: '/pages/invite/index' })
+  }
+
+  // 跳转到关于我们
+  const goToAbout = () => {
+    Taro.navigateTo({ url: '/pages/about/index' })
+  }
+
+  // 跳转到联系客服
+  const goToCustomerService = () => {
+    Taro.navigateTo({ url: '/pages/customer-service/index' })
+  }
+
+  // 跳转到角色切换
+  const goToRoleSwitch = () => {
+    Taro.navigateTo({ url: '/pages/role-switch/index' })
+  }
+
+  // 获取用户显示信息
+  const getUserDisplay = () => {
+    if (userInfo) {
+      return {
+        nickname: userInfo.nickname || '用户',
+        phone: userInfo.phone || '未绑定手机',
+        avatar: userInfo.avatar || '',
+        vipLevel: 0, // 可以从 userInfo 扩展字段获取
+        vipExpire: '',
+        isVerified: false
       }
-    } catch (error) {
-      console.error('加载会员信息失败:', error)
+    }
+    return {
+      nickname: '未登录',
+      phone: '点击登录享受更多服务',
+      avatar: '',
+      vipLevel: 0,
+      vipExpire: '',
+      isVerified: false
     }
   }
 
-  const goToLogin = () => {
-    Taro.navigateTo({ url: '/pages/login/index' })
-  }
-
-  const handleLogout = () => {
-    Taro.showModal({
-      title: '提示',
-      content: '确定要退出登录吗？',
-      success: (res) => {
-        if (res.confirm) {
-          logout()
-          Taro.showToast({ title: '已退出登录', icon: 'success' })
-        }
-      }
-    })
-  }
-
-  const goToPage = (page: string) => {
-    if (!isLoggedIn) {
-      goToLogin()
-      return
-    }
-    Taro.navigateTo({ url: page })
-  }
-
-  // 功能菜单项
-  const menuItems = [
-    { icon: FileText, title: '我的需求', subtitle: '已发布的需求', path: '/pages/orders/index', color: '#2563EB' },
-    { icon: Heart, title: '收藏教师', subtitle: '已收藏的教师', path: '/pages/favorites/index', color: '#EF4444' },
-    { icon: Crown, title: '会员中心', subtitle: membershipInfo && membershipInfo.is_member ? `剩余${membershipInfo.remaining_days}天` : '未开通', path: '/pages/membership/index', color: '#F59E0B', showBtn: !(membershipInfo && membershipInfo.is_member) },
-    { icon: Gift, title: '邀请有礼', subtitle: '赚佣金', path: '/pages/distribution/index', color: '#8B5CF6' },
-  ]
-
-  // 底部菜单项
-  const bottomItems = [
-    { icon: Info, title: '关于我们', path: '/pages/settings/index', color: '#6B7280' },
-    { icon: Phone, title: '联系客服', subtitle: '400-888-8888', path: '', color: '#10B981' },
-  ]
+  const userDisplay = getUserDisplay()
 
   return (
     <View className="profile-page">
+      {/* 顶部用户信息区域 */}
+      <View className="user-header">
+        <View className="user-info-card">
+          <View className="user-avatar-area" onClick={goToEditProfile}>
+            {userDisplay.avatar ? (
+              <Image src={userDisplay.avatar} className="user-avatar" mode="aspectFill" />
+            ) : (
+              <View className="avatar-placeholder">
+                <User size={40} color="#fff" />
+              </View>
+            )}
+          </View>
+          <View className="user-details">
+            <View className="user-name-row">
+              <Text className="user-name">{userDisplay.nickname}</Text>
+              {userDisplay.isVerified && (
+                <View className="verified-badge">
+                  <Text className="verified-text">已认证</Text>
+                </View>
+              )}
+            </View>
+            <Text className="user-phone">{userDisplay.phone}</Text>
+            <View className="user-vip">
+              <Crown size={14} color={VIP_LEVEL_COLORS[userDisplay.vipLevel]} />
+              <Text className="vip-text" style={{ color: VIP_LEVEL_COLORS[userDisplay.vipLevel] }}>
+                {VIP_LEVEL_NAMES[userDisplay.vipLevel]}
+              </Text>
+              {userDisplay.vipLevel > 0 && userDisplay.vipExpire && (
+                <Text className="vip-expire">有效期至 {userDisplay.vipExpire}</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* 会员特权卡片 */}
+        <View className="vip-card" onClick={goToMembership}>
+          <View className="vip-left">
+            <Crown size={24} color="#F59E0B" />
+            <View className="vip-info">
+              <Text className="vip-title">开通会员享特权</Text>
+              <Text className="vip-desc">解锁完整信息、优先推荐</Text>
+            </View>
+          </View>
+          <View className="vip-btn">
+            <Text className="vip-btn-text">立即开通</Text>
+          </View>
+        </View>
+      </View>
+
       <ScrollView scrollY className="profile-scroll">
-        {/* 用户信息区域 - 蓝色背景 */}
-        <View className="user-header">
-          {isLoggedIn ? (
-            <View className="user-info" onClick={() => goToPage('/pages/settings/index')}>
-              <View className="user-avatar">
-                {userInfo && userInfo.avatar ? (
-                  <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
-                ) : (
-                  <View className="avatar-placeholder">
-                    <User size={28} color="#fff" />
-                  </View>
-                )}
-              </View>
-              <View className="user-basic">
-                <Text className="user-name">{(userInfo && userInfo.nickname) || '用户'}</Text>
-                <Text className="user-phone">未绑定手机</Text>
-              </View>
-              <ChevronRight size={20} color="rgba(255,255,255,0.8)" />
-            </View>
-          ) : (
-            <View className="login-prompt" onClick={goToLogin}>
-              <View className="user-avatar">
-                <User size={28} color="#fff" />
-              </View>
-              <View className="user-basic">
-                <Text className="user-name">点击登录</Text>
-                <Text className="user-phone">登录享受更多服务</Text>
-              </View>
-              <ChevronRight size={20} color="rgba(255,255,255,0.8)" />
-            </View>
-          )}
-        </View>
-
-        {/* 家长会员特权卡片 */}
-        {isLoggedIn && (
-          <View className="member-privilege-card">
-            <View className="privilege-left">
-              <Crown size={20} color="#F59E0B" />
-              <View className="privilege-text">
-                <Text className="privilege-title">{roleConfig[currentRole] && roleConfig[currentRole].name}会员特权</Text>
-                <Text className="privilege-desc">开通会员解锁更多权益</Text>
-              </View>
-            </View>
-            <Button 
-              size="sm" 
-              className="privilege-btn"
-              onClick={() => goToPage('/pages/membership/index')}
-            >
-              立即开通
-            </Button>
-          </View>
-        )}
-
-        {/* 功能菜单列表 */}
+        {/* 功能列表 */}
         <View className="menu-section">
-          {menuItems.map((item, idx) => (
-            <View
-              key={idx}
-              className="menu-item"
-              onClick={() => goToPage(item.path)}
-            >
-              <View className="menu-left">
-                <View className="menu-icon" style={{ backgroundColor: `${item.color}15` }}>
-                  <item.icon size={20} color={item.color} />
-                </View>
-                <View className="menu-text-area">
-                  <Text className="menu-title">{item.title}</Text>
-                  {item.subtitle && <Text className="menu-subtitle">{item.subtitle}</Text>}
-                </View>
-              </View>
-              <View className="menu-right">
-                {item.showBtn && (
-                  <View className="menu-open-btn">
-                    <Text className="open-btn-text">开通</Text>
-                  </View>
-                )}
-                <ChevronRight size={18} color="#9CA3AF" />
-              </View>
+          <View className="menu-item" onClick={goToMyNeeds}>
+            <View className="menu-icon">
+              <FileText size={22} color="#2563EB" />
             </View>
-          ))}
-        </View>
-
-        {/* 底部菜单 */}
-        <View className="menu-section">
-          {bottomItems.map((item, idx) => (
-            <View
-              key={idx}
-              className="menu-item"
-              onClick={() => item.path && goToPage(item.path)}
-            >
-              <View className="menu-left">
-                <View className="menu-icon" style={{ backgroundColor: `${item.color}15` }}>
-                  <item.icon size={20} color={item.color} />
-                </View>
-                <View className="menu-text-area">
-                  <Text className="menu-title">{item.title}</Text>
-                  {item.subtitle && <Text className="menu-subtitle">{item.subtitle}</Text>}
-                </View>
-              </View>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </View>
-          ))}
-        </View>
-
-        {/* 退出登录 */}
-        {isLoggedIn && (
-          <View className="logout-section">
-            <View className="logout-btn" onClick={handleLogout}>
-              <Text className="logout-text">退出登录</Text>
-            </View>
+            <Text className="menu-text">我的需求</Text>
+            <Text className="menu-arrow">{'>'}</Text>
           </View>
-        )}
+
+          <View className="menu-item" onClick={goToFavorites}>
+            <View className="menu-icon">
+              <Heart size={22} color="#EF4444" />
+            </View>
+            <Text className="menu-text">收藏教师</Text>
+            <Text className="menu-arrow">{'>'}</Text>
+          </View>
+
+          <View className="menu-item" onClick={goToMembership}>
+            <View className="menu-icon">
+              <Crown size={22} color="#F59E0B" />
+            </View>
+            <Text className="menu-text">会员中心</Text>
+            <Text className="menu-arrow">{'>'}</Text>
+          </View>
+
+          <View className="menu-item" onClick={goToInvite}>
+            <View className="menu-icon">
+              <Users size={22} color="#8B5CF6" />
+            </View>
+            <Text className="menu-text">邀请有礼</Text>
+            <Text className="menu-arrow">{'>'}</Text>
+          </View>
+
+          <View className="menu-item" onClick={goToAbout}>
+            <View className="menu-icon">
+              <Info size={22} color="#6B7280" />
+            </View>
+            <Text className="menu-text">关于我们</Text>
+            <Text className="menu-arrow">{'>'}</Text>
+          </View>
+
+          <View className="menu-item last" onClick={goToCustomerService}>
+            <View className="menu-icon">
+              <MessageCircle size={22} color="#10B981" />
+            </View>
+            <Text className="menu-text">联系客服</Text>
+            <Text className="menu-arrow">{'>'}</Text>
+          </View>
+        </View>
 
         {/* 切换身份入口 */}
         <View className="switch-role-section">
-          <View 
-            className="switch-role-item"
-            onClick={() => Taro.navigateTo({ url: '/pages/role-switch/index' })}
-          >
-            <Text className="switch-role-text">切换身份</Text>
-            <Text className="current-role">当前：{roleConfig[currentRole] && roleConfig[currentRole].name}</Text>
-          </View>
+          <Button className="switch-role-btn" onClick={goToRoleSwitch}>
+            <Settings size={20} color="#fff" />
+            <Text className="switch-role-text">切换身份（当前：{getRoleName()}）</Text>
+          </Button>
         </View>
+
+        {/* 底部占位 */}
+        <View style={{ height: '20px' }} />
       </ScrollView>
     </View>
   )

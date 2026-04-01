@@ -2,7 +2,6 @@ import { View, Text, ScrollView, Image, Swiper, SwiperItem } from '@tarojs/compo
 import { useState, useEffect } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUserStore } from '@/stores/user'
@@ -39,6 +38,55 @@ const ROLE_NAMES: Record<number, string> = {
   1: '教师端',
   2: '机构端'
 }
+
+// 模拟教师数据
+const MOCK_TEACHERS: TeacherItem[] = [
+  {
+    id: 1,
+    nickname: '张明',
+    avatar: '',
+    real_name: '张明',
+    subjects: ['数学', '物理'],
+    grades: ['初中', '高中'],
+    teaching_years: 8,
+    hourly_rate_min: 150,
+    hourly_rate_max: 200,
+    rating: 4.9,
+    review_count: 56,
+    one_line_intro: '8年教学经验，擅长中考数学提分，帮助学生快速掌握解题技巧',
+    distance_text: '2.5km'
+  },
+  {
+    id: 2,
+    nickname: '李芳',
+    avatar: '',
+    real_name: '李芳',
+    subjects: ['英语'],
+    grades: ['小学', '初中'],
+    teaching_years: 5,
+    hourly_rate_min: 120,
+    hourly_rate_max: 150,
+    rating: 4.8,
+    review_count: 32,
+    one_line_intro: '英语专业八级，擅长培养英语学习兴趣，提升口语表达能力',
+    distance_text: '3.2km'
+  },
+  {
+    id: 3,
+    nickname: '王老师',
+    avatar: '',
+    real_name: '王强',
+    subjects: ['语文', '物理'],
+    grades: ['高中'],
+    teaching_years: 10,
+    hourly_rate_min: 180,
+    hourly_rate_max: 250,
+    rating: 4.9,
+    review_count: 89,
+    one_line_intro: '重点中学教师，擅长高考语文提分，教学风格生动有趣',
+    distance_text: '1.8km'
+  }
+]
 
 const HomePage: FC = () => {
   const [loading, setLoading] = useState(true)
@@ -113,42 +161,14 @@ const HomePage: FC = () => {
         setTeachers(res.data.data.list)
       } else if (res.data && res.data.list) {
         setTeachers(res.data.list)
+      } else {
+        // 使用模拟数据
+        setTeachers(MOCK_TEACHERS)
       }
     } catch (error) {
       console.error('获取推荐教师失败:', error)
       // 使用模拟数据
-      setTeachers([
-        {
-          id: 1,
-          nickname: '张明',
-          avatar: '',
-          real_name: '张明',
-          subjects: ['数学', '物理'],
-          grades: ['初中', '高中'],
-          teaching_years: 8,
-          hourly_rate_min: 150,
-          hourly_rate_max: 200,
-          rating: 4.9,
-          review_count: 56,
-          one_line_intro: '8年教学经验，擅长中考数学提分，帮助学生快速掌握解题技巧',
-          distance_text: '2.5km'
-        },
-        {
-          id: 2,
-          nickname: '李老师',
-          avatar: '',
-          real_name: '李芳',
-          subjects: ['英语'],
-          grades: ['小学', '初中'],
-          teaching_years: 5,
-          hourly_rate_min: 120,
-          hourly_rate_max: 150,
-          rating: 4.8,
-          review_count: 32,
-          one_line_intro: '英语专业八级，擅长培养英语学习兴趣，提升口语表达能力',
-          distance_text: '3.2km'
-        }
-      ])
+      setTeachers(MOCK_TEACHERS)
     } finally {
       setRecommendLoading(false)
     }
@@ -174,11 +194,10 @@ const HomePage: FC = () => {
   // 获取城市名称
   const getCityName = () => {
     if (location && location.address) {
-      // 从地址中提取城市
       const match = location.address.match(/(.+?市)/)
-      return match ? match[1].replace('市', '') : location.address.substring(0, 4)
+      return match ? match[1].replace('市', '') : '北京'
     }
-    return '定位中...'
+    return '北京'
   }
 
   // 跳转到教师详情
@@ -192,14 +211,15 @@ const HomePage: FC = () => {
   }
 
   // 功能入口跳转
-  const goTopublish = () => Taro.navigateTo({ url: '/pages/publish/index' })
-  const goToEliteClass = () => Taro.switchTab({ url: '/pages/elite-class/index' })
+  const goToPublish = () => Taro.navigateTo({ url: '/pages/publish/index' })
+  const goToEliteClass = () => Taro.navigateTo({ url: '/pages/elite-class/index' })
   const goToFavorites = () => Taro.navigateTo({ url: '/pages/favorites/index' })
   const goToMembership = () => Taro.navigateTo({ url: '/pages/membership/index' })
 
   // 学科筛选
   const handleSubjectFilter = (subject: string) => {
     setActiveSubject(subject)
+    // 重新加载数据
     loadRecommendTeachers(location)
   }
 
@@ -208,10 +228,10 @@ const HomePage: FC = () => {
       {/* 顶部栏：城市 + 标题 + 角色切换 */}
       <View className="top-bar">
         <View className="location-area" onClick={handleRefreshLocation}>
-          <MapPin size={16} color="#2563EB" />
+          <MapPin size={18} color="#2563EB" />
           <Text className="city-name">{getCityName()}</Text>
         </View>
-        <Text className="page-title">首页</Text>
+        <Text className="page-title">{siteConfig.site_name || '棉花糖教育'}</Text>
         <View className="role-switch-btn" onClick={goToRoleSwitch}>
           <User size={16} color="#2563EB" />
           <Text className="role-text">{ROLE_NAMES[currentRole] || '家长端'}</Text>
@@ -221,27 +241,27 @@ const HomePage: FC = () => {
       <ScrollView scrollY className="home-scroll">
         {/* 功能入口栏 */}
         <View className="quick-entry-bar">
-          <View className="entry-item" onClick={goTopublish}>
+          <View className="entry-item" onClick={goToPublish}>
             <View className="entry-icon publish">
-              <Plus size={24} color="#fff" />
+              <Plus size={28} color="#fff" />
             </View>
             <Text className="entry-text">发布需求</Text>
           </View>
           <View className="entry-item" onClick={goToEliteClass}>
             <View className="entry-icon elite">
-              <GraduationCap size={24} color="#fff" />
+              <GraduationCap size={28} color="#fff" />
             </View>
             <Text className="entry-text">牛师班</Text>
           </View>
           <View className="entry-item" onClick={goToFavorites}>
             <View className="entry-icon favorite">
-              <Heart size={24} color="#fff" />
+              <Heart size={28} color="#fff" />
             </View>
             <Text className="entry-text">收藏教师</Text>
           </View>
           <View className="entry-item" onClick={goToMembership}>
             <View className="entry-icon member">
-              <Crown size={24} color="#fff" />
+              <Crown size={28} color="#fff" />
             </View>
             <Text className="entry-text">会员中心</Text>
           </View>
@@ -255,22 +275,22 @@ const HomePage: FC = () => {
             autoplay 
             circular
             indicatorColor="rgba(255,255,255,0.5)"
-            indicatorActiveColor="#fff"
+            indicatorActiveColor="#ffffff"
           >
             <SwiperItem>
-              <View className="banner-item banner-1">
+              <View className="banner-item banner-green">
                 <Text className="banner-title">优质教师推荐</Text>
                 <Text className="banner-desc">严选认证教师，放心选择</Text>
               </View>
             </SwiperItem>
             <SwiperItem>
-              <View className="banner-item banner-2">
+              <View className="banner-item banner-blue">
                 <Text className="banner-title">牛师班招生中</Text>
                 <Text className="banner-desc">名师小班课，名额有限</Text>
               </View>
             </SwiperItem>
             <SwiperItem>
-              <View className="banner-item banner-3">
+              <View className="banner-item banner-orange">
                 <Text className="banner-title">会员专享特权</Text>
                 <Text className="banner-desc">开通会员，解锁更多权益</Text>
               </View>
@@ -292,7 +312,7 @@ const HomePage: FC = () => {
                 className={`filter-tab ${activeSubject === subject ? 'active' : ''}`}
                 onClick={() => handleSubjectFilter(subject)}
               >
-                <Text className="filter-text">{subject}</Text>
+                <Text className={`filter-text ${activeSubject === subject ? 'active' : ''}`}>{subject}</Text>
               </View>
             ))}
           </View>
@@ -300,11 +320,11 @@ const HomePage: FC = () => {
           {/* 会员提示栏 */}
           <View className="member-tip-bar">
             <View className="tip-left">
-              <Lock size={14} color="#F59E0B" />
+              <Lock size={16} color="#F59E0B" />
               <Text className="tip-text">开通会员可查看完整信息与联系方式</Text>
             </View>
             <Button size="sm" className="tip-btn" onClick={goToMembership}>
-              立即开通
+              <Text className="tip-btn-text">立即开通</Text>
             </Button>
           </View>
 
@@ -327,7 +347,7 @@ const HomePage: FC = () => {
                       <Image src={teacher.avatar} className="avatar-img" mode="aspectFill" />
                     ) : (
                       <View className="avatar-placeholder">
-                        <Text className="avatar-text">{((teacher.real_name || teacher.nickname) && (teacher.real_name || teacher.nickname)[0]) || ''}</Text>
+                        <Text className="avatar-text">{((teacher.real_name || teacher.nickname) && (teacher.real_name || teacher.nickname)[0]) || '师'}</Text>
                       </View>
                     )}
                   </View>
@@ -338,23 +358,25 @@ const HomePage: FC = () => {
                         <Text className="teacher-gender">男</Text>
                       </View>
                       <View className="rating-row">
-                        <Star size={12} color="#F59E0B" />
+                        <Star size={14} color="#F59E0B" />
                         <Text className="rating-text">{teacher.rating}</Text>
                       </View>
                     </View>
                     <Text className="teacher-edu">北京大学·硕士</Text>
                     <View className="teacher-subjects">
                       {teacher.subjects && teacher.subjects.slice(0, 2).map((subject, idx) => (
-                        <Badge key={idx} variant="secondary" className="subject-tag">{subject}</Badge>
+                        <View key={idx} className="subject-tag">
+                          <Text className="subject-tag-text">{subject}</Text>
+                        </View>
                       ))}
                     </View>
                     <Text className="teacher-price">
                       ¥{teacher.hourly_rate_min} - {teacher.hourly_rate_max}/小时
                     </Text>
                     <Text className="teacher-intro">{teacher.one_line_intro}</Text>
-                    <Button size="sm" className="detail-btn">
-                      查看详情
-                    </Button>
+                    <View className="detail-btn" onClick={(e) => { e.stopPropagation(); goToTeacherDetail(teacher.id) }}>
+                      <Text className="detail-btn-text">查看详情</Text>
+                    </View>
                   </View>
                 </View>
               ))
@@ -365,6 +387,9 @@ const HomePage: FC = () => {
             )}
           </View>
         </View>
+
+        {/* 底部占位，避免被TabBar遮挡 */}
+        <View style={{ height: '60px' }} />
       </ScrollView>
     </View>
   )
