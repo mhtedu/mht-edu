@@ -9,8 +9,15 @@ import { useUserStore } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { validatePhone, validateCode } from '@/utils'
-import { Phone, ShieldCheck, Loader } from 'lucide-react-taro'
+import { Phone, ShieldCheck, Loader, User, GraduationCap, Building, Check } from 'lucide-react-taro'
 import './index.css'
+
+// 角色配置
+const ROLES = [
+  { value: 0, label: '家长', desc: '寻找优质教师和机构', icon: User, color: '#2563EB' },
+  { value: 1, label: '教师', desc: '接单授课，展示才华', icon: GraduationCap, color: '#10B981' },
+  { value: 2, label: '机构', desc: '管理教师，拓展业务', icon: Building, color: '#F59E0B' },
+]
 
 const LoginPage: FC = () => {
   const [phone, setPhone] = useState('')
@@ -18,6 +25,7 @@ const LoginPage: FC = () => {
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [isRegister, setIsRegister] = useState(false)
+  const [selectedRole, setSelectedRole] = useState(0) // 默认选择家长
 
   const { setUserInfo, setToken } = useUserStore()
   const { siteConfig, loadSiteConfig } = useConfigStore()
@@ -92,11 +100,18 @@ const LoginPage: FC = () => {
     try {
       setLoading(true)
       const url = isRegister ? '/api/user/register' : '/api/user/login'
-      console.log('登录/注册请求:', { url, method: 'POST', data: { mobile: phone, code } })
+      const data: Record<string, any> = { mobile: phone, code }
+      
+      // 注册时需要传递角色
+      if (isRegister) {
+        data.role = selectedRole
+      }
+      
+      console.log('登录/注册请求:', { url, method: 'POST', data })
       const res = await Network.request({
         url,
         method: 'POST',
-        data: { mobile: phone, code }
+        data
       })
       console.log('登录/注册响应:', res.data)
 
@@ -131,18 +146,59 @@ const LoginPage: FC = () => {
   return (
     <View className="login-page">
       <View className="login-header">
-        <Text className="login-title">棉花糖教育成长平台</Text>
-        <Text className="login-subtitle">连接优质教育资源，助力孩子成长</Text>
+        <Text className="login-title">{siteConfig.site_name || '棉花糖教育成长平台'}</Text>
+        <Text className="login-subtitle">{siteConfig.site_description || '连接优质教育资源，助力孩子成长'}</Text>
       </View>
 
       <Card className="login-card">
         <CardHeader>
           <CardTitle>{isRegister ? '注册账号' : '欢迎回来'}</CardTitle>
           <CardDescription>
-            {isRegister ? '创建账号，开启教育之旅' : '使用手机号验证码登录'}
+            {isRegister ? '选择身份，创建账号' : '使用手机号验证码登录'}
           </CardDescription>
         </CardHeader>
         <CardContent className="login-form">
+          {/* 角色选择 - 仅注册时显示 */}
+          {isRegister && (
+            <View className="role-section">
+              <Text className="role-label">选择您的身份</Text>
+              <View className="role-list">
+                {ROLES.map((role) => {
+                  const RoleIcon = role.icon
+                  const isSelected = selectedRole === role.value
+                  return (
+                    <View
+                      key={role.value}
+                      className={`role-item ${isSelected ? 'selected' : ''}`}
+                      style={isSelected ? { borderColor: role.color, backgroundColor: `${role.color}10` } : {}}
+                      onClick={() => setSelectedRole(role.value)}
+                    >
+                      <View 
+                        className="role-icon" 
+                        style={{ backgroundColor: `${role.color}15` }}
+                      >
+                        <RoleIcon size={24} color={role.color} />
+                      </View>
+                      <View className="role-info">
+                        <View className="role-name-row">
+                          <Text className="role-name" style={{ color: isSelected ? role.color : '#1F2937' }}>
+                            {role.label}
+                          </Text>
+                          {isSelected && (
+                            <View className="role-check" style={{ backgroundColor: role.color }}>
+                              <Check size={12} color="#fff" />
+                            </View>
+                          )}
+                        </View>
+                        <Text className="role-desc">{role.desc}</Text>
+                      </View>
+                    </View>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
           {/* 手机号输入 */}
           <View className="input-wrapper">
             <View className="input-icon">
