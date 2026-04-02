@@ -1,13 +1,14 @@
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useUserStore, CurrentView } from '@/stores/user';
+import { Network } from '@/network';
 import { 
   GraduationCap, BookOpen, Building2, Crown,
-  ChevronRight, Check, Sparkles, Gift, Users, TrendingUp
+  ChevronRight, Check, Sparkles, Gift, Users, TrendingUp, Info, Lock
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -61,24 +62,53 @@ const roles: RoleConfig[] = [
 
 /**
  * 角色切换中心页面
+ * 会员权益按角色独立，切换角色需重新购买会员
  */
 const RoleSwitchPage = () => {
-  const { currentView, setCurrentView } = useUserStore();
-  const [isMember, setIsMember] = useState(false);
-  const [memberExpire, setMemberExpire] = useState<string | null>(null);
+  const { currentView, setCurrentView, userInfo, getRoleMembership, setRoleMembership } = useUserStore();
 
   // 当前选中的角色ID
   const currentRoleId = roles.find(r => r.view === currentView)?.id ?? 0;
 
   useEffect(() => {
-    checkMemberStatus();
-  }, [currentView]);
+    // 加载各角色的会员状态
+    loadMembershipStatus();
+  }, []);
 
-  const checkMemberStatus = () => {
-    const memberKey = `member_expire_role_${currentRoleId}`;
-    const expire = Taro.getStorageSync(memberKey);
-    setMemberExpire(expire);
-    setIsMember(!!expire && new Date(expire) > new Date());
+  const loadMembershipStatus = async () => {
+    if (!userInfo?.id) return;
+    
+    try {
+      const res = await Network.request({
+        url: '/api/user/membership/all',
+        method: 'GET'
+      });
+      
+      if (res.data && Array.isArray(res.data)) {
+        res.data.forEach((m: any) => {
+          if (m.role !== undefined) {
+            setRoleMembership(m.role, {
+              role: m.role,
+              isMember: m.is_member,
+              expireAt: m.expire_at,
+              membershipType: m.membership_type || 0
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('加载会员状态失败:', error);
+    }
+  };
+
+  const getMemberStatus = (roleId: number) => {
+    const membership = getRoleMembership(roleId);
+    if (!membership || !membership.expireAt) return { isMember: false, expireText: '' };
+    const isMember = new Date(membership.expireAt) > new Date();
+    return {
+      isMember,
+      expireText: isMember ? membership.expireAt.split('T')[0] : ''
+    };
   };
 
   const handleSelectRole = (role: RoleConfig) => {
@@ -88,20 +118,32 @@ const RoleSwitchPage = () => {
       return;
     }
 
+    const currentMemberStatus = getMemberStatus(currentRoleId);
+    const targetMemberStatus = getMemberStatus(role.id);
+
+    // 构建提示内容
+    let content = `确定切换到${role.name}吗？\n\n`;
+    content += '⚠️ 重要提示：\n';
+    content += '• 每个角色的会员权益独立生效\n';
+    
+    if (currentMemberStatus.isMember) {
+      content += `• 当前${roles.find(r => r.id === currentRoleId)?.name}会员有效期内不会失效\n`;
+    }
+    
+    if (!targetMemberStatus.isMember) {
+      content += `• 切换后需单独购买${role.name}会员才能享受权益`;
+    } else {
+      content += `• ${role.name}会员有效期至${targetMemberStatus.expireText}`;
+    }
+
     Taro.showModal({
       title: '切换身份',
-      content: `确定切换到${role.name}吗？每个身份的会员权益独立生效。`,
+      content,
       confirmText: '立即切换',
       success: (res) => {
         if (res.confirm) {
           // 更新 store 中的当前视角
           setCurrentView(role.view);
-          
-          // 更新会员状态
-          const memberKey = `member_expire_role_${role.id}`;
-          const expire = Taro.getStorageSync(memberKey);
-          setMemberExpire(expire);
-          setIsMember(!!expire && new Date(expire) > new Date());
           
           Taro.switchTab({ url: '/pages/index/index' });
         }
@@ -126,11 +168,29 @@ const RoleSwitchPage = () => {
         </Text>
       </View>
 
-      {/* 角色卡片 */}
+      {/* 会员独立提示 */}
       <View className="px-4 -mt-6">
+        <Card className="bg-amber-50 border border-amber-200">
+          <CardContent className="p-3">
+            <View className="flex items-start gap-2">
+              <Info size={18} color="#F59E0B" className="shrink-0 mt-1" />
+              <View className="flex-1">
+                <Text className="text-sm font-medium text-amber-800">会员权益说明</Text>
+                <Text className="text-xs text-amber-600 mt-1">
+                  每个角色的会员权益独立计算，切换角色后需单独购买对应角色的会员才能享受权益。
+                </Text>
+              </View>
+            </View>
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* 角色卡片 */}
+      <View className="px-4 mt-4">
         {roles.map((role) => {
           const RoleIcon = role.icon;
           const isActive = currentView === role.view;
+          const memberStatus = getMemberStatus(role.id);
           
           return (
             <Card 
@@ -169,29 +229,40 @@ const RoleSwitchPage = () => {
                   ))}
                 </View>
 
-                {/* 会员权益提示 */}
-                {isActive && (
-                  <View className="mt-4 bg-yellow-50 rounded-lg p-3 flex items-center justify-between">
-                    <View className="flex items-center">
-                      <Crown size={16} color="#F59E0B" />
-                      <Text className="text-yellow-700 text-sm ml-2">
-                        {isMember ? `会员有效期至 ${memberExpire?.split('T')[0]}` : role.memberBenefit}
-                      </Text>
-                    </View>
-                    {!isMember && (
-                      <Button 
-                        size="sm" 
-                        className="bg-yellow-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          Taro.navigateTo({ url: '/pages/membership/index' });
-                        }}
-                      >
-                        <Text className="text-white text-xs">开通</Text>
-                      </Button>
+                {/* 会员状态 */}
+                <View className="mt-4 bg-yellow-50 rounded-lg p-3 flex items-center justify-between">
+                  <View className="flex items-center">
+                    {memberStatus.isMember ? (
+                      <>
+                        <Crown size={16} color="#F59E0B" />
+                        <Text className="text-yellow-700 text-sm ml-2">
+                          会员有效期至 {memberStatus.expireText}
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} color="#9CA3AF" />
+                        <Text className="text-gray-500 text-sm ml-2">
+                          未开通会员 · {role.memberBenefit}
+                        </Text>
+                      </>
                     )}
                   </View>
-                )}
+                  {!memberStatus.isMember && (
+                    <Button 
+                      size="sm" 
+                      className="bg-yellow-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 先切换角色再跳转到会员页
+                        setCurrentView(role.view);
+                        Taro.navigateTo({ url: '/pages/membership/index' });
+                      }}
+                    >
+                      <Text className="text-white text-xs">开通</Text>
+                    </Button>
+                  )}
+                </View>
               </CardContent>
             </Card>
           );

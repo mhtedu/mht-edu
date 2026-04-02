@@ -5,12 +5,27 @@ import type { FC } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { useUserStore } from '@/stores/user'
+import { Badge } from '@/components/ui/badge'
+import { useUserStore, PlatformType } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { validatePhone, validateCode } from '@/utils'
-import { Phone, ShieldCheck, Loader } from 'lucide-react-taro'
+import { Phone, ShieldCheck, Loader, GraduationCap, BookOpen, Building2, Check, Smartphone, Globe, MessageCircle } from 'lucide-react-taro'
 import './index.css'
+
+// 角色配置
+const roleOptions = [
+  { id: 0, name: '家长', icon: GraduationCap, color: '#2563EB', desc: '发布需求，找到满意的老师' },
+  { id: 1, name: '牛师', icon: BookOpen, color: '#22C55E', desc: '抢单接课，展示教学实力' },
+  { id: 2, name: '机构', icon: Building2, color: '#9333EA', desc: '管理团队，扩展业务版图' },
+]
+
+// 平台配置
+const platformOptions = [
+  { id: 'miniprogram', name: '微信小程序', icon: Smartphone, desc: '使用微信小程序功能' },
+  { id: 'wechat_h5', name: '公众号H5', icon: MessageCircle, desc: '在微信公众号中使用' },
+  { id: 'h5', name: '纯H5', icon: Globe, desc: '浏览器直接访问' },
+]
 
 const LoginPage: FC = () => {
   const [phone, setPhone] = useState('')
@@ -18,12 +33,26 @@ const LoginPage: FC = () => {
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [isRegister, setIsRegister] = useState(false)
+  const [step, setStep] = useState<'role' | 'platform' | 'form'>('role')
+  const [selectedRole, setSelectedRole] = useState(0)
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>('h5')
 
-  const { setUserInfo, setToken } = useUserStore()
+  const { setUserInfo, setToken, setPlatform } = useUserStore()
   const { getSiteName, siteConfig } = useConfigStore()
 
   useLoad(() => {
     console.log('Login page loaded.')
+    // 自动检测当前平台
+    const env = Taro.getEnv()
+    if (env === Taro.ENV_TYPE.WEAPP) {
+      setSelectedPlatform('miniprogram')
+    } else if (env === Taro.ENV_TYPE.WEB) {
+      if (typeof window !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent)) {
+        setSelectedPlatform('wechat_h5')
+      } else {
+        setSelectedPlatform('h5')
+      }
+    }
   })
 
   // 发送验证码
@@ -84,11 +113,11 @@ const LoginPage: FC = () => {
     try {
       setLoading(true)
       const url = isRegister ? '/api/user/register' : '/api/user/login'
-      console.log('登录/注册请求:', { url, method: 'POST', data: { mobile: phone, code } })
+      console.log('登录/注册请求:', { url, method: 'POST', data: { mobile: phone, code, role: selectedRole, platform: selectedPlatform } })
       const res = await Network.request({
         url,
         method: 'POST',
-        data: { mobile: phone, code }
+        data: { mobile: phone, code, role: selectedRole, platform: selectedPlatform }
       })
       console.log('登录/注册响应:', res.data)
 
@@ -96,7 +125,8 @@ const LoginPage: FC = () => {
       if (result.success || result.code === 200) {
         const { token, user } = result.data || result
         setToken(token)
-        setUserInfo(user)
+        setUserInfo({ ...user, platform: selectedPlatform })
+        setPlatform(selectedPlatform)
         Taro.showToast({ title: isRegister ? '注册成功' : '登录成功', icon: 'success' })
         
         // 跳转到首页
@@ -114,19 +144,151 @@ const LoginPage: FC = () => {
     }
   }
 
-  // 切换登录/注册模式
-  const toggleMode = () => {
-    setIsRegister(!isRegister)
-    setCode('')
+  // 角色选择页面
+  if (step === 'role') {
+    return (
+      <View className="login-page">
+        <View className="login-header">
+          <Text className="login-title">{getSiteName()}成长平台</Text>
+          <Text className="login-subtitle">选择您的身份，开启专属服务</Text>
+        </View>
+
+        <View className="px-4 mt-4">
+          <Text className="text-lg font-semibold mb-3">请选择您的身份</Text>
+          {roleOptions.map((role) => {
+            const RoleIcon = role.icon
+            return (
+              <Card 
+                key={role.id} 
+                className={`mb-3 ${selectedRole === role.id ? 'border-2 border-blue-500' : ''}`}
+                onClick={() => setSelectedRole(role.id)}
+              >
+                <CardContent className="p-4">
+                  <View className="flex items-center">
+                    <View 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center"
+                      style={{ backgroundColor: `${role.color}20` }}
+                    >
+                      <RoleIcon size={24} color={role.color} />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-lg font-semibold">{role.name}</Text>
+                      <Text className="text-sm text-gray-500 mt-1">{role.desc}</Text>
+                    </View>
+                    {selectedRole === role.id && (
+                      <View className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Check size={16} color="white" />
+                      </View>
+                    )}
+                  </View>
+                </CardContent>
+              </Card>
+            )
+          })}
+
+          <Button
+            className="w-full mt-6"
+            onClick={() => setStep('platform')}
+          >
+            下一步
+          </Button>
+        </View>
+      </View>
+    )
   }
 
+  // 平台选择页面
+  if (step === 'platform') {
+    return (
+      <View className="login-page">
+        <View className="login-header">
+          <Text className="login-title">选择使用端口</Text>
+          <Text className="login-subtitle">不同端口功能略有差异，请根据需要选择</Text>
+        </View>
+
+        <View className="px-4 mt-4">
+          <View className="bg-amber-50 rounded-lg p-3 mb-4">
+            <Text className="text-sm text-amber-700">
+              提示：注册后端口不可随意切换，如需更换端口需补充相关资料。每个角色的会员权益独立生效。
+            </Text>
+          </View>
+
+          {platformOptions.map((platform) => {
+            const PlatformIcon = platform.icon
+            const isSelected = selectedPlatform === platform.id
+            return (
+              <Card 
+                key={platform.id} 
+                className={`mb-3 ${isSelected ? 'border-2 border-blue-500' : ''}`}
+                onClick={() => setSelectedPlatform(platform.id as PlatformType)}
+              >
+                <CardContent className="p-4">
+                  <View className="flex items-center">
+                    <View className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                      <PlatformIcon size={20} color={isSelected ? '#2563EB' : '#6B7280'} />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="font-semibold">{platform.name}</Text>
+                      <Text className="text-sm text-gray-500">{platform.desc}</Text>
+                    </View>
+                    {isSelected && (
+                      <View className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                        <Check size={16} color="white" />
+                      </View>
+                    )}
+                  </View>
+                </CardContent>
+              </Card>
+            )
+          })}
+
+          <View className="flex gap-3 mt-6">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setStep('role')}
+            >
+              上一步
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => setStep('form')}
+            >
+              下一步
+            </Button>
+          </View>
+        </View>
+      </View>
+    )
+  }
+
+  // 登录/注册表单页面
   const siteName = getSiteName()
+  const selectedRoleInfo = roleOptions.find(r => r.id === selectedRole)
+  const selectedPlatformInfo = platformOptions.find(p => p.id === selectedPlatform)
 
   return (
     <View className="login-page">
       <View className="login-header">
         <Text className="login-title">{siteName}成长平台</Text>
         <Text className="login-subtitle">{siteConfig.site_description || '连接优质教育资源，助力孩子成长'}</Text>
+      </View>
+
+      {/* 已选身份和端口 */}
+      <View className="px-4 -mt-2 mb-2">
+        <View className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+          <View className="flex items-center gap-3">
+            <Badge variant="outline">
+              {selectedRoleInfo?.name}
+            </Badge>
+            <Badge variant="secondary">
+              {selectedPlatformInfo?.name}
+            </Badge>
+          </View>
+          <Text className="text-sm text-blue-500" onClick={() => setStep('role')}>
+            修改
+          </Text>
+        </View>
       </View>
 
       <Card className="login-card">
@@ -214,6 +376,12 @@ const LoginPage: FC = () => {
       </View>
     </View>
   )
+
+  // 切换登录/注册
+  function toggleMode() {
+    setIsRegister(!isRegister)
+    setCode('')
+  }
 }
 
 export default LoginPage

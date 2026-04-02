@@ -143,6 +143,58 @@ export class UserService {
   }
 
   /**
+   * 获取所有角色的会员状态
+   * 每个角色的会员权益独立
+   */
+  async getAllMembershipInfo(userId: number) {
+    const now = new Date();
+    
+    // 查询用户的角色会员表
+    let roleMemberships: any[] = [];
+    try {
+      roleMemberships = await executeQuery(`
+        SELECT role, membership_type, expire_at 
+        FROM user_role_memberships 
+        WHERE user_id = ?
+      `, [userId]);
+    } catch (error) {
+      // 表不存在时返回空数组
+      console.log('角色会员表不存在，返回空数组');
+    }
+
+    // 如果没有角色会员记录，返回默认状态
+    const result: Array<{
+      role: number;
+      is_member: boolean;
+      expire_at: string | null;
+      membership_type: number;
+    }> = [];
+    for (let role = 0; role <= 2; role++) {
+      const membership = roleMemberships.find(m => m.role === role);
+      if (membership) {
+        const isMember = membership.membership_type === 1 && 
+                        membership.expire_at && 
+                        new Date(membership.expire_at) > now;
+        result.push({
+          role,
+          is_member: isMember,
+          expire_at: membership.expire_at,
+          membership_type: membership.membership_type || 0,
+        });
+      } else {
+        result.push({
+          role,
+          is_member: false,
+          expire_at: null,
+          membership_type: 0,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * 获取会员套餐列表
    */
   async getMembershipPlans(role: number) {
@@ -717,7 +769,7 @@ export class UserService {
   /**
    * 用户注册
    */
-  async register(mobile: string, nickname?: string, role?: number) {
+  async register(mobile: string, nickname?: string, role?: number, platform?: string) {
     try {
       // 检查用户是否已存在
       const existingUsers = await executeQuery(`
@@ -732,11 +784,11 @@ export class UserService {
       // 生成邀请码
       const inviteCode = `U${Date.now().toString(36).toUpperCase()}`;
 
-      // 创建新用户
+      // 创建新用户（包含平台信息）
       const userId = await insert(`
-        INSERT INTO users (mobile, nickname, role, invite_code, created_at)
-        VALUES (?, ?, ?, ?, NOW())
-      `, [mobile, nickname || `用户${mobile.slice(-4)}`, role || 0, inviteCode]);
+        INSERT INTO users (mobile, nickname, role, invite_code, platform, created_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
+      `, [mobile, nickname || `用户${mobile.slice(-4)}`, role || 0, inviteCode, platform || 'h5']);
 
       // 生成token
       const token = `token_${userId}_${Date.now()}`;
@@ -751,6 +803,7 @@ export class UserService {
             mobile,
             avatar: '',
             role: role || 0,
+            platform: platform || 'h5',
           },
         },
       };
@@ -768,6 +821,7 @@ export class UserService {
             mobile,
             avatar: '',
             role: role || 0,
+            platform: platform || 'h5',
           },
         },
       };

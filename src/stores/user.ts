@@ -1,9 +1,14 @@
 /**
  * 用户状态管理
+ * 支持多端口（小程序/公众号H5/纯H5）
+ * 每个角色会员独立存储
  */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import Taro from '@tarojs/taro'
+
+// 端口类型
+export type PlatformType = 'miniprogram' | 'wechat_h5' | 'h5'
 
 // 用户信息类型
 export interface UserInfo {
@@ -18,10 +23,20 @@ export interface UserInfo {
   cityName?: string
   latitude?: number
   longitude?: number
+  platform?: PlatformType // 注册时的端口
+  inviterCode?: string // 邀请码
 }
 
 // 当前视角类型
 export type CurrentView = 'parent' | 'teacher' | 'org'
+
+// 角色会员状态（每个角色独立）
+export interface RoleMembership {
+  role: number
+  isMember: boolean
+  expireAt: string | null
+  membershipType: number
+}
 
 // 用户状态接口
 interface UserState {
@@ -31,18 +46,24 @@ interface UserState {
   userInfo: UserInfo | null
   currentView: CurrentView
   location: { address: string; latitude: number; longitude: number } | null
+  platform: PlatformType // 当前使用的端口
+  roleMemberships: RoleMembership[] // 每个角色的会员状态
 
   // 操作方法
   setToken: (token: string) => void
   setUserInfo: (info: UserInfo) => void
   setCurrentView: (view: CurrentView) => void
   setLocation: (loc: { address: string; latitude: number; longitude: number } | null) => void
+  setPlatform: (platform: PlatformType) => void
+  setRoleMembership: (role: number, membership: Partial<RoleMembership>) => void
   logout: () => void
   
   // 辅助方法
   getUserId: () => number | null
   getRole: () => number
-  isMember: () => boolean
+  isMember: (role?: number) => boolean
+  getRoleMembership: (role: number) => RoleMembership | null
+  canSwitchRole: (targetRole: number) => { canSwitch: boolean; reason: string }
 }
 
 // Taro存储适配器
@@ -70,6 +91,21 @@ const taroStorage = {
   }
 }
 
+// 检测当前平台
+const detectPlatform = (): PlatformType => {
+  const env = Taro.getEnv()
+  if (env === Taro.ENV_TYPE.WEAPP) {
+    return 'miniprogram'
+  } else if (env === Taro.ENV_TYPE.WEB) {
+    // 检查是否在微信浏览器中
+    if (typeof window !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent)) {
+      return 'wechat_h5'
+    }
+    return 'h5'
+  }
+  return 'h5'
+}
+
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
@@ -79,6 +115,8 @@ export const useUserStore = create<UserState>()(
       userInfo: null,
       currentView: 'parent',
       location: null,
+      platform: detectPlatform(),
+      roleMemberships: [],
 
       // 设置Token
       setToken: (token) => {
@@ -120,6 +158,33 @@ export const useUserStore = create<UserState>()(
         set({ location: loc })
       },
 
+      // 设置平台
+      setPlatform: (platform) => {
+        set({ platform })
+      },
+
+      // 设置角色会员状态
+      setRoleMembership: (role, membership) => {
+        const current = get().roleMemberships
+        const existingIndex = current.findIndex(m => m.role === role)
+        
+        if (existingIndex >= 0) {
+          const updated = [...current]
+          updated[existingIndex] = { ...updated[existingIndex], ...membership }
+          set({ roleMemberships: updated })
+        } else {
+          set({ 
+            roleMemberships: [...current, { 
+              role, 
+              isMember: false, 
+              expireAt: null, 
+              membershipType: 0,
+              ...membership 
+            }] 
+          })
+        }
+      },
+
       // 登出
       logout: () => {
         set({
@@ -127,7 +192,8 @@ export const useUserStore = create<UserState>()(
           token: null,
           userInfo: null,
           currentView: 'parent',
-          location: null
+          location: null,
+          roleMemberships: []
         })
         try {
           Taro.removeStorageSync('token')
@@ -149,11 +215,41 @@ export const useUserStore = create<UserState>()(
         return state.userInfo?.role ?? 0
       },
 
-      // 是否是会员
-      isMember: () => {
+      // 是否是会员（指定角色，默认当前视角）
+      isMember: (role?: number) => {
         const state = get()
-        if (!state.userInfo?.membershipExpireAt) return false
-        return new Date(state.userInfo.membershipExpireAt) > new Date()
+        const targetRole = role !== undefined ? role : 
+          (state.currentView === 'teacher' ? 1 : state.currentView === 'org' ? 2 : 0)
+        
+        const membership = state.roleMemberships.find(m => m.role === targetRole)
+        if (!membership || !membership.expireAt) return false
+        return new Date(membership.expireAt) > new Date()
+      },
+
+      // 获取角色会员状态
+      getRoleMembership: (role: number) => {
+        const state = get()
+        return state.roleMemberships.find(m => m.role === role) || null
+      },
+
+      // 检查是否可以切换角色
+      canSwitchRole: (targetRole: number) => {
+        const state = get()
+        const currentRole = state.userInfo?.role ?? 0
+        
+        // 如果是切换到当前真实角色，允许
+        if (targetRole === currentRole) {
+          return { canSwitch: true, reason: '' }
+        }
+        
+        // 切换到其他角色需要满足条件
+        // 1. 必须完成对应角色的认证
+        // 2. 不同端口可能有限制
+        
+        // 这里可以添加更多的验证逻辑
+        // 例如：检查是否完成了角色认证资料
+        
+        return { canSwitch: true, reason: '' }
       }
     }),
     {
@@ -162,7 +258,9 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         token: state.token,
         userInfo: state.userInfo,
-        currentView: state.currentView
+        currentView: state.currentView,
+        platform: state.platform,
+        roleMemberships: state.roleMemberships
       })
     }
   )

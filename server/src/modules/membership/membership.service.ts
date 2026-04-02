@@ -6,6 +6,15 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
   return rows as any[];
 }
 
+async function executeInsert(sql: string, params: any[] = []): Promise<number> {
+  const [result] = await query(sql, params);
+  return (result as any).insertId;
+}
+
+async function executeUpdate(sql: string, params: any[] = []): Promise<void> {
+  await query(sql, params);
+}
+
 @Injectable()
 export class MembershipService {
   /**
@@ -27,9 +36,9 @@ export class MembershipService {
   }
 
   /**
-   * 购买会员
+   * 购买会员（按角色独立）
    */
-  async buyMembership(userId: number, planId: number) {
+  async buyMembership(userId: number, planId: number, role?: number) {
     // 获取套餐信息
     const plans = await executeQuery(
       'SELECT * FROM membership_plans WHERE id = ?',
@@ -41,33 +50,34 @@ export class MembershipService {
     }
 
     const plan = plans[0] as any;
+    // 使用传入的角色或套餐的角色
+    const targetRole = role !== undefined ? role : plan.role;
 
     // 创建支付记录
     const paymentNo = `PAY${Date.now()}${Math.random().toString(36).substr(2, 9)}`.toUpperCase();
 
-    const result = await executeQuery(
+    const paymentId = await executeInsert(
       `INSERT INTO payments (user_id, membership_id, amount, payment_no, status, created_at)
        VALUES (?, ?, ?, ?, 0, NOW())`,
       [userId, planId, plan.price, paymentNo]
     );
-
-    const paymentId = (result as any).insertId;
 
     return {
       payment_id: paymentId,
       payment_no: paymentNo,
       amount: plan.price,
       plan_name: plan.name,
+      role: targetRole,
     };
   }
 
   /**
-   * 支付成功回调处理
+   * 支付成功回调处理（按角色独立）
    */
   async handlePaymentSuccess(paymentNo: string, transactionId: string) {
     // 获取支付记录
     const payments = await executeQuery(
-      `SELECT p.*, mp.duration_days, mp.name as plan_name
+      `SELECT p.*, mp.duration_days, mp.name as plan_name, mp.role as plan_role
        FROM payments p
        LEFT JOIN membership_plans mp ON p.membership_id = mp.id
        WHERE p.payment_no = ?`,
@@ -86,19 +96,47 @@ export class MembershipService {
 
     const plan = payment;
     const userId = payment.user_id;
+    const role = plan.plan_role;
 
     // 计算会员到期时间
     const now = new Date();
     const expireAt = new Date(now.getTime() + plan.duration_days * 24 * 60 * 60 * 1000);
 
-    // 更新用户会员状态
-    await executeQuery(
-      `UPDATE users SET membership_type = 1, membership_expire_at = ?, updated_at = NOW() WHERE id = ?`,
-      [expireAt, userId]
-    );
+    // 更新用户角色会员状态（在角色会员表中）
+    try {
+      // 先检查是否存在记录
+      const existing = await executeQuery(
+        'SELECT id FROM user_role_memberships WHERE user_id = ? AND role = ?',
+        [userId, role]
+      );
+
+      if (existing.length > 0) {
+        // 更新现有记录
+        await executeUpdate(
+          `UPDATE user_role_memberships 
+           SET membership_type = 1, expire_at = ?, updated_at = NOW() 
+           WHERE user_id = ? AND role = ?`,
+          [expireAt, userId, role]
+        );
+      } else {
+        // 插入新记录
+        await executeInsert(
+          `INSERT INTO user_role_memberships (user_id, role, membership_type, expire_at, created_at)
+           VALUES (?, ?, 1, ?, NOW())`,
+          [userId, role, expireAt]
+        );
+      }
+    } catch (error) {
+      console.log('角色会员表不存在，更新用户表');
+      // 回退到更新用户表
+      await executeUpdate(
+        `UPDATE users SET membership_type = 1, membership_expire_at = ?, updated_at = NOW() WHERE id = ?`,
+        [expireAt, userId]
+      );
+    }
 
     // 更新支付记录
-    await executeQuery(
+    await executeUpdate(
       `UPDATE payments SET status = 1, transaction_id = ?, paid_at = NOW() WHERE id = ?`,
       [transactionId, payment.id]
     );
@@ -106,7 +144,7 @@ export class MembershipService {
     // 触发分佣
     await this.triggerCommission(userId, payment.id, plan.price);
 
-    return { success: true, expire_at: expireAt };
+    return { success: true, expire_at: expireAt, role };
   }
 
   /**
@@ -188,7 +226,7 @@ export class MembershipService {
     // 批量插入佣金记录
     if (commissions.length > 0) {
       for (const commission of commissions) {
-        await executeQuery(
+        await executeInsert(
           `INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate, status, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
           [commission.user_id, commission.from_user_id, commission.payment_id, 
@@ -199,9 +237,43 @@ export class MembershipService {
   }
 
   /**
-   * 获取用户会员信息
+   * 获取用户会员信息（指定角色）
    */
-  async getUserMembership(userId: number) {
+  async getUserMembership(userId: number, role?: number) {
+    // 尝试从角色会员表获取
+    try {
+      let sql = 'SELECT role, membership_type, expire_at FROM user_role_memberships WHERE user_id = ?';
+      const params: any[] = [userId];
+      
+      if (role !== undefined) {
+        sql += ' AND role = ?';
+        params.push(role);
+      }
+      
+      const memberships = await executeQuery(sql, params);
+
+      if (memberships.length > 0) {
+        const membership = memberships[0] as any;
+        const isActive =
+          membership?.membership_type === 1 &&
+          membership?.expire_at &&
+          new Date(membership.expire_at) > new Date();
+
+        return {
+          is_member: isActive,
+          membership_type: membership?.membership_type || 0,
+          expire_at: membership?.expire_at,
+          role: membership?.role,
+          days_remaining: isActive
+            ? Math.ceil((new Date(membership.expire_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : 0,
+        };
+      }
+    } catch (error) {
+      console.log('角色会员表不存在，回退到用户表');
+    }
+
+    // 回退到用户表
     const users = await executeQuery(
       'SELECT membership_type, membership_expire_at FROM users WHERE id = ?',
       [userId]
@@ -222,6 +294,7 @@ export class MembershipService {
       is_member: isActive,
       membership_type: user?.membership_type || 0,
       expire_at: user?.membership_expire_at,
+      role: role || 0,
       days_remaining: isActive
         ? Math.ceil((new Date(user.membership_expire_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : 0,

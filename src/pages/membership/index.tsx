@@ -4,7 +4,9 @@ import Taro from '@tarojs/taro';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Check, Star, Gift, Zap, Lock } from 'lucide-react-taro';
+import { Crown, Check, Star, Gift, Zap, Lock, Info } from 'lucide-react-taro';
+import { useUserStore } from '@/stores/user';
+import { Network } from '@/network';
 import './index.css';
 
 interface Plan {
@@ -19,127 +21,229 @@ interface Plan {
 
 /**
  * 会员中心页面 - 每端会员独立
+ * 切换角色需要重新购买会员
  */
 const MembershipPage = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [currentRole, setCurrentRole] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [isMember, setIsMember] = useState(false);
-  const [memberExpire, setMemberExpire] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { 
+    currentView, 
+    userInfo, 
+    getRoleMembership, 
+    setRoleMembership 
+  } = useUserStore();
+
+  // 当前视角对应的角色ID
+  const currentRole = currentView === 'teacher' ? 1 : currentView === 'org' ? 2 : 0;
+
+  // 获取当前角色的会员状态
+  const membership = getRoleMembership(currentRole);
+  const isMember = membership?.isMember && membership?.expireAt && new Date(membership.expireAt) > new Date();
+  const memberExpire = membership?.expireAt || '';
 
   useEffect(() => {
-    // 获取当前角色
-    const savedRole = Taro.getStorageSync('userRole');
-    const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0);
-    setCurrentRole(role);
-    
-    // 检查当前角色的会员状态
-    const memberKey = `member_expire_role_${role}`;
-    const expire = Taro.getStorageSync(memberKey);
-    if (expire && new Date(expire) > new Date()) {
-      setIsMember(true);
-      setMemberExpire(expire);
-    }
-    
-    loadPlans(role);
-  }, []);
+    loadPlans(currentRole);
+  }, [currentRole]);
 
   const loadPlans = async (role: number) => {
-    // 模拟数据 - 根据角色显示不同套餐
-    const mockPlans: Plan[] = role === 0 ? [
-      {
-        id: 1,
-        name: '家长月卡',
-        role: 0,
-        price: 99,
-        original_price: 129,
-        duration_days: 30,
-        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣'],
-      },
-      {
-        id: 2,
-        name: '家长季卡',
-        role: 0,
-        price: 269,
-        original_price: 387,
-        duration_days: 90,
-        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服'],
-      },
-      {
-        id: 3,
-        name: '家长年卡',
-        role: 0,
-        price: 899,
-        original_price: 1548,
-        duration_days: 365,
-        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服', '专属顾问'],
-      },
-    ] : [
-      {
-        id: 4,
-        name: '牛师月卡',
-        role: 1,
-        price: 99,
-        original_price: 129,
-        duration_days: 30,
-        features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣'],
-      },
-      {
-        id: 5,
-        name: '牛师季卡',
-        role: 1,
-        price: 269,
-        original_price: 387,
-        duration_days: 90,
-        features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣', '专属展示'],
-      },
-      {
-        id: 6,
-        name: '牛师年卡',
-        role: 1,
-        price: 899,
-        original_price: 1548,
-        duration_days: 365,
-        features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣', '专属展示', '推荐特权'],
-      },
-    ];
+    try {
+      const res = await Network.request({
+        url: `/api/membership/plans/${role}`,
+        method: 'GET'
+      });
+      
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        setPlans(res.data);
+        setSelectedPlan(res.data[0]);
+      } else {
+        // 使用模拟数据
+        const mockPlans: Plan[] = role === 0 ? [
+          {
+            id: 1,
+            name: '家长月卡',
+            role: 0,
+            price: 99,
+            original_price: 129,
+            duration_days: 30,
+            features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣'],
+          },
+          {
+            id: 2,
+            name: '家长季卡',
+            role: 0,
+            price: 269,
+            original_price: 387,
+            duration_days: 90,
+            features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服'],
+          },
+          {
+            id: 3,
+            name: '家长年卡',
+            role: 0,
+            price: 899,
+            original_price: 1548,
+            duration_days: 365,
+            features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服', '专属顾问'],
+          },
+        ] : role === 1 ? [
+          {
+            id: 4,
+            name: '牛师月卡',
+            role: 1,
+            price: 99,
+            original_price: 129,
+            duration_days: 30,
+            features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣'],
+          },
+          {
+            id: 5,
+            name: '牛师季卡',
+            role: 1,
+            price: 269,
+            original_price: 387,
+            duration_days: 90,
+            features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣', '专属展示'],
+          },
+          {
+            id: 6,
+            name: '牛师年卡',
+            role: 1,
+            price: 899,
+            original_price: 1548,
+            duration_days: 365,
+            features: ['无限抢单', '查看家长联系方式', '优先派单', '分销返佣', '专属展示', '推荐特权'],
+          },
+        ] : [
+          {
+            id: 7,
+            name: '机构月卡',
+            role: 2,
+            price: 199,
+            original_price: 259,
+            duration_days: 30,
+            features: ['无限发布课程', '管理更多牛师', '数据分析', '优先推广'],
+          },
+          {
+            id: 8,
+            name: '机构季卡',
+            role: 2,
+            price: 539,
+            original_price: 777,
+            duration_days: 90,
+            features: ['无限发布课程', '管理更多牛师', '数据分析', '优先推广', '专属客服'],
+          },
+          {
+            id: 9,
+            name: '机构年卡',
+            role: 2,
+            price: 1799,
+            original_price: 3108,
+            duration_days: 365,
+            features: ['无限发布课程', '管理更多牛师', '数据分析', '优先推广', '专属客服', '定制服务'],
+          },
+        ];
 
-    setPlans(mockPlans);
-    if (mockPlans.length > 0) {
-      setSelectedPlan(mockPlans[0]);
+        setPlans(mockPlans);
+        if (mockPlans.length > 0) {
+          setSelectedPlan(mockPlans[0]);
+        }
+      }
+    } catch (error) {
+      console.error('加载套餐失败:', error);
     }
   };
 
   const handleBuy = async () => {
     if (!selectedPlan) return;
+    
+    if (!userInfo?.id) {
+      Taro.showToast({ title: '请先登录', icon: 'none' });
+      Taro.navigateTo({ url: '/pages/login/index' });
+      return;
+    }
 
-    Taro.showModal({
-      title: '确认购买',
-      content: `确定购买 ${selectedPlan.name}（¥${selectedPlan.price}）吗？`,
-      success: (res) => {
-        if (res.confirm) {
-          // 模拟支付成功
-          const expireDate = new Date();
-          expireDate.setDate(expireDate.getDate() + selectedPlan.duration_days);
-          const expireStr = expireDate.toISOString();
-          
-          // 保存到对应的角色会员状态
-          const memberKey = `member_expire_role_${currentRole}`;
-          Taro.setStorageSync(memberKey, expireStr);
-          
-          setIsMember(true);
-          setMemberExpire(expireStr);
-          
-          Taro.showToast({ title: '购买成功', icon: 'success' });
+    setLoading(true);
+    try {
+      // 调用后端创建订单
+      const res = await Network.request({
+        url: '/api/membership/buy',
+        method: 'POST',
+        data: {
+          userId: userInfo.id,
+          planId: selectedPlan.id,
+          role: currentRole // 传递角色ID，确保会员绑定到对应角色
         }
-      },
-    });
+      });
+
+      console.log('购买会员响应:', res.data);
+
+      if (res.data && (res.data.success || res.data.payment_id)) {
+        // 模拟支付成功（实际应该跳转到支付页面）
+        Taro.showModal({
+          title: '确认购买',
+          content: `确定购买 ${selectedPlan.name}（¥${selectedPlan.price}）吗？`,
+          success: async (modalRes) => {
+            if (modalRes.confirm) {
+              // 模拟支付成功，更新会员状态
+              const expireDate = new Date();
+              expireDate.setDate(expireDate.getDate() + selectedPlan.duration_days);
+              const expireStr = expireDate.toISOString();
+              
+              // 更新当前角色的会员状态
+              setRoleMembership(currentRole, {
+                role: currentRole,
+                isMember: true,
+                expireAt: expireStr,
+                membershipType: 1
+              });
+              
+              Taro.showToast({ title: '购买成功', icon: 'success' });
+              
+              // 刷新页面状态
+              setTimeout(() => {
+                loadPlans(currentRole);
+              }, 1000);
+            }
+          },
+        });
+      } else {
+        Taro.showToast({ title: res.data?.message || '创建订单失败', icon: 'none' });
+      }
+    } catch (error) {
+      console.error('购买失败:', error);
+      // 开发环境模拟成功
+      Taro.showModal({
+        title: '确认购买',
+        content: `确定购买 ${selectedPlan.name}（¥${selectedPlan.price}）吗？`,
+        success: (modalRes) => {
+          if (modalRes.confirm) {
+            const expireDate = new Date();
+            expireDate.setDate(expireDate.getDate() + selectedPlan.duration_days);
+            const expireStr = expireDate.toISOString();
+            
+            setRoleMembership(currentRole, {
+              role: currentRole,
+              isMember: true,
+              expireAt: expireStr,
+              membershipType: 1
+            });
+            
+            Taro.showToast({ title: '购买成功', icon: 'success' });
+          }
+        },
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const roleText = currentRole === 0 ? '家长' : '牛师';
+  const roleText = currentRole === 0 ? '家长' : currentRole === 1 ? '牛师' : '机构';
+  
   const memberBenefits = [
-    { icon: Zap, title: currentRole === 0 ? '无限发布' : '无限抢单', desc: currentRole === 0 ? '不限次数发布需求' : '不限次数抢单' },
-    { icon: Star, title: currentRole === 0 ? '主动搜索' : '优先派单', desc: currentRole === 0 ? '搜索筛选牛师' : '优先获得派单' },
+    { icon: Zap, title: currentRole === 0 ? '无限发布' : currentRole === 1 ? '无限抢单' : '无限发布', desc: currentRole === 0 ? '不限次数发布需求' : currentRole === 1 ? '不限次数抢单' : '不限次数发布课程' },
+    { icon: Star, title: currentRole === 0 ? '主动搜索' : currentRole === 1 ? '优先派单' : '数据分析', desc: currentRole === 0 ? '搜索筛选牛师' : currentRole === 1 ? '优先获得派单' : '详细数据分析' },
     { icon: Lock, title: '联系方式', desc: '解锁查看联系方式' },
     { icon: Gift, title: '分销返佣', desc: '邀请好友赚佣金' },
   ];
@@ -167,8 +271,25 @@ const MembershipPage = () => {
         )}
       </View>
 
-      {/* 会员权益 */}
+      {/* 会员独立提示 */}
       <View className="px-4 -mt-4">
+        <Card className="mb-4 bg-blue-50 border border-blue-200">
+          <CardContent className="p-3">
+            <View className="flex items-start gap-2">
+              <Info size={18} color="#2563EB" className="shrink-0 mt-1" />
+              <View className="flex-1">
+                <Text className="text-sm font-medium text-blue-800">会员权益说明</Text>
+                <Text className="text-xs text-blue-600 mt-1">
+                  每个角色的会员权益独立生效。切换到其他角色后，需要单独购买该角色的会员才能享受相应权益。
+                </Text>
+              </View>
+            </View>
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* 会员权益 */}
+      <View className="px-4">
         <Card className="mb-4">
           <CardHeader className="pb-2">
             <CardTitle>会员权益</CardTitle>
@@ -250,10 +371,11 @@ const MembershipPage = () => {
           <Button 
             className="flex-1 ml-4 bg-gradient-to-r from-yellow-400 to-orange-500"
             size="lg"
+            disabled={loading}
             onClick={handleBuy}
           >
             <Text className="text-white font-semibold">
-              {isMember ? '立即续费' : '立即开通'}
+              {loading ? '处理中...' : isMember ? '立即续费' : '立即开通'}
             </Text>
           </Button>
         </View>

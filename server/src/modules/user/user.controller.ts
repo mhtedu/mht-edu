@@ -38,7 +38,7 @@ export class UserController {
    */
   @Public()
   @Post('register')
-  async register(@Body() body: { mobile: string; code: string; nickname?: string; role?: number }) {
+  async register(@Body() body: { mobile: string; code: string; nickname?: string; role?: number; platform?: string }) {
     if (!body.mobile || !/^1[3-9]\d{9}$/.test(body.mobile)) {
       return { success: false, message: '请输入正确的手机号' };
     }
@@ -52,7 +52,7 @@ export class UserController {
       return { success: false, message: '验证码错误或已过期' };
     }
 
-    return this.userService.register(body.mobile, body.nickname, body.role);
+    return this.userService.register(body.mobile, body.nickname, body.role, body.platform);
   }
 
   /**
@@ -169,6 +169,15 @@ export class UserController {
   async getMembershipInfo(@Request() req: any) {
     const userId = req.user?.id || 1;
     return this.userService.getMembershipInfo(userId);
+  }
+
+  /**
+   * 获取所有角色的会员状态
+   */
+  @Get('membership/all')
+  async getAllMembershipInfo(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getAllMembershipInfo(userId);
   }
 
   /**
