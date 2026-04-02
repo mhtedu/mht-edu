@@ -56,7 +56,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: '棉花糖教育',
+    navigationBarTitleText: '教育平台',
     navigationBarTextStyle: 'black'
   },
   tabBar: {

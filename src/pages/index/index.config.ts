@@ -1,9 +1,9 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '棉花糖教育',
+      navigationBarTitleText: '教育平台',
       enablePullDownRefresh: true,
     })
   : {
-      navigationBarTitleText: '棉花糖教育',
+      navigationBarTitleText: '教育平台',
       enablePullDownRefresh: true,
     }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { validatePhone, validateCode } from '@/utils'
 import { Phone, ShieldCheck, Loader } from 'lucide-react-taro'
@@ -19,6 +20,7 @@ const LoginPage: FC = () => {
   const [isRegister, setIsRegister] = useState(false)
 
   const { setUserInfo, setToken } = useUserStore()
+  const { getSiteName, siteConfig } = useConfigStore()
 
   useLoad(() => {
     console.log('Login page loaded.')
@@ -35,9 +37,9 @@ const LoginPage: FC = () => {
 
     try {
       setLoading(true)
-      console.log('发送验证码请求:', { url: '/api/user/send-code', method: 'POST', data: { mobile: phone } })
+      console.log('发送验证码请求:', { url: '/api/sms/send-code', method: 'POST', data: { mobile: phone } })
       const res = await Network.request({
-        url: '/api/user/send-code',
+        url: '/api/sms/send-code',
         method: 'POST',
         data: { mobile: phone }
       })
@@ -118,11 +120,13 @@ const LoginPage: FC = () => {
     setCode('')
   }
 
+  const siteName = getSiteName()
+
   return (
     <View className="login-page">
       <View className="login-header">
-        <Text className="login-title">棉花糖教育成长平台</Text>
-        <Text className="login-subtitle">连接优质教育资源，助力孩子成长</Text>
+        <Text className="login-title">{siteName}成长平台</Text>
+        <Text className="login-subtitle">{siteConfig.site_description || '连接优质教育资源，助力孩子成长'}</Text>
       </View>
 
       <Card className="login-card">

@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Taro, { useLoad, useDidShow } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,7 +9,9 @@ import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import {
   User, Settings, Star, CreditCard,
-  ChevronRight, LogOut, Award, FileText, Bell, Info, Calendar
+  ChevronRight, LogOut, Award, FileText, Bell, Info, Calendar,
+  Users, Briefcase, Wallet, ClipboardList, Building2, BookOpen,
+  GraduationCap, Plus, Store
 } from 'lucide-react-taro'
 
 interface MembershipInfo {
@@ -17,6 +19,55 @@ interface MembershipInfo {
   expire_at: string
   remaining_days: number
 }
+
+// 家长端菜单
+const parentMenuItems = [
+  { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
+  { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
+  { icon: Calendar, title: '我的活动', path: '/pages/my-activities/index', color: '#EC4899' },
+  { icon: CreditCard, title: '我的订单', path: '/pages/profile/orders', color: '#2563EB' },
+]
+
+const parentSettingItems = [
+  { icon: Award, title: '牛师认证', path: '/pages/teacher-auth/index', color: '#10B981' },
+  { icon: Building2, title: '机构认证', path: '/pages/org-auth/index', color: '#8B5CF6' },
+  { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
+  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+]
+
+// 牛师端菜单
+const teacherMenuItems = [
+  { icon: Users, title: '学员管理', path: '/pages/students/index', color: '#10B981' },
+  { icon: GraduationCap, title: '牛师班管理', path: '/pages/elite-class-manage/index', color: '#8B5CF6' },
+  { icon: Wallet, title: '收益中心', path: '/pages/earnings/index', color: '#F59E0B' },
+  { icon: Briefcase, title: '牛师工作台', path: '/pages/teacher-workbench/index', color: '#2563EB' },
+]
+
+const teacherSettingItems = [
+  { icon: ClipboardList, title: '抢单记录', path: '/pages/profile/orders', color: '#EC4899' },
+  { icon: Award, title: '认证信息', path: '/pages/teacher-auth/index', color: '#10B981' },
+  { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
+  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+]
+
+// 机构端菜单
+const orgMenuItems = [
+  { icon: Building2, title: '机构管理', path: '/pages/org-dashboard/index', color: '#8B5CF6' },
+  { icon: BookOpen, title: '课程管理', path: '/pages/course-manage/index', color: '#10B981' },
+  { icon: Users, title: '牛师管理', path: '/pages/org-teachers/index', color: '#F59E0B' },
+  { icon: Store, title: '活动管理', path: '/pages/activity-manage/index', color: '#EC4899' },
+]
+
+const orgSettingItems = [
+  { icon: ClipboardList, title: '订单管理', path: '/pages/profile/orders', color: '#2563EB' },
+  { icon: Plus, title: '创建活动', path: '/pages/create-activity/index', color: '#10B981' },
+  { icon: GraduationCap, title: '创建牛师班', path: '/pages/create-elite-class/index', color: '#8B5CF6' },
+  { icon: Settings, title: '机构设置', path: '/pages/org-settings/index', color: '#6B7280' },
+  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+]
 
 const ProfilePage: FC = () => {
   const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null)
@@ -75,19 +126,32 @@ const ProfilePage: FC = () => {
 
   const goToMember = () => Taro.navigateTo({ url: '/pages/member/index' })
 
-  const menuItems = [
-    { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
-    { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
-    { icon: Calendar, title: '我的活动', path: '/pages/my-activities/index', color: '#EC4899' },
-    { icon: CreditCard, title: '我的订单', path: '/pages/profile/orders', color: '#2563EB' },
-  ]
+  const goToRoleSwitch = () => Taro.navigateTo({ url: '/pages/role-switch/index' })
 
-  const settingItems = [
-    { icon: Award, title: '牛师认证', path: '/pages/teacher-auth/index', color: '#10B981' },
-    { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
-    { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
-    { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
-  ]
+  // 根据角色获取菜单项
+  const menuItems = useMemo(() => {
+    const role = userInfo?.role
+    if (role === 'teacher') return teacherMenuItems
+    if (role === 'org') return orgMenuItems
+    return parentMenuItems
+  }, [userInfo?.role])
+
+  const settingItems = useMemo(() => {
+    const role = userInfo?.role
+    if (role === 'teacher') return teacherSettingItems
+    if (role === 'org') return orgSettingItems
+    return parentSettingItems
+  }, [userInfo?.role])
+
+  const getRoleName = (role?: string) => {
+    switch (role) {
+      case 'parent': return '家长'
+      case 'teacher': return '牛师'
+      case 'org': return '机构'
+      case 'admin': return '管理员'
+      default: return '用户'
+    }
+  }
 
   return (
     <View className="min-h-screen bg-gray-100">
@@ -107,10 +171,13 @@ const ProfilePage: FC = () => {
               </View>
               <View className="flex-1 ml-4">
                 <Text className="block text-lg font-semibold text-white">{userInfo?.nickname || '用户'}</Text>
-                <View className="mt-2">
+                <View className="mt-2 flex flex-row items-center gap-2">
                   <Badge variant="outline">
-                    {userInfo?.role === 'parent' ? '家长' : userInfo?.role === 'teacher' ? '牛师' : userInfo?.role === 'org' ? '机构' : '用户'}
+                    {getRoleName(userInfo?.role)}
                   </Badge>
+                  <Text className="text-xs text-white opacity-80" onClick={(e) => { e.stopPropagation(); goToRoleSwitch(); }}>
+                    切换角色 ›
+                  </Text>
                 </View>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
@@ -130,7 +197,7 @@ const ProfilePage: FC = () => {
         </View>
 
         {/* 会员卡片 */}
-        {isLoggedIn && (
+        {isLoggedIn && userInfo?.role !== 'org' && (
           <Card className="-mt-5 mx-3 mb-3 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200">
             <CardContent className="flex flex-row items-center justify-between p-4">
               <View className="flex flex-row items-center">
@@ -161,11 +228,11 @@ const ProfilePage: FC = () => {
         {/* 功能菜单 */}
         <Card className="mx-3 mb-3 rounded-xl">
           <CardContent className="p-4">
-            <View className="flex flex-row justify-around">
+            <View className="flex flex-row justify-around flex-wrap">
               {menuItems.map((item, idx) => (
                 <View
                   key={idx}
-                  className="flex flex-col items-center"
+                  className="flex flex-col items-center w-1/4 mb-4"
                   onClick={() => goToPage(item.path)}
                 >
                   <View 

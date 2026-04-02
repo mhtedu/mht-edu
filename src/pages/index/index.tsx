@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { useUserStore } from '@/stores/user'
+import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
 import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2 } from 'lucide-react-taro'
@@ -49,12 +50,15 @@ const HomePage: FC = () => {
   const [listLoading, setListLoading] = useState(false)
 
   const { isLoggedIn, setLocation: setUserLocation } = useUserStore()
+  const { getSiteName } = useConfigStore()
 
   useLoad(() => {
     console.log('Home page loaded.')
   })
 
   useDidShow(() => {
+    // 动态设置导航栏标题
+    Taro.setNavigationBarTitle({ title: getSiteName() })
     loadInitData()
   })
 

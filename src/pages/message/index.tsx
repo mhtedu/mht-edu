@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Network } from '@/network'
+import { useConfigStore } from '@/stores/config'
 import { Bell, Megaphone, ShoppingCart, Heart, MessageCircle, ChevronRight } from 'lucide-react-taro'
 
 // 消息类型
@@ -21,6 +22,8 @@ const MessagePage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'order' | 'interact'>('all')
 
+  const { getSiteName } = useConfigStore()
+
   useDidShow(() => {
     loadMessages()
   })
@@ -33,6 +36,7 @@ const MessagePage: FC = () => {
 
   const loadMessages = async () => {
     setLoading(true)
+    const siteName = getSiteName()
     try {
       const res = await Network.request({
         url: '/api/messages',
@@ -51,7 +55,7 @@ const MessagePage: FC = () => {
           id: 1,
           type: 'system',
           title: '系统通知',
-          content: '欢迎使用棉花糖教育平台，祝您使用愉快！',
+          content: `欢迎使用${siteName}平台，祝您使用愉快！`,
           time: '10:30',
           read: false
         },
