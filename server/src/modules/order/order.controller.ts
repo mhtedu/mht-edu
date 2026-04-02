@@ -47,6 +47,29 @@ export class OrderController {
   }
 
   /**
+   * 获取附近的订单（教师视角）
+   * 注意：此路由必须放在 :id 路由之前，否则 'nearby' 会被当成 id 参数
+   */
+  @Get('nearby')
+  async getNearbyOrders(
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+    @Query('radius') radius: string = '10',
+    @Query('subject') subject?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    return this.orderService.getNearbyOrders({
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      radius: parseFloat(radius),
+      subject,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+    });
+  }
+
+  /**
    * 获取订单详情
    */
   @Get(':id')
@@ -120,28 +143,6 @@ export class OrderController {
   ) {
     const userId = req.user?.id || 1;
     return this.orderService.createReview(parseInt(id), userId, body.rating, body.content);
-  }
-
-  /**
-   * 获取附近的订单（教师视角）
-   */
-  @Get('nearby')
-  async getNearbyOrders(
-    @Query('latitude') latitude: string,
-    @Query('longitude') longitude: string,
-    @Query('radius') radius: string = '10',
-    @Query('subject') subject?: string,
-    @Query('page') page: string = '1',
-    @Query('pageSize') pageSize: string = '20',
-  ) {
-    return this.orderService.getNearbyOrders({
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-      radius: parseFloat(radius),
-      subject,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
-    });
   }
 
   /**

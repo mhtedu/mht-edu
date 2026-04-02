@@ -281,10 +281,16 @@ chore: 构建/工具链
   - 发布需求接口：`/api/demands` → `/api/order/create`
   - 同步数据库表结构：添加 `order_no`, `grade`, `student_info`, `schedule`, `budget`, `requirement` 字段
 
-- 🚧 待解决：数据库连接问题
-  - MySQL 服务未运行，API 返回 500 错误
-  - 前端已有 mock 数据 fallback，页面可正常显示
-  - 需要配置 Supabase 或启动 MySQL 服务
+- ✅ 配置远程MySQL数据库连接
+  - 服务器：119.91.193.179:3306
+  - 数据库：mht_edu
+  - 用户：mht_edu
+  - 已验证数据库连接正常
+
+- ✅ 修复后端路由顺序问题
+  - 将 `/api/order/nearby` 路由移到 `/:id` 路由之前
+  - 解决 'nearby' 被误识别为订单ID的问题
+  - 所有API接口测试通过（抢单、发布需求、nearby）
 
 ---
 
