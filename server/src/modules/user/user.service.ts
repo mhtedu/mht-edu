@@ -62,9 +62,9 @@ export class UserService {
    */
   async updateLocation(userId: number, data: { latitude: number; longitude: number; address?: string }) {
     await executeQuery(`
-      UPDATE users SET latitude = ?, longitude = ?, address = ?
+      UPDATE users SET latitude = ?, longitude = ?
       WHERE id = ?
-    `, [data.latitude, data.longitude, data.address || '', userId]);
+    `, [data.latitude, data.longitude, userId]);
 
     return { success: true };
   }

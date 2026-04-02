@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequirePermission } from '../auth/decorators/permission.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import * as bcrypt from 'bcrypt';
 import * as db from '@/storage/database/mysql-client';
 
@@ -699,5 +700,84 @@ export class AdminController {
     }
 
     return { success: true };
+  }
+
+  /**
+   * 初始化演示数据（牛师坐标、广告位等）
+   */
+  @Public()
+  @Post('init-demo-data')
+  async initDemoData() {
+    try {
+      // 更新北京牛师坐标
+      await db.update(`UPDATE users SET latitude = 39.9042, longitude = 116.4074 WHERE id = 101`);
+      await db.update(`UPDATE users SET latitude = 39.9142, longitude = 116.4174 WHERE id = 102`);
+      await db.update(`UPDATE users SET latitude = 39.9242, longitude = 116.4274 WHERE id = 103`);
+      await db.update(`UPDATE users SET latitude = 39.9342, longitude = 116.4374 WHERE id = 104`);
+      await db.update(`UPDATE users SET latitude = 39.9442, longitude = 116.4474 WHERE id = 105`);
+      
+      // 更新上海牛师坐标
+      await db.update(`UPDATE users SET latitude = 31.2304, longitude = 121.4737 WHERE id = 201`);
+      await db.update(`UPDATE users SET latitude = 31.2404, longitude = 121.4837 WHERE id = 202`);
+      await db.update(`UPDATE users SET latitude = 31.2504, longitude = 121.4937 WHERE id = 203`);
+      await db.update(`UPDATE users SET latitude = 31.2604, longitude = 121.5037 WHERE id = 204`);
+      await db.update(`UPDATE users SET latitude = 31.2704, longitude = 121.5137 WHERE id = 205`);
+      
+      // 更新广州牛师坐标
+      await db.update(`UPDATE users SET latitude = 23.1291, longitude = 113.2644 WHERE id = 301`);
+      await db.update(`UPDATE users SET latitude = 23.1391, longitude = 113.2744 WHERE id = 302`);
+      await db.update(`UPDATE users SET latitude = 23.1491, longitude = 113.2844 WHERE id = 303`);
+      await db.update(`UPDATE users SET latitude = 23.1591, longitude = 113.2944 WHERE id = 304`);
+      await db.update(`UPDATE users SET latitude = 23.1691, longitude = 113.3044 WHERE id = 305`);
+      
+      // 更新订单坐标
+      await db.update(`UPDATE orders SET latitude = 39.9142, longitude = 116.4174 WHERE id = 6`);
+      await db.update(`UPDATE orders SET latitude = 39.9342, longitude = 116.4374 WHERE id = 7`);
+      await db.update(`UPDATE orders SET latitude = 39.9542, longitude = 116.4574 WHERE id = 8`);
+      await db.update(`UPDATE orders SET latitude = 31.2404, longitude = 121.4837 WHERE id = 9`);
+      await db.update(`UPDATE orders SET latitude = 31.2604, longitude = 121.5037 WHERE id = 10`);
+      await db.update(`UPDATE orders SET latitude = 31.2804, longitude = 121.5237 WHERE id = 11`);
+      await db.update(`UPDATE orders SET latitude = 23.1391, longitude = 113.2744 WHERE id = 12`);
+      await db.update(`UPDATE orders SET latitude = 23.1591, longitude = 113.2944 WHERE id = 13`);
+      await db.update(`UPDATE orders SET latitude = 23.1791, longitude = 113.3144 WHERE id = 14`);
+
+      // 创建广告位表（如果不存在）
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS ad_positions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          position_key VARCHAR(50) NOT NULL COMMENT '广告位标识',
+          title VARCHAR(100) COMMENT '广告标题',
+          image_url VARCHAR(255) NOT NULL COMMENT '图片URL',
+          link_url VARCHAR(255) COMMENT '跳转链接',
+          sort_order INT DEFAULT 0 COMMENT '排序',
+          is_active TINYINT DEFAULT 1 COMMENT '是否启用',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_position_key (position_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='广告位表'
+      `);
+
+      // 插入广告数据
+      await db.update(`
+        INSERT INTO ad_positions (position_key, title, image_url, link_url, sort_order, is_active) VALUES
+        ('home_top', '新人专享福利', 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=400&fit=crop', '/pages/member/index', 1, 1),
+        ('home_top', '会员日特惠', 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=400&fit=crop', '/pages/membership/index', 2, 1),
+        ('home_top', '名师一对一定制课程', 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&h=400&fit=crop', '/pages/teacher/list', 3, 1),
+        ('home_top', '暑期集训营火热报名', 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&h=400&fit=crop', '/pages/activities/index', 4, 1)
+        ON DUPLICATE KEY UPDATE title = VALUES(title)
+      `);
+
+      // 更新站点名称
+      await db.update(`
+        INSERT INTO site_config (config_key, config_value, status, created_at, updated_at)
+        VALUES ('site_name', '牛师很忙', 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE config_value = '牛师很忙', updated_at = NOW()
+      `);
+
+      return { success: true, message: '演示数据初始化成功' };
+    } catch (error) {
+      console.error('初始化演示数据失败:', error);
+      return { success: false, message: '初始化失败', error: error.message };
+    }
   }
 }
