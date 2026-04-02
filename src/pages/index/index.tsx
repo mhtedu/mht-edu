@@ -204,20 +204,66 @@ const HomePage: FC = () => {
   const goToOrgList = () => Taro.navigateTo({ url: '/pages/org/list' })
   const goToPublishDemand = () => Taro.navigateTo({ url: '/pages/publish-demand/index' })
 
-  const handleGrabOrder = (id: number) => {
+  const handleGrabOrder = (demand: DemandItem) => {
     if (!isLoggedIn) {
       Taro.showModal({ title: '提示', content: '请先登录后再抢单', confirmText: '去登录', success: (res) => { if (res.confirm) goToLogin() } })
       return
     }
+    
+    // 检查是否是牛师角色
+    const userRole = Taro.getStorageSync('userRole')
+    if (userRole !== 1 && userRole !== '1') {
+      Taro.showModal({
+        title: '提示',
+        content: '仅牛师端可以抢单，请切换到牛师端',
+        confirmText: '切换角色',
+        success: (res) => {
+          if (res.confirm) {
+            handleSwitchRole()
+          }
+        }
+      })
+      return
+    }
+    
+    // 显示详细确认信息
     Taro.showModal({
       title: '确认抢单',
-      content: '确定要接这个订单吗？',
+      content: `科目：${demand.subject}\n年级：${demand.student_grade}\n预算：¥${demand.hourly_rate}/小时\n距离：${demand.distance_text}\n\n抢单后家长将看到您的信息并选择合适的牛师匹配。`,
+      confirmText: '确认抢单',
       success: (res) => {
         if (res.confirm) {
-          Network.request({ url: `/api/demands/${id}/grab`, method: 'POST' }).then(() => {
+          Taro.showLoading({ title: '抢单中...' })
+          Network.request({ 
+            url: `/api/demands/${demand.id}/grab`, 
+            method: 'POST' 
+          }).then((result) => {
+            Taro.hideLoading()
+            console.log('抢单响应:', result.data)
             Taro.showToast({ title: '抢单成功', icon: 'success' })
+            
+            // 刷新列表
             loadNearbyDemands(location)
-          }).catch(() => Taro.showToast({ title: '抢单失败', icon: 'none' }))
+            
+            // 提示跳转
+            setTimeout(() => {
+              Taro.showModal({
+                title: '抢单成功',
+                content: '您已成功抢单，家长确认后将开始订单。请前往订单管理查看进度。',
+                confirmText: '查看订单',
+                cancelText: '继续浏览',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    Taro.navigateTo({ url: '/pages/orders/index' })
+                  }
+                }
+              })
+            }, 1500)
+          }).catch((err) => {
+            Taro.hideLoading()
+            console.error('抢单失败:', err)
+            Taro.showToast({ title: '抢单失败，请重试', icon: 'none' })
+          })
         }
       }
     })
@@ -366,7 +412,7 @@ const HomePage: FC = () => {
                   <Share2 size={14} color="#6B7280" />
                   <Text className="block text-xs text-gray-500 ml-1">分享</Text>
                 </View>
-                <View className="bg-blue-600 px-5 py-1 rounded-full" onClick={() => handleGrabOrder(demand.id)}>
+                <View className="bg-blue-600 px-5 py-1 rounded-full" onClick={(e) => { e.stopPropagation(); handleGrabOrder(demand) }}>
                   <Text className="block text-sm font-medium text-white">抢单</Text>
                 </View>
               </View>

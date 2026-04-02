@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { autoLockOnPageLoad } from '@/utils/referral-lock';
 import { useSiteConfig } from '@/store';
 import { Share2, MapPin, Phone, Lock, Eye, Gift, Clock, MessageCircle } from 'lucide-react-taro';
-import './index.css';
 
 interface OrderDetail {
   id: number;

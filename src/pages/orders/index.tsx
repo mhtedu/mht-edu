@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, User } from 'lucide-react-taro';
 import { useUserStore } from '@/stores/user';
 import { getLocation } from '@/utils';
-import './index.css';
 
 interface Order {
   id: number;
