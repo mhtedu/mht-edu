@@ -85,9 +85,8 @@ export class ActivityService {
     const signupStats = await executeQuery(`
       SELECT 
         COUNT(*) as total,
-        SUM(participant_count) as total_participants,
-        SUM(CASE WHEN signup_type = 1 THEN 1 ELSE 0 END) as online_count,
-        SUM(CASE WHEN signup_type = 2 THEN 1 ELSE 0 END) as offline_count
+        SUM(CASE WHEN participation_type = 1 THEN 1 ELSE 0 END) as online_count,
+        SUM(CASE WHEN participation_type = 2 THEN 1 ELSE 0 END) as offline_count
       FROM activity_signups
       WHERE activity_id = ? AND status = 1
     `, [activityId]);
@@ -149,9 +148,9 @@ export class ActivityService {
     // 创建报名记录
     const result = await executeQuery(`
       INSERT INTO activity_signups 
-      (activity_id, user_id, signup_type, participant_name, participant_phone, participant_count, total_amount, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-    `, [activityId, userId, signupType, participantName, participantPhone, participantCount, totalAmount]);
+      (activity_id, user_id, participation_type, status)
+      VALUES (?, ?, ?, 1)
+    `, [activityId, userId, signupType]);
 
     // 更新活动报名人数
     await executeQuery(`
@@ -190,7 +189,7 @@ export class ActivityService {
       SELECT 
         a.id, a.title, a.type, a.cover_image, a.start_time, a.end_time,
         a.address, a.status, a.is_online,
-        s.id as signup_id, s.signup_type, s.participant_count, s.total_amount, s.status as signup_status,
+        s.id as signup_id, s.participation_type as signup_type, s.status as signup_status,
         s.created_at as signup_time
       FROM activity_signups s
       LEFT JOIN activities a ON s.activity_id = a.id
@@ -238,9 +237,9 @@ export class ActivityService {
     // 更新活动人数
     await executeQuery(`
       UPDATE activities 
-      SET current_participants = current_participants - ?
+      SET current_participants = current_participants - 1
       WHERE id = ?
-    `, [signup.participant_count, activityId]);
+    `, [activityId]);
 
     return { success: true, message: '取消报名成功' };
   }
@@ -257,7 +256,7 @@ export class ActivityService {
 
     const participants = await executeQuery(`
       SELECT 
-        s.id, s.signup_type, s.participant_name, s.participant_count, s.created_at,
+        s.id, s.participation_type as signup_type, s.created_at,
         u.nickname, u.avatar
       FROM activity_signups s
       LEFT JOIN users u ON s.user_id = u.id

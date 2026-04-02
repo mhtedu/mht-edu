@@ -1560,4 +1560,94 @@ export class AdminController {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * 创建活动报名表
+   */
+  @Post('create-activity-registrations-table')
+  @Public()
+  async createActivityRegistrationsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS activity_registrations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          activity_id INT NOT NULL COMMENT '活动ID',
+          user_id INT NOT NULL COMMENT '用户ID',
+          signup_type INT DEFAULT 0 COMMENT '报名方式: 0个人 1机构',
+          participant_name VARCHAR(50) COMMENT '参与者姓名',
+          participant_phone VARCHAR(20) COMMENT '参与者电话',
+          participant_count INT DEFAULT 1 COMMENT '参与人数',
+          status INT DEFAULT 0 COMMENT '状态: 0待确认 1已确认 2已取消',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_activity_id (activity_id),
+          INDEX idx_user_id (user_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动报名表'
+      `);
+
+      return { success: true, message: 'activity_registrations表创建成功' };
+    } catch (error) {
+      console.error('创建表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 创建活动报名表（activity_signups）
+   */
+  @Post('create-activity-signups-table')
+  @Public()
+  async createActivitySignupsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS activity_signups (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          activity_id INT NOT NULL COMMENT '活动ID',
+          user_id INT NOT NULL COMMENT '用户ID',
+          signup_type INT DEFAULT 0 COMMENT '报名方式: 0线上 1线下',
+          participant_name VARCHAR(50) COMMENT '参与者姓名',
+          participant_phone VARCHAR(20) COMMENT '参与者电话',
+          participant_count INT DEFAULT 1 COMMENT '参与人数',
+          total_amount DECIMAL(10,2) DEFAULT 0 COMMENT '总金额',
+          status INT DEFAULT 1 COMMENT '状态: 0待确认 1已确认 2已取消',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_activity_id (activity_id),
+          INDEX idx_user_id (user_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动报名表'
+      `);
+
+      return { success: true, message: 'activity_signups表创建成功' };
+    } catch (error) {
+      console.error('创建表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 修复activity_signups表结构
+   */
+  @Post('fix-activity-signups-table')
+  @Public()
+  async fixActivitySignupsTable() {
+    try {
+      // 添加缺失的字段
+      await db.update(`
+        ALTER TABLE activity_signups
+        ADD COLUMN IF NOT EXISTS signup_type INT DEFAULT 0 COMMENT '报名方式: 0线上 1线下' AFTER user_id,
+        ADD COLUMN IF NOT EXISTS participant_name VARCHAR(50) COMMENT '参与者姓名' AFTER signup_type,
+        ADD COLUMN IF NOT EXISTS participant_phone VARCHAR(20) COMMENT '参与者电话' AFTER participant_name,
+        ADD COLUMN IF NOT EXISTS participant_count INT DEFAULT 1 COMMENT '参与人数' AFTER participant_phone,
+        ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10,2) DEFAULT 0 COMMENT '总金额' AFTER participant_count,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at
+      `);
+
+      return { success: true, message: 'activity_signups表修复成功' };
+    } catch (error) {
+      console.error('修复表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }

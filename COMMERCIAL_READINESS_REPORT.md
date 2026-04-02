@@ -150,11 +150,11 @@ CREATE TABLE activity_registrations (
   id INT PRIMARY KEY AUTO_INCREMENT,
   activity_id INT NOT NULL,
   user_id INT NOT NULL,
-  signup_type TINYINT DEFAULT 0,
+  signup_type INT DEFAULT 0,
   participant_name VARCHAR(50),
   participant_phone VARCHAR(20),
   participant_count INT DEFAULT 1,
-  status TINYINT DEFAULT 0,
+  status INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -176,8 +176,8 @@ data.longitude || null,
 ```json
 {
     "success": true,
-    "order_id": 209,
-    "order_no": "ORD20260403PVP1R760"
+    "order_id": 211,
+    "order_no": "ORD20260403B04OUY86"
 }
 ```
 
@@ -194,8 +194,8 @@ data.longitude || null,
 **验证结果**:
 ```json
 {
-    "payment_id": 3,
-    "payment_no": "PAY1775145980058BXW6DOB93",
+    "payment_id": 4,
+    "payment_no": "PAY1775146462583CDSTZI758",
     "amount": "79.90",
     "plan_name": "季度会员"
 }
@@ -212,6 +212,36 @@ data.longitude || null,
 {
     "success": true,
     "message": "订单已退回订单池，其他老师可以继续抢单"
+}
+```
+
+#### 5. ~~活动报名表字段不匹配~~ ✅ 已修复
+
+**原因**: 服务代码使用`signup_type`字段，但数据库表使用`participation_type`字段
+
+**修复方案**: 修改`activity.service.ts`使用正确的字段名`participation_type`
+
+**验证结果**:
+```json
+{
+    "success": true,
+    "signupId": 1,
+    "totalAmount": 0,
+    "message": "报名成功"
+}
+```
+
+#### 6. ~~抢单API路径不明确~~ ✅ 已确认
+
+**正确路径**:
+- GET `/api/teacher/orders/available` - 获取可抢单列表
+- POST `/api/teacher/orders/:orderId/grab` - 抢单
+
+**验证结果**:
+```json
+{
+    "success": true,
+    "message": "抢单成功，请等待家长选择"
 }
 ```
 
