@@ -152,11 +152,11 @@ export class OrderController {
   @Post(':id/reopen')
   async reopenOrder(
     @Param('id') id: string,
-    @Body() body: { reason?: string; userId?: number },
+    @Body() body: { reason?: string; userId?: number; user_id?: number },
     @Request() req: any,
   ) {
     // 支持从 body 获取 userId（用于测试），否则从 token 获取
-    const userId = body?.userId || req.user?.id || 1;
+    const userId = body?.userId || body?.user_id || req.user?.id || 1;
     return this.orderService.reopenOrder(parseInt(id), userId, body?.reason);
   }
 

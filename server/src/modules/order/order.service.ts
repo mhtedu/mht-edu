@@ -27,13 +27,13 @@ export class OrderService {
       orderNo,
       userId,
       userId, // parent_id 也使用 userId
-      data.subject,
+      data.subject || '',
       data.budget || data.hourly_rate || 0,
       data.grade || data.student_grade || '',
-      data.student_gender || 0,
-      data.address,
-      data.latitude,
-      data.longitude,
+      data.student_gender ?? 0,
+      data.address || null,
+      data.latitude || null,
+      data.longitude || null,
       data.requirement || data.description || '',
     ]);
 

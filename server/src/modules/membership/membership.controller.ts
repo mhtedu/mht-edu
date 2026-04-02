@@ -21,8 +21,16 @@ export class MembershipController {
   }
 
   @Post('buy')
-  async buyMembership(@Body() body: { user_id: number; plan_id: number }) {
-    return await this.membershipService.buyMembership(body.user_id, body.plan_id);
+  async buyMembership(@Body() body: { user_id?: number; plan_id?: number; userId?: number; planId?: number }) {
+    // 兼容两种参数命名风格
+    const userId = body.user_id || body.userId;
+    const planId = body.plan_id || body.planId;
+    
+    if (!userId || !planId) {
+      throw new Error('缺少必要参数: userId 和 planId');
+    }
+    
+    return await this.membershipService.buyMembership(userId, planId);
   }
 
   @Post('callback')
