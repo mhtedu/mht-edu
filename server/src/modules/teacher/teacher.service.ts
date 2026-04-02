@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { query } from '@/storage/database/mysql-client';
 import { MessageService } from '../message/message.service';
+import { NotificationService } from '../notification/notification.service';
 
 async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
   const [rows] = await query(sql, params);
@@ -9,7 +10,10 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
 
 @Injectable()
 export class TeacherService {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   /**
    * 获取教师列表（支持LBS距离计算）
@@ -385,6 +389,27 @@ export class TeacherService {
 
     // 触发抢单提醒
     await this.messageService.createReminder((order as any).parent_id, userId, 3, orderId, '有教师抢单了您的订单');
+
+    // 发送通知（微信订阅消息 + 短信）
+    try {
+      // 获取教师信息
+      const teacherInfo = await executeQuery(`
+        SELECT u.nickname, tp.real_name FROM users u
+        LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+        WHERE u.id = ?
+      `, [userId]);
+      const teacherName = (teacherInfo[0] as any)?.real_name || (teacherInfo[0] as any)?.nickname || '老师';
+      
+      // 发送抢单成功通知给家长
+      await this.notificationService.notifyParentOnGrab(
+        (order as any).parent_id,
+        orderId,
+        teacherName,
+        order.subject || '未知科目',
+      );
+    } catch (notifyError) {
+      console.error('发送抢单通知失败:', notifyError);
+    }
 
     return { success: true, message: '抢单成功，请等待家长选择' };
   }

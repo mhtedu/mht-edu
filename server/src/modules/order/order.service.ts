@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { query } from '@/storage/database/mysql-client';
 import { MessageService } from '../message/message.service';
+import { NotificationService } from '../notification/notification.service';
 
 async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
   const [rows] = await query(sql, params);
@@ -9,7 +10,10 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   /**
    * 创建订单
@@ -233,6 +237,27 @@ export class OrderService {
       teacherId,
       `恭喜！您已成功匹配订单 #${order.order_no}，家长将在24小时内联系您。`,
     );
+
+    // 发送匹配成功通知（微信订阅消息 + 短信）
+    try {
+      // 获取家长信息
+      const parentInfo = await executeQuery(`
+        SELECT u.nickname, u.mobile FROM users u WHERE u.id = ?
+      `, [order.parent_id]);
+      const parentName = (parentInfo[0] as any)?.nickname || '家长';
+      const parentPhone = (parentInfo[0] as any)?.mobile || '未填写';
+      
+      // 发送匹配成功通知给老师
+      await this.notificationService.notifyTeacherOnMatch(
+        teacherId,
+        orderId,
+        parentName,
+        parentPhone,
+        order.subject || '未知科目',
+      );
+    } catch (notifyError) {
+      console.error('发送匹配通知失败:', notifyError);
+    }
 
     return { success: true };
   }
