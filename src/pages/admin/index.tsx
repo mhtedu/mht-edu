@@ -10,7 +10,8 @@ import {
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
   Settings, LogOut, DollarSign, UserPlus, Gift, Percent,
   ShoppingBag, Calendar, ChevronRight, Search, Eye, Pencil, Trash2,
-  Check, X, Plus, Download, Upload, Award, CreditCard, Crown
+  Check, X, Plus, Download, Upload, Award, CreditCard, Crown,
+  Receipt, RotateCcw
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -122,7 +123,9 @@ const MENUS = [
   { id: 'products', label: '商品管理', icon: ShoppingBag },
   { id: 'banners', label: '广告位管理', icon: ImageIcon },
   { id: 'commissions', label: '分佣管理', icon: Percent },
+  { id: 'finance', label: '财务流水', icon: Receipt },
   { id: 'withdrawals', label: '提现审核', icon: CreditCard },
+  { id: 'refunds', label: '退费管理', icon: RotateCcw },
   { id: 'agents', label: '代理商管理', icon: MapPin },
   { id: 'demo', label: '演示数据', icon: Users },
   { id: 'config', label: '系统配置', icon: Settings },
@@ -156,6 +159,16 @@ const AdminPage = () => {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+  const [financeFilter, setFinanceFilter] = useState<string>('');
+  const [refundFilter, setRefundFilter] = useState<string>('');
+  
+  // 新增数据状态
+  const [financeRecords, setFinanceRecords] = useState<any[]>([]);
+  const [financeStats, setFinanceStats] = useState<any>({});
+  const [refunds, setRefunds] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [showProductDialog, setShowProductDialog] = useState(false);
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', description: '' });
   
   // 会员弹窗状态
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -195,8 +208,17 @@ const AdminPage = () => {
         case 'activities':
           await loadActivities();
           break;
+        case 'products':
+          await loadProducts();
+          break;
         case 'banners':
           await loadBanners();
+          break;
+        case 'finance':
+          await loadFinanceRecords();
+          break;
+        case 'refunds':
+          await loadRefunds();
           break;
         case 'config':
           await loadSiteConfig();
@@ -239,9 +261,12 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, role: roleFilter, keyword, status: statusFilter }
       });
-      if (res.data && res.data.data) {
-        setUsers(res.data.data.list || []);
-        setTotal(res.data.data.total || 0);
+      console.log('[Admin] Users response:', res.data);
+      if (res.data) {
+        // 支持两种响应格式: { list, total } 和 { data: { list, total } }
+        const data = res.data.data || res.data;
+        setUsers(data.list || []);
+        setTotal(data.total || 0);
       }
     } catch (error) {
       // 模拟数据
@@ -261,9 +286,12 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, keyword, verifyStatus: statusFilter }
       });
-      if (res.data && res.data.data) {
-        setTeachers(res.data.data.list || []);
-        setTotal(res.data.data.total || 0);
+      console.log('[Admin] Teachers response:', res.data);
+      if (res.data) {
+        // 支持两种响应格式
+        const data = res.data.data || res.data;
+        setTeachers(Array.isArray(data) ? data : (data.list || []));
+        setTotal(Array.isArray(data) ? data.length : (data.total || 0));
       }
     } catch (error) {
       // 模拟数据
@@ -282,9 +310,11 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, status: statusFilter }
       });
-      if (res.data && res.data.data) {
-        setOrgs(res.data.data.list || []);
-        setTotal(res.data.data.total || 0);
+      console.log('[Admin] Orgs response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setOrgs(Array.isArray(data) ? data : (data.list || []));
+        setTotal(Array.isArray(data) ? data.length : (data.total || 0));
       }
     } catch (error) {
       // 模拟数据
@@ -303,9 +333,11 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize, keyword, status: statusFilter }
       });
-      if (res.data && res.data.data) {
-        setOrders(res.data.data.list || []);
-        setTotal(res.data.data.total || 0);
+      console.log('[Admin] Orders response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setOrders(Array.isArray(data) ? data : (data.list || []));
+        setTotal(Array.isArray(data) ? data.length : (data.total || 0));
       }
     } catch (error) {
       // 模拟数据
@@ -323,8 +355,10 @@ const AdminPage = () => {
         url: '/api/admin/membership-plans',
         method: 'GET',
       });
-      if (res.data && res.data.data) {
-        setMembershipPlans(res.data.data || []);
+      console.log('[Admin] Membership plans response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setMembershipPlans(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       // 模拟数据
@@ -344,9 +378,11 @@ const AdminPage = () => {
         method: 'GET',
         data: { page, pageSize }
       });
-      if (res.data && res.data.data) {
-        setActivities(res.data.data.list || []);
-        setTotal(res.data.data.total || 0);
+      console.log('[Admin] Activities response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setActivities(Array.isArray(data) ? data : (data.list || []));
+        setTotal(Array.isArray(data) ? data.length : (data.total || 0));
       }
     } catch (error) {
       // 模拟数据
@@ -363,8 +399,10 @@ const AdminPage = () => {
         url: '/api/admin/banners',
         method: 'GET',
       });
-      if (res.data && res.data.data) {
-        setBanners(res.data.data || []);
+      console.log('[Admin] Banners response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setBanners(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       // 模拟数据
@@ -381,12 +419,13 @@ const AdminPage = () => {
         url: '/api/admin/config',
         method: 'GET',
       });
-      if (res.data && res.data.data) {
-        const config: SiteConfig = {};
-        res.data.data.forEach((item: any) => {
-          config[item.config_key] = item.config_value;
-        });
-        setSiteConfig(config);
+      console.log('[Admin] Config response:', res.data);
+      if (res.data) {
+        // 后端直接返回配置对象 { site_name: 'xxx', ... }
+        const data = res.data.data || res.data;
+        if (typeof data === 'object' && !Array.isArray(data)) {
+          setSiteConfig(data);
+        }
       }
     } catch (error) {
       // 模拟数据
@@ -399,6 +438,145 @@ const AdminPage = () => {
         icp_number: '京ICP备XXXXXXXX号',
       });
     }
+  };
+
+  // ==================== 财务流水管理 ====================
+
+  const loadFinanceRecords = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/finance-records',
+        method: 'GET',
+        data: { page, pageSize, type: financeFilter }
+      });
+      console.log('[Admin] Finance records response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setFinanceRecords(data.list || []);
+        setFinanceStats(data.stats || {});
+        setTotal(data.total || 0);
+      }
+    } catch (error) {
+      console.error('加载财务流水失败:', error);
+      setFinanceRecords([]);
+      setFinanceStats({});
+    }
+  };
+
+  // ==================== 退费管理 ====================
+
+  const loadRefunds = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/refunds',
+        method: 'GET',
+        data: { page, pageSize, status: refundFilter }
+      });
+      console.log('[Admin] Refunds response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setRefunds(data.list || []);
+        setTotal(data.total || 0);
+      }
+    } catch (error) {
+      console.error('加载退费列表失败:', error);
+      setRefunds([]);
+    }
+  };
+
+  const handleAuditRefund = async (id: number, status: number, rejectReason?: string) => {
+    try {
+      await Network.request({
+        url: `/api/admin/refunds/${id}/audit`,
+        method: 'POST',
+        data: { status, reject_reason: rejectReason }
+      });
+      Taro.showToast({ title: '审核成功', icon: 'success' });
+      loadRefunds();
+    } catch (error) {
+      Taro.showToast({ title: '审核失败', icon: 'error' });
+    }
+  };
+
+  // ==================== 商品管理 ====================
+
+  const loadProducts = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/products',
+        method: 'GET',
+        data: { page, pageSize }
+      });
+      console.log('[Admin] Products response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setProducts(data.list || []);
+        setTotal(data.total || 0);
+      }
+    } catch (error) {
+      console.error('加载商品列表失败:', error);
+      setProducts([]);
+    }
+  };
+
+  const handleCreateProduct = async () => {
+    if (!newProduct.name || !newProduct.price) {
+      Taro.showToast({ title: '请填写商品名称和价格', icon: 'error' });
+      return;
+    }
+    try {
+      await Network.request({
+        url: '/api/admin/products',
+        method: 'POST',
+        data: {
+          name: newProduct.name,
+          price: parseFloat(newProduct.price),
+          stock: newProduct.stock ? parseInt(newProduct.stock) : -1,
+          description: newProduct.description
+        }
+      });
+      Taro.showToast({ title: '创建成功', icon: 'success' });
+      setShowProductDialog(false);
+      setNewProduct({ name: '', price: '', stock: '', description: '' });
+      loadProducts();
+    } catch (error) {
+      Taro.showToast({ title: '创建失败', icon: 'error' });
+    }
+  };
+
+  const handleToggleProductStatus = async (id: number, currentStatus: number) => {
+    try {
+      await Network.request({
+        url: `/api/admin/products/${id}`,
+        method: 'PUT',
+        data: { status: currentStatus === 1 ? 0 : 1 }
+      });
+      Taro.showToast({ title: currentStatus === 1 ? '已下架' : '已上架', icon: 'success' });
+      loadProducts();
+    } catch (error) {
+      Taro.showToast({ title: '操作失败', icon: 'error' });
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定要删除该商品吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({
+              url: `/api/admin/products/${id}`,
+              method: 'DELETE'
+            });
+            Taro.showToast({ title: '删除成功', icon: 'success' });
+            loadProducts();
+          } catch (error) {
+            Taro.showToast({ title: '删除失败', icon: 'error' });
+          }
+        }
+      }
+    });
   };
 
   // ==================== 演示数据管理 ====================
@@ -1737,6 +1915,174 @@ const AdminPage = () => {
     </View>
   );
 
+  const renderFinanceRecords = () => (
+    <View className="p-6">
+      <View className="flex justify-between items-center mb-4">
+        <Text className="text-lg font-semibold">财务流水</Text>
+        <View className="flex items-center gap-4 text-sm">
+          <Text className="text-green-600">收入: ¥{(financeStats.total_income || 0).toFixed(2)}</Text>
+          <Text className="text-red-600">支出: ¥{(financeStats.total_expense || 0).toFixed(2)}</Text>
+          <Text className="text-orange-600">退款: ¥{(financeStats.total_refund || 0).toFixed(2)}</Text>
+        </View>
+      </View>
+
+      <Card className="mb-4">
+        <CardContent className="flex gap-2 flex-wrap">
+          <Button size="sm" variant={financeFilter === '' ? 'default' : 'outline'} onClick={() => setFinanceFilter('')}>全部</Button>
+          <Button size="sm" variant={financeFilter === '1' ? 'default' : 'outline'} onClick={() => setFinanceFilter('1')}>收入</Button>
+          <Button size="sm" variant={financeFilter === '2' ? 'default' : 'outline'} onClick={() => setFinanceFilter('2')}>支出</Button>
+          <Button size="sm" variant={financeFilter === '3' ? 'default' : 'outline'} onClick={() => setFinanceFilter('3')}>退款</Button>
+          <Button size="sm" variant={financeFilter === '4' ? 'default' : 'outline'} onClick={() => setFinanceFilter('4')}>提现</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="w-24">用户</Text>
+              <Text className="w-20">类型</Text>
+              <Text className="w-24">金额</Text>
+              <Text className="flex-1">描述</Text>
+              <Text className="w-32">时间</Text>
+            </View>
+            {financeRecords.map(record => (
+              <View key={record.id} className="admin-table-row">
+                <Text className="w-16">{record.id}</Text>
+                <Text className="w-24">{record.nickname || record.user_id}</Text>
+                <Text className={`w-20 ${record.type === 1 ? 'text-green-600' : 'text-red-600'}`}>
+                  {record.type === 1 ? '收入' : record.type === 2 ? '支出' : record.type === 3 ? '退款' : '提现'}
+                </Text>
+                <Text className={`w-24 ${record.type === 1 ? 'text-green-600' : 'text-red-600'}`}>
+                  {record.type === 1 ? '+' : '-'}¥{record.amount}
+                </Text>
+                <Text className="flex-1 truncate">{record.description}</Text>
+                <Text className="w-32">{record.created_at?.substring(0, 16)}</Text>
+              </View>
+            ))}
+            {financeRecords.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <Receipt size={48} color="#9ca3af" />
+                <Text className="mt-4 block">暂无财务流水</Text>
+              </View>
+            )}
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  const renderRefunds = () => (
+    <View className="p-6">
+      <View className="flex justify-between items-center mb-4">
+        <Text className="text-lg font-semibold">退费管理</Text>
+        <View className="flex items-center gap-4 text-sm">
+          <Text className="text-orange-600">待处理: {refunds.filter(r => r.status === 0).length}</Text>
+        </View>
+      </View>
+
+      <Card className="mb-4">
+        <CardContent className="flex gap-2 flex-wrap">
+          <Button size="sm" variant={refundFilter === '' ? 'default' : 'outline'} onClick={() => setRefundFilter('')}>全部</Button>
+          <Button size="sm" variant={refundFilter === '0' ? 'default' : 'outline'} onClick={() => setRefundFilter('0')}>待处理</Button>
+          <Button size="sm" variant={refundFilter === '1' ? 'default' : 'outline'} onClick={() => setRefundFilter('1')}>已同意</Button>
+          <Button size="sm" variant={refundFilter === '2' ? 'default' : 'outline'} onClick={() => setRefundFilter('2')}>已拒绝</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="w-24">用户</Text>
+              <Text className="w-24">金额</Text>
+              <Text className="flex-1">原因</Text>
+              <Text className="w-20">状态</Text>
+              <Text className="w-32">操作</Text>
+            </View>
+            {refunds.map(refund => (
+              <View key={refund.id} className="admin-table-row">
+                <Text className="w-16">{refund.id}</Text>
+                <Text className="w-24">{refund.nickname || refund.user_id}</Text>
+                <Text className="w-24 text-red-600">¥{refund.amount}</Text>
+                <Text className="flex-1 truncate">{refund.reason}</Text>
+                <Text className={`w-20 ${refund.status === 0 ? 'text-orange-600' : refund.status === 1 ? 'text-green-600' : 'text-gray-400'}`}>
+                  {refund.status === 0 ? '待处理' : refund.status === 1 ? '已同意' : '已拒绝'}
+                </Text>
+                <View className="w-32 flex gap-1">
+                  {refund.status === 0 && (
+                    <>
+                      <Button size="sm" variant="default" onClick={() => handleAuditRefund(refund.id, 1)}>同意</Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleAuditRefund(refund.id, 2)}>拒绝</Button>
+                    </>
+                  )}
+                </View>
+              </View>
+            ))}
+            {refunds.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <RotateCcw size={48} color="#9ca3af" />
+                <Text className="mt-4 block">暂无退费申请</Text>
+              </View>
+            )}
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
+  const renderProducts = () => (
+    <View className="p-6">
+      <View className="flex justify-between items-center mb-4">
+        <Text className="text-lg font-semibold">商品管理</Text>
+        <Button onClick={() => setShowProductDialog(true)}><Plus size={16} color="#fff" className="mr-1" /> 添加商品</Button>
+      </View>
+
+      <Card>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="w-48">商品名称</Text>
+              <Text className="w-20">价格</Text>
+              <Text className="w-20">库存</Text>
+              <Text className="w-20">销量</Text>
+              <Text className="w-20">状态</Text>
+              <Text className="w-32">操作</Text>
+            </View>
+            {products.map(product => (
+              <View key={product.id} className="admin-table-row">
+                <Text className="w-16">{product.id}</Text>
+                <Text className="w-48 truncate">{product.name}</Text>
+                <Text className="w-20 text-red-600">¥{product.price}</Text>
+                <Text className="w-20">{product.stock === -1 ? '无限' : product.stock}</Text>
+                <Text className="w-20">{product.sales || 0}</Text>
+                <Text className={`w-20 ${product.status === 1 ? 'text-green-600' : 'text-gray-400'}`}>
+                  {product.status === 1 ? '上架' : '下架'}
+                </Text>
+                <View className="w-32 flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => handleToggleProductStatus(product.id, product.status)}>
+                    {product.status === 1 ? '下架' : '上架'}
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleDeleteProduct(product.id)}>删除</Button>
+                </View>
+              </View>
+            ))}
+            {products.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <ShoppingBag size={48} color="#9ca3af" />
+                <Text className="mt-4 block">暂无商品数据</Text>
+                <Text className="text-sm mt-2">点击「添加商品」创建第一个商品</Text>
+              </View>
+            )}
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
+
   const renderAgents = () => (
     <View className="p-6">
       <View className="flex justify-between items-center mb-4">
@@ -1774,7 +2120,10 @@ const AdminPage = () => {
       case 'orders': return renderOrders();
       case 'membership': return renderMembership();
       case 'activities': return renderActivities();
+      case 'products': return renderProducts();
       case 'banners': return renderBanners();
+      case 'finance': return renderFinanceRecords();
+      case 'refunds': return renderRefunds();
       case 'config': return renderConfig();
       case 'payment': return renderPayment();
       case 'demo': return renderDemo();
@@ -1842,6 +2191,55 @@ const AdminPage = () => {
 
       {/* 会员开通弹窗 */}
       {renderMemberDialog()}
+
+      {/* 商品添加弹窗 */}
+      {showProductDialog && (
+        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <View className="bg-white rounded-lg w-96 p-6">
+            <Text className="text-lg font-semibold mb-4">添加商品</Text>
+            <View className="space-y-4">
+              <View>
+                <Text className="text-sm text-gray-600 mb-1">商品名称 *</Text>
+                <Input
+                  value={newProduct.name}
+                  placeholder="请输入商品名称"
+                  onInput={(e) => setNewProduct({ ...newProduct, name: e.detail.value })}
+                />
+              </View>
+              <View>
+                <Text className="text-sm text-gray-600 mb-1">价格 *</Text>
+                <Input
+                  value={newProduct.price}
+                  type="number"
+                  placeholder="请输入价格"
+                  onInput={(e) => setNewProduct({ ...newProduct, price: e.detail.value })}
+                />
+              </View>
+              <View>
+                <Text className="text-sm text-gray-600 mb-1">库存</Text>
+                <Input
+                  value={newProduct.stock}
+                  type="number"
+                  placeholder="留空或-1表示无限"
+                  onInput={(e) => setNewProduct({ ...newProduct, stock: e.detail.value })}
+                />
+              </View>
+              <View>
+                <Text className="text-sm text-gray-600 mb-1">描述</Text>
+                <Input
+                  value={newProduct.description}
+                  placeholder="请输入商品描述"
+                  onInput={(e) => setNewProduct({ ...newProduct, description: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setShowProductDialog(false)}>取消</Button>
+              <Button onClick={handleCreateProduct}>确认添加</Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

@@ -2731,4 +2731,349 @@ export class AdminController {
       };
     }
   }
+
+  // ==================== 财务流水管理 ====================
+
+  /**
+   * 创建财务流水表
+   */
+  @Public()
+  @Post('create-finance-records-table')
+  async createFinanceRecordsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS finance_records (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          type TINYINT NOT NULL COMMENT '类型: 1=收入 2=支出 3=退款 4=提现',
+          amount DECIMAL(10,2) NOT NULL COMMENT '金额',
+          balance_before DECIMAL(10,2) DEFAULT 0 COMMENT '变动前余额',
+          balance_after DECIMAL(10,2) DEFAULT 0 COMMENT '变动后余额',
+          source_type VARCHAR(50) COMMENT '来源类型: order/membership/withdraw/refund',
+          source_id INT COMMENT '关联ID',
+          description VARCHAR(255) COMMENT '描述',
+          status TINYINT DEFAULT 1 COMMENT '状态: 0=失败 1=成功',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_user (user_id),
+          INDEX idx_type (type),
+          INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='财务流水表'
+      `);
+      
+      return { success: true, message: 'finance_records表创建成功' };
+    } catch (error) {
+      console.error('创建财务流水表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 获取财务流水列表
+   */
+  @Get('finance-records')
+  @Public()
+  async getFinanceRecords(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('type') type = '',
+    @Query('userId') userId = '',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const conditions: string[] = ['1=1'];
+    const params: any[] = [];
+    
+    if (type) {
+      conditions.push('fr.type = ?');
+      params.push(parseInt(type));
+    }
+    if (userId) {
+      conditions.push('fr.user_id = ?');
+      params.push(parseInt(userId));
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    try {
+      const [list] = await db.query(`
+        SELECT fr.*, u.nickname, u.mobile, u.avatar
+        FROM finance_records fr
+        LEFT JOIN users u ON fr.user_id = u.id
+        WHERE ${whereClause}
+        ORDER BY fr.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM finance_records fr WHERE ${whereClause}
+      `, params);
+      
+      // 统计总收入支出
+      const [stats] = await db.query(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN type = 1 THEN amount ELSE 0 END), 0) as total_income,
+          COALESCE(SUM(CASE WHEN type = 2 THEN amount ELSE 0 END), 0) as total_expense,
+          COALESCE(SUM(CASE WHEN type = 3 THEN amount ELSE 0 END), 0) as total_refund,
+          COALESCE(SUM(CASE WHEN type = 4 THEN amount ELSE 0 END), 0) as total_withdraw
+        FROM finance_records
+      `);
+      
+      return { 
+        list, 
+        total: countResult[0]?.total || 0, 
+        page: pageNum, 
+        pageSize: pageSizeNum,
+        stats: stats[0] || { total_income: 0, total_expense: 0, total_refund: 0, total_withdraw: 0 }
+      };
+    } catch (error) {
+      console.error('获取财务流水失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum, stats: {} };
+    }
+  }
+
+  // ==================== 退费管理 ====================
+
+  /**
+   * 创建退费记录表
+   */
+  @Public()
+  @Post('create-refund-records-table')
+  async createRefundRecordsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS refund_records (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          order_id INT COMMENT '关联订单ID',
+          payment_id INT COMMENT '关联支付ID',
+          amount DECIMAL(10,2) NOT NULL COMMENT '退款金额',
+          reason VARCHAR(500) COMMENT '退款原因',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待处理 1=已同意 2=已拒绝 3=已退款',
+          reject_reason VARCHAR(255) COMMENT '拒绝原因',
+          processed_by INT COMMENT '处理人ID',
+          processed_at TIMESTAMP NULL COMMENT '处理时间',
+          refunded_at TIMESTAMP NULL COMMENT '退款时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_user (user_id),
+          INDEX idx_order (order_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款记录表'
+      `);
+      
+      return { success: true, message: 'refund_records表创建成功' };
+    } catch (error) {
+      console.error('创建退费记录表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 获取退费申请列表
+   */
+  @Get('refunds')
+  @Public()
+  async getRefunds(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status = '',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const conditions: string[] = ['1=1'];
+    const params: any[] = [];
+    
+    if (status) {
+      conditions.push('rr.status = ?');
+      params.push(parseInt(status));
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    try {
+      const [list] = await db.query(`
+        SELECT rr.*, u.nickname, u.mobile, u.avatar
+        FROM refund_records rr
+        LEFT JOIN users u ON rr.user_id = u.id
+        WHERE ${whereClause}
+        ORDER BY rr.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM refund_records rr WHERE ${whereClause}
+      `, params);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取退费列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 审核退费申请
+   */
+  @Post('refunds/:id/audit')
+  @Public()
+  async auditRefund(
+    @Param('id') id: string,
+    @Body() body: { status: number; reject_reason?: string }
+  ) {
+    try {
+      const refundId = parseInt(id);
+      
+      await db.update(
+        `UPDATE refund_records SET status = ?, reject_reason = ?, processed_at = NOW(), updated_at = NOW() WHERE id = ?`,
+        [body.status, body.reject_reason || null, refundId]
+      );
+      
+      // 如果同意退款，更新支付状态
+      if (body.status === 1) {
+        const [refunds] = await db.query('SELECT * FROM refund_records WHERE id = ?', [refundId]);
+        const refund = (refunds as any[])[0];
+        
+        if (refund && refund.payment_id) {
+          await db.update('UPDATE payments SET status = 3, refunded_at = NOW() WHERE id = ?', [refund.payment_id]);
+        }
+        
+        // 记录财务流水
+        if (refund) {
+          await db.update(
+            `INSERT INTO finance_records (user_id, type, amount, source_type, source_id, description, status, created_at)
+             VALUES (?, 3, ?, 'refund', ?, '退款申请通过', 1, NOW())`,
+            [refund.user_id, refund.amount, refundId]
+          );
+        }
+      }
+      
+      return { success: true, message: '审核成功' };
+    } catch (error) {
+      console.error('审核退费失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 商品管理 ====================
+
+  /**
+   * 获取商品列表
+   */
+  @Get('products')
+  @Public()
+  async getProducts(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status = '',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const conditions: string[] = ['1=1'];
+    const params: any[] = [];
+    
+    if (status) {
+      conditions.push('p.status = ?');
+      params.push(parseInt(status));
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    try {
+      const [list] = await db.query(`
+        SELECT p.*, pc.name as category_name
+        FROM products p
+        LEFT JOIN product_categories pc ON p.category_id = pc.id
+        WHERE ${whereClause}
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM products p WHERE ${whereClause}
+      `, params);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取商品列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 创建商品
+   */
+  @Post('products')
+  @Public()
+  async createProduct(@Body() body: {
+    name: string;
+    category_id?: number;
+    description?: string;
+    price: number;
+    original_price?: number;
+    image?: string;
+    stock?: number;
+    type?: number;
+    delivery_type?: number;
+  }) {
+    try {
+      const insertId = await db.insert(
+        `INSERT INTO products (name, category_id, description, price, original_price, image, stock, type, delivery_type, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+        [body.name, body.category_id || null, body.description || '', body.price, body.original_price || body.price, body.image || '', body.stock || -1, body.type || 1, body.delivery_type || 1]
+      );
+      
+      return { success: true, id: insertId };
+    } catch (error) {
+      console.error('创建商品失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 更新商品
+   */
+  @Put('products/:id')
+  @Public()
+  async updateProduct(@Param('id') id: string, @Body() body: any) {
+    try {
+      const updates: string[] = [];
+      const params: any[] = [];
+      
+      if (body.name) { updates.push('name = ?'); params.push(body.name); }
+      if (body.price !== undefined) { updates.push('price = ?'); params.push(body.price); }
+      if (body.stock !== undefined) { updates.push('stock = ?'); params.push(body.stock); }
+      if (body.status !== undefined) { updates.push('status = ?'); params.push(body.status); }
+      
+      if (updates.length === 0) return { success: true };
+      
+      updates.push('updated_at = NOW()');
+      params.push(parseInt(id));
+      
+      await db.update(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 删除商品
+   */
+  @Delete('products/:id')
+  @Public()
+  async deleteProduct(@Param('id') id: string) {
+    try {
+      await db.update('UPDATE products SET status = 0, updated_at = NOW() WHERE id = ?', [parseInt(id)]);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
