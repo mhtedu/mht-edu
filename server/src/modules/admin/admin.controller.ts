@@ -1690,4 +1690,478 @@ export class AdminController {
       errors: errors.length > 0 ? errors : undefined
     };
   }
+
+  // ==================== 数据导出功能 ====================
+
+  /**
+   * 导出用户数据为Excel
+   */
+  @Get('export/users')
+  @Public()
+  async exportUsers(@Query('role') role: string = '') {
+    try {
+      let whereClause = 'WHERE 1=1';
+      const params: any[] = [];
+      
+      if (role) {
+        whereClause += ' AND u.role = ?';
+        params.push(role === 'parent' ? 0 : role === 'teacher' ? 1 : 2);
+      }
+
+      const [users] = await db.query(`
+        SELECT 
+          u.id, u.nickname, u.mobile, 
+          CASE u.role WHEN 0 THEN '家长' WHEN 1 THEN '牛师' WHEN 2 THEN '机构' END as role_name,
+          CASE u.membership_type WHEN 1 THEN '会员' ELSE '普通' END as membership_status,
+          u.membership_expire_at, u.city_name,
+          CASE u.status WHEN 1 THEN '正常' ELSE '禁用' END as status_name,
+          u.created_at
+        FROM users u
+        ${whereClause}
+        ORDER BY u.id DESC
+        LIMIT 10000
+      `, params);
+
+      // 生成Excel数据
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(users as any[]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '用户数据');
+      
+      // 转为base64
+      const excelBuffer = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+      
+      return { 
+        success: true, 
+        data: excelBuffer,
+        filename: `users_${role || 'all'}_${new Date().toISOString().split('T')[0]}.xlsx`
+      };
+    } catch (error) {
+      console.error('导出用户数据失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 导出牛师数据为Excel
+   */
+  @Get('export/teachers')
+  @Public()
+  async exportTeachers() {
+    try {
+      const [teachers] = await db.query(`
+        SELECT 
+          tp.user_id as id, u.nickname, tp.real_name, u.mobile, u.city_name,
+          tp.education, tp.school, tp.major, 
+          CASE tp.verify_status WHEN 0 THEN '待审核' WHEN 1 THEN '已认证' WHEN 2 THEN '已拒绝' END as verify_status_name,
+          tp.teaching_years, tp.subjects, tp.intro,
+          tp.rating, tp.hourly_rate_min, tp.hourly_rate_max,
+          CASE u.membership_type WHEN 1 THEN '会员' ELSE '普通' END as membership_status,
+          u.membership_expire_at, u.created_at
+        FROM teacher_profiles tp
+        LEFT JOIN users u ON tp.user_id = u.id
+        ORDER BY tp.user_id DESC
+        LIMIT 10000
+      `);
+
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(teachers as any[]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '牛师数据');
+      
+      const excelBuffer = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+      
+      return { 
+        success: true, 
+        data: excelBuffer,
+        filename: `teachers_${new Date().toISOString().split('T')[0]}.xlsx`
+      };
+    } catch (error) {
+      console.error('导出牛师数据失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 导出家长数据为Excel
+   */
+  @Get('export/parents')
+  @Public()
+  async exportParents() {
+    try {
+      const [parents] = await db.query(`
+        SELECT 
+          u.id, u.nickname, u.mobile, u.city_name,
+          CASE u.membership_type WHEN 1 THEN '会员' ELSE '普通' END as membership_status,
+          u.membership_expire_at,
+          (SELECT COUNT(*) FROM orders o WHERE o.parent_id = u.id) as order_count,
+          (SELECT COUNT(*) FROM orders o WHERE o.parent_id = u.id AND o.status = 4) as completed_count,
+          u.created_at
+        FROM users u
+        WHERE u.role = 0
+        ORDER BY u.id DESC
+        LIMIT 10000
+      `);
+
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(parents as any[]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '家长数据');
+      
+      const excelBuffer = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+      
+      return { 
+        success: true, 
+        data: excelBuffer,
+        filename: `parents_${new Date().toISOString().split('T')[0]}.xlsx`
+      };
+    } catch (error) {
+      console.error('导出家长数据失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 导出机构数据为Excel
+   */
+  @Get('export/orgs')
+  @Public()
+  async exportOrgs() {
+    try {
+      const [orgs] = await db.query(`
+        SELECT 
+          o.id, o.name, o.contact_person, o.contact_phone, o.address, o.description,
+          CASE o.verify_status WHEN 0 THEN '待审核' WHEN 1 THEN '已认证' WHEN 2 THEN '已拒绝' END as verify_status_name,
+          (SELECT COUNT(*) FROM users WHERE affiliated_org_id = o.user_id) as teacher_count,
+          u.membership_type, u.membership_expire_at, o.created_at
+        FROM organizations o
+        LEFT JOIN users u ON o.user_id = u.id
+        ORDER BY o.id DESC
+        LIMIT 10000
+      `);
+
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(orgs as any[]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '机构数据');
+      
+      const excelBuffer = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+      
+      return { 
+        success: true, 
+        data: excelBuffer,
+        filename: `orgs_${new Date().toISOString().split('T')[0]}.xlsx`
+      };
+    } catch (error) {
+      console.error('导出机构数据失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 会员管理功能 ====================
+
+  /**
+   * 人工开通会员
+   */
+  @Post('users/:id/grant-membership')
+  @Public()
+  async grantMembership(
+    @Param('id') id: string,
+    @Body() body: { days: number; reason?: string }
+  ) {
+    try {
+      const userId = parseInt(id);
+      const days = body.days || 365;
+      
+      // 获取用户当前会员状态
+      const [users] = await db.query(
+        'SELECT membership_expire_at FROM users WHERE id = ?',
+        [userId]
+      );
+      
+      if (!users || users.length === 0) {
+        return { success: false, message: '用户不存在' };
+      }
+      
+      // 计算新的过期时间
+      let expireAt = new Date();
+      const current = (users as any[])[0]?.membership_expire_at;
+      if (current && new Date(current) > expireAt) {
+        expireAt = new Date(current);
+      }
+      expireAt.setDate(expireAt.getDate() + days);
+      
+      // 更新会员状态
+      await db.update(
+        'UPDATE users SET membership_type = 1, membership_expire_at = ?, updated_at = NOW() WHERE id = ?',
+        [expireAt, userId]
+      );
+      
+      // 尝试记录操作日志（如果表存在）
+      try {
+        await db.update(
+          `INSERT INTO membership_logs (user_id, action, days, reason, created_at) 
+           VALUES (?, 'grant', ?, ?, NOW())`,
+          [userId, days, body.reason || '后台开通']
+        );
+      } catch (logError) {
+        console.log('记录会员日志失败，跳过:', logError.message);
+      }
+      
+      return { 
+        success: true, 
+        message: `已为用户 ${userId} 开通 ${days} 天会员`,
+        expireAt: expireAt.toISOString()
+      };
+    } catch (error) {
+      console.error('开通会员失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 取消会员
+   */
+  @Post('users/:id/revoke-membership')
+  @Public()
+  async revokeMembership(
+    @Param('id') id: string,
+    @Body() body: { reason?: string }
+  ) {
+    try {
+      const userId = parseInt(id);
+      
+      await db.update(
+        'UPDATE users SET membership_type = 0, membership_expire_at = NULL, updated_at = NOW() WHERE id = ?',
+        [userId]
+      );
+      
+      // 尝试记录操作日志（如果表存在）
+      try {
+        await db.update(
+          `INSERT INTO membership_logs (user_id, action, reason, created_at) 
+           VALUES (?, 'revoke', ?, NOW())`,
+          [userId, body.reason || '后台取消']
+        );
+      } catch (logError) {
+        console.log('记录会员日志失败，跳过:', logError.message);
+      }
+      
+      return { success: true, message: `已取消用户 ${userId} 的会员` };
+    } catch (error) {
+      console.error('取消会员失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 提现管理 ====================
+
+  /**
+   * 获取提现列表
+   */
+  @Get('withdrawals')
+  @Public()
+  async getWithdrawals(@Query('status') status = '', @Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+    
+    if (status) {
+      whereClause += ' AND w.status = ?';
+      params.push(parseInt(status));
+    }
+    
+    try {
+      const [list] = await db.query(`
+        SELECT w.*, u.nickname, u.mobile, u.avatar
+        FROM withdraw_records w
+        LEFT JOIN users u ON w.user_id = u.id
+        ${whereClause}
+        ORDER BY w.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM withdraw_records w ${whereClause}
+      `, params);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取提现列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 审核提现
+   */
+  @Post('withdrawals/:id/audit')
+  @Public()
+  async auditWithdrawal(
+    @Param('id') id: string,
+    @Body() body: { status: number; reason?: string }
+  ) {
+    try {
+      await db.update(
+        'UPDATE withdraw_records SET status = ?, reason = ?, processed_at = NOW() WHERE id = ?',
+        [body.status, body.reason || null, parseInt(id)]
+      );
+      
+      return { success: true };
+    } catch (error) {
+      console.error('审核提现失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 分佣管理 ====================
+
+  /**
+   * 获取分佣列表
+   */
+  @Get('commissions')
+  @Public()
+  async getCommissions(@Query('status') status = '', @Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+    
+    if (status) {
+      whereClause += ' AND c.status = ?';
+      params.push(parseInt(status));
+    }
+    
+    try {
+      const [list] = await db.query(`
+        SELECT c.*, 
+          u.nickname as user_nickname, u.avatar as user_avatar,
+          fu.nickname as from_nickname
+        FROM commissions c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN users fu ON c.from_user_id = fu.id
+        ${whereClause}
+        ORDER BY c.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM commissions c ${whereClause}
+      `, params);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取分佣列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 批量结算分佣
+   */
+  @Post('commissions/settle')
+  @Public()
+  async settleCommissions(@Body() body: { ids: number[] }) {
+    try {
+      if (!body.ids || body.ids.length === 0) {
+        return { success: false, message: '请选择要结算的记录' };
+      }
+      
+      await db.update(
+        `UPDATE commissions SET status = 1, settled_at = NOW() WHERE id IN (${body.ids.map(() => '?').join(',')})`,
+        body.ids
+      );
+      
+      return { success: true, message: `已结算 ${body.ids.length} 条记录` };
+    } catch (error) {
+      console.error('结算分佣失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 代理商管理 ====================
+
+  /**
+   * 获取代理商列表
+   */
+  @Get('agents')
+  @Public()
+  async getAgents(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    try {
+      const [list] = await db.query(`
+        SELECT ca.*, u.nickname, u.mobile, u.avatar
+        FROM city_agents ca
+        LEFT JOIN users u ON ca.user_id = u.id
+        ORDER BY ca.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM city_agents`);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取代理商列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 创建代理商
+   */
+  @Post('agents')
+  @Public()
+  async createAgent(@Body() body: { userId: number; cityCode: string; cityName: string; commissionRate: number }) {
+    try {
+      await db.update(
+        `INSERT INTO city_agents (user_id, city_code, city_name, commission_rate, status, created_at) 
+         VALUES (?, ?, ?, ?, 1, NOW())`,
+        [body.userId, body.cityCode, body.cityName, body.commissionRate || 10]
+      );
+      
+      // 更新用户角色
+      await db.update('UPDATE users SET city_agent_id = ? WHERE id = ?', [body.userId, body.userId]);
+      
+      return { success: true, message: '代理商创建成功' };
+    } catch (error) {
+      console.error('创建代理商失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 牛师班管理 ====================
+
+  /**
+   * 获取牛师班列表
+   */
+  @Get('elite-classes')
+  @Public()
+  async getEliteClasses(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    try {
+      const [list] = await db.query(`
+        SELECT ec.*, u.nickname as teacher_name, u.avatar as teacher_avatar
+        FROM elite_classes ec
+        LEFT JOIN users u ON ec.teacher_id = u.id
+        ORDER BY ec.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM elite_classes`);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取牛师班列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
 }

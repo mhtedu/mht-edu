@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
   Settings, LogOut, DollarSign, UserPlus, Gift, Percent,
   ShoppingBag, Calendar, ChevronRight, Search, Eye, Pencil, Trash2,
-  Check, X, Plus, Download, Upload, Award, CreditCard
+  Check, X, Plus, Download, Upload, Award, CreditCard, Crown
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -156,6 +156,13 @@ const AdminPage = () => {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+  
+  // 会员弹窗状态
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: number; nickname: string; is_member: boolean } | null>(null);
+  const [memberDays, setMemberDays] = useState('365');
+  const [memberReason, setMemberReason] = useState('后台开通');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -702,6 +709,198 @@ const AdminPage = () => {
     }
   };
 
+  // ==================== 导出功能 ====================
+
+  const exportUsers = async () => {
+    try {
+      Taro.showLoading({ title: '导出中...' });
+      const res = await Network.request({
+        url: '/api/admin/export/users',
+        method: 'GET',
+        data: { role: roleFilter }
+      });
+      Taro.hideLoading();
+      
+      if (res.data && res.data.success) {
+        // 创建下载链接
+        const base64 = res.data.data;
+        const filename = res.data.filename;
+        // 在H5端触发下载
+        if (Taro.getEnv() === 'WEB') {
+          const link = document.createElement('a');
+          link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
+          link.download = filename;
+          link.click();
+        }
+        Taro.showToast({ title: '导出成功', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '导出失败', icon: 'error' });
+      }
+    } catch (error) {
+      Taro.hideLoading();
+      Taro.showToast({ title: '导出失败', icon: 'error' });
+    }
+  };
+
+  const exportTeachers = async () => {
+    try {
+      Taro.showLoading({ title: '导出中...' });
+      const res = await Network.request({
+        url: '/api/admin/export/teachers',
+        method: 'GET'
+      });
+      Taro.hideLoading();
+      
+      if (res.data && res.data.success) {
+        const base64 = res.data.data;
+        const filename = res.data.filename;
+        if (Taro.getEnv() === 'WEB') {
+          const link = document.createElement('a');
+          link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
+          link.download = filename;
+          link.click();
+        }
+        Taro.showToast({ title: '导出成功', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '导出失败', icon: 'error' });
+      }
+    } catch (error) {
+      Taro.hideLoading();
+      Taro.showToast({ title: '导出失败', icon: 'error' });
+    }
+  };
+
+  // ==================== 会员开通功能 ====================
+
+  const openMemberDialog = (user: { id: number; nickname: string; is_member: boolean }) => {
+    setSelectedUser(user);
+    setMemberDays('365');
+    setMemberReason('后台开通');
+    setMemberDialogOpen(true);
+  };
+
+  const closeMemberDialog = () => {
+    setMemberDialogOpen(false);
+    setSelectedUser(null);
+  };
+
+  const grantMembership = async () => {
+    if (!selectedUser) return;
+    
+    setSubmitting(true);
+    try {
+      const res = await Network.request({
+        url: `/api/admin/users/${selectedUser.id}/grant-membership`,
+        method: 'POST',
+        data: { days: parseInt(memberDays), reason: memberReason }
+      });
+      
+      if (res.data && res.data.success) {
+        Taro.showToast({ title: '开通成功', icon: 'success' });
+        closeMemberDialog();
+        loadData(); // 刷新数据
+      } else {
+        Taro.showToast({ title: res.data?.message || '开通失败', icon: 'error' });
+      }
+    } catch (error) {
+      Taro.showToast({ title: '开通失败', icon: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const revokeMembership = async () => {
+    if (!selectedUser) return;
+    
+    Taro.showModal({
+      title: '确认取消会员',
+      content: `确定要取消 ${selectedUser.nickname} 的会员吗？`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            const result = await Network.request({
+              url: `/api/admin/users/${selectedUser.id}/revoke-membership`,
+              method: 'POST',
+              data: { reason: '后台取消' }
+            });
+            
+            if (result.data && result.data.success) {
+              Taro.showToast({ title: '取消成功', icon: 'success' });
+              closeMemberDialog();
+              loadData();
+            }
+          } catch (error) {
+            Taro.showToast({ title: '取消失败', icon: 'error' });
+          }
+        }
+      }
+    });
+  };
+
+  // ==================== 渲染会员弹窗 ====================
+
+  const renderMemberDialog = () => {
+    if (!memberDialogOpen || !selectedUser) return null;
+    
+    return (
+      <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <View className="bg-white rounded-lg p-6 w-96">
+          <View className="flex items-center justify-between mb-4">
+            <Text className="text-lg font-bold">会员管理</Text>
+            <Text className="text-gray-400 cursor-pointer" onClick={closeMemberDialog}>✕</Text>
+          </View>
+          
+          <View className="mb-4">
+            <Text className="text-gray-600">用户：{selectedUser.nickname}</Text>
+            <Text className="text-gray-400 text-sm ml-2">(ID: {selectedUser.id})</Text>
+          </View>
+          
+          <View className="mb-4">
+            <Text className="block text-sm font-medium text-gray-700 mb-1">开通天数</Text>
+            <View className="flex gap-2">
+              {['30', '90', '180', '365'].map(d => (
+                <Button
+                  key={d}
+                  size="sm"
+                  variant={memberDays === d ? 'default' : 'outline'}
+                  onClick={() => setMemberDays(d)}
+                >
+                  {d === '30' ? '月卡' : d === '90' ? '季卡' : d === '180' ? '半年' : '年卡'}
+                </Button>
+              ))}
+            </View>
+            <Input
+              className="mt-2"
+              type="number"
+              value={memberDays}
+              onInput={(e) => setMemberDays(e.detail.value)}
+              placeholder="自定义天数"
+            />
+          </View>
+          
+          <View className="mb-4">
+            <Text className="block text-sm font-medium text-gray-700 mb-1">开通原因</Text>
+            <Input
+              value={memberReason}
+              onInput={(e) => setMemberReason(e.detail.value)}
+              placeholder="请输入开通原因"
+            />
+          </View>
+          
+          <View className="flex gap-2 justify-end">
+            {selectedUser.is_member && (
+              <Button variant="destructive" onClick={revokeMembership}>取消会员</Button>
+            )}
+            <Button variant="outline" onClick={closeMemberDialog}>取消</Button>
+            <Button onClick={grantMembership} disabled={submitting}>
+              {submitting ? '处理中...' : '开通会员'}
+            </Button>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   // ==================== 渲染方法 ====================
 
   const renderDashboard = () => (
@@ -856,6 +1055,9 @@ const AdminPage = () => {
             <Button size="sm" variant={roleFilter === '2' ? 'default' : 'outline'} onClick={() => setRoleFilter('2')}>机构</Button>
           </View>
         </View>
+        <Button variant="outline" onClick={exportUsers}>
+          <Download size={16} color="#666" className="mr-1" /> 导出Excel
+        </Button>
       </View>
 
       {/* 用户列表 */}
@@ -869,7 +1071,7 @@ const AdminPage = () => {
               <Text className="w-20">会员</Text>
               <Text className="w-20">状态</Text>
               <Text className="w-32">注册时间</Text>
-              <Text className="w-32">操作</Text>
+              <Text className="w-40">操作</Text>
             </View>
             {users.map((user) => (
               <View key={user.id} className="admin-table-row">
@@ -889,8 +1091,11 @@ const AdminPage = () => {
                   </Badge>
                 </View>
                 <Text className="w-32 text-sm text-gray-500">{user.created_at}</Text>
-                <View className="w-32 flex gap-2">
+                <View className="w-40 flex gap-2">
                   <Button size="sm" variant="outline"><Eye size={14} color="#666" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => openMemberDialog({ id: user.id, nickname: user.nickname, is_member: !!user.is_member })}>
+                    <Crown size={14} color={user.is_member ? "#f59e0b" : "#666"} />
+                  </Button>
                   <Button size="sm" onClick={() => updateUserStatus(user.id, user.status === 1 ? 0 : 1)}>
                     {user.status === 1 ? <X size={14} color="#fff" /> : <Check size={14} color="#fff" />}
                   </Button>
@@ -932,6 +1137,9 @@ const AdminPage = () => {
             <Button size="sm" variant={statusFilter === '1' ? 'default' : 'outline'} onClick={() => setStatusFilter('1')}>已认证</Button>
           </View>
         </View>
+        <Button variant="outline" onClick={exportTeachers}>
+          <Download size={16} color="#666" className="mr-1" /> 导出Excel
+        </Button>
       </View>
 
       <Card>
@@ -944,7 +1152,7 @@ const AdminPage = () => {
               <Text className="w-20">评分</Text>
               <Text className="w-20">订单</Text>
               <Text className="w-20">状态</Text>
-              <Text className="w-32">操作</Text>
+              <Text className="w-40">操作</Text>
             </View>
             {teachers.map((teacher) => (
               <View key={teacher.id} className="admin-table-row">
@@ -964,8 +1172,11 @@ const AdminPage = () => {
                     <Text className="text-xs">{teacher.verify_status === 1 ? '已认证' : teacher.verify_status === 0 ? '待审核' : '已拒绝'}</Text>
                   </Badge>
                 </View>
-                <View className="w-32 flex gap-2">
+                <View className="w-40 flex gap-2">
                   <Button size="sm" variant="outline"><Eye size={14} color="#666" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => openMemberDialog({ id: teacher.user_id, nickname: teacher.name, is_member: false })}>
+                    <Crown size={14} color="#666" />
+                  </Button>
                   {teacher.verify_status === 0 && (
                     <>
                       <Button size="sm" onClick={() => verifyTeacher(teacher.id, 1)}><Check size={14} color="#fff" /></Button>
@@ -1465,16 +1676,28 @@ const AdminPage = () => {
       <View className="flex justify-between items-center mb-4">
         <Text className="text-lg font-semibold">分佣管理</Text>
         <View className="flex gap-2">
-          <Button variant="outline"><Download size={16} color="#666" className="mr-1" /> 导出</Button>
+          <Button variant="outline" onClick={() => setStatusFilter('0')}>待结算</Button>
+          <Button variant="outline" onClick={() => setStatusFilter('1')}>已结算</Button>
           <Button><Check size={16} color="#fff" className="mr-1" /> 批量结算</Button>
         </View>
       </View>
 
       <Card>
-        <CardContent className="p-8">
-          <View className="flex flex-col items-center justify-center text-gray-400">
-            <Percent size={48} color="#9ca3af" />
-            <Text className="mt-4">暂无分佣记录</Text>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="flex-1">用户</Text>
+              <Text className="w-32">来源用户</Text>
+              <Text className="w-20">级别</Text>
+              <Text className="w-24">金额</Text>
+              <Text className="w-20">状态</Text>
+              <Text className="w-32">时间</Text>
+            </View>
+            <View className="p-8 text-center text-gray-400">
+              <Percent size={48} color="#9ca3af" />
+              <Text className="mt-4 block">暂无分佣记录</Text>
+            </View>
           </View>
         </CardContent>
       </Card>
@@ -1488,14 +1711,26 @@ const AdminPage = () => {
         <View className="flex gap-2">
           <Button variant="outline" onClick={() => setStatusFilter('0')}>待审核</Button>
           <Button variant="outline" onClick={() => setStatusFilter('1')}>已通过</Button>
+          <Button variant="outline" onClick={() => setStatusFilter('2')}>已拒绝</Button>
         </View>
       </View>
 
       <Card>
-        <CardContent className="p-8">
-          <View className="flex flex-col items-center justify-center text-gray-400">
-            <CreditCard size={48} color="#9ca3af" />
-            <Text className="mt-4">暂无提现申请</Text>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="flex-1">用户信息</Text>
+              <Text className="w-24">金额</Text>
+              <Text className="w-32">账户</Text>
+              <Text className="w-20">状态</Text>
+              <Text className="w-32">申请时间</Text>
+              <Text className="w-24">操作</Text>
+            </View>
+            <View className="p-8 text-center text-gray-400">
+              <CreditCard size={48} color="#9ca3af" />
+              <Text className="mt-4 block">暂无提现申请</Text>
+            </View>
           </View>
         </CardContent>
       </Card>
@@ -1510,10 +1745,20 @@ const AdminPage = () => {
       </View>
 
       <Card>
-        <CardContent className="p-8">
-          <View className="flex flex-col items-center justify-center text-gray-400">
-            <MapPin size={48} color="#9ca3af" />
-            <Text className="mt-4">暂无代理商</Text>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="flex-1">用户信息</Text>
+              <Text className="w-24">城市</Text>
+              <Text className="w-20">佣金比例</Text>
+              <Text className="w-24">累计佣金</Text>
+              <Text className="w-32">注册时间</Text>
+            </View>
+            <View className="p-8 text-center text-gray-400">
+              <MapPin size={48} color="#9ca3af" />
+              <Text className="mt-4 block">暂无代理商</Text>
+            </View>
           </View>
         </CardContent>
       </Card>
@@ -1594,6 +1839,9 @@ const AdminPage = () => {
           )}
         </ScrollView>
       </View>
+
+      {/* 会员开通弹窗 */}
+      {renderMemberDialog()}
     </View>
   );
 };
