@@ -12,6 +12,7 @@ export default defineAppConfig({
     'pages/orders/index',
     'pages/order-detail/index',
     'pages/publish-demand/index',
+    'pages/publish-moment/index',
     'pages/member/index',
   ],
   window: {

@@ -1,0 +1,152 @@
+.publish-moment-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 120px;
+}
+
+/* 内容输入区 */
+.content-section {
+  background-color: #fff;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.content-input {
+  width: 100%;
+  min-height: 200px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.char-count {
+  display: block;
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+/* 媒体区 */
+.media-section {
+  background-color: #fff;
+  padding: 16px;
+}
+
+.media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.media-item {
+  width: calc((100% - 16px) / 3);
+  height: 0;
+  padding-bottom: calc((100% - 16px) / 3);
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+.media-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.media-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-media-grid {
+  display: contents;
+}
+
+.add-btn {
+  width: calc((100% - 16px) / 3);
+  height: 0;
+  padding-bottom: calc((100% - 16px) / 3);
+  position: relative;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
+  background-color: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-text {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.media-tip {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-top: 12px;
+}
+
+/* 提交按钮区 */
+.submit-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background-color: #fff;
+  border-top: 1px solid #eee;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 44px;
+  background-color: #1890ff;
+  color: #fff;
+  border-radius: 22px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-btn[disabled] {
+  background-color: #b3d9ff;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
