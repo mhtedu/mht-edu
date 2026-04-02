@@ -290,7 +290,7 @@ const HomePage: FC = () => {
 
   const teacherEntries = [
     { icon: <Briefcase size={22} color="#10B981" />, text: '工作台', bgColor: 'bg-green-100', action: () => Taro.navigateTo({ url: '/pages/teacher-workbench/index' }) },
-    { icon: <GraduationCap size={22} color="#8B5CF6" />, text: '创建牛师班', bgColor: 'bg-purple-100', action: () => Taro.showToast({ title: '功能开发中', icon: 'none' }) },
+    { icon: <GraduationCap size={22} color="#8B5CF6" />, text: '创建牛师班', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/create-elite-class/index' }) },
     { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
     { icon: <Wallet size={22} color="#2563EB" />, text: '收益中心', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/earnings/index' }) },
   ]
