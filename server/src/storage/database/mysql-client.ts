@@ -37,9 +37,9 @@ function getDatabaseConfig(): DatabaseConfig {
   return {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
-    user: process.env.DB_USER || 'root',
+    user: process.env.DB_USER || process.env.DB_USERNAME || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'mianhuatang_edu',
+    database: process.env.DB_NAME || process.env.DB_DATABASE || 'mht_edu',
     waitForConnections: true,
     connectionLimit: parseInt(process.env.DB_POOL_MAX || '10', 10),
     queueLimit: 0,
