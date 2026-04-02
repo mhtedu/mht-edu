@@ -5,6 +5,8 @@ import { Network } from '@/network';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, User } from 'lucide-react-taro';
+import { useUserStore } from '@/stores/user';
+import { getLocation } from '@/utils';
 import './index.css';
 
 interface Order {
@@ -38,6 +40,14 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'ongoing' | 'completed'>('all');
+  const { currentRole: userRole, location: userLocation } = useUserStore();
+
+  useEffect(() => {
+    // 同步用户角色
+    if (userRole !== undefined) {
+      setCurrentRole(userRole);
+    }
+  }, [userRole]);
 
   useEffect(() => {
     loadOrders();
@@ -46,39 +56,57 @@ const OrdersPage = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const url = currentRole === 0 
-        ? '/api/orders/parent' 
-        : '/api/orders/teacher';
-      
       const params: any = {
         page: 1,
         pageSize: 20,
       };
 
       if (currentRole === 0) {
-        params.parentId = 1;
+        // 家长视角：查看自己的订单
+        const res = await Network.request({
+          url: '/api/order/list',
+          method: 'GET',
+          data: params,
+        });
+
+        if (res.data && res.data.list) {
+          setOrders(res.data.list);
+        } else if (res.data && Array.isArray(res.data)) {
+          setOrders(res.data);
+        }
       } else {
-        params.latitude = 39.995;
-        params.longitude = 116.473;
-      }
+        // 教师视角：查看附近的可抢单需求
+        let lat = userLocation?.latitude;
+        let lng = userLocation?.longitude;
 
-      // 根据tab筛选状态
-      if (activeTab === 'pending') {
-        params.status = 0;
-      } else if (activeTab === 'ongoing') {
-        params.status = [1, 2, 3].join(',');
-      } else if (activeTab === 'completed') {
-        params.status = 4;
-      }
+        // 如果没有位置信息，尝试获取
+        if (!lat || !lng) {
+          const loc = await getLocation();
+          if (loc) {
+            lat = loc.latitude;
+            lng = loc.longitude;
+          }
+        }
 
-      const res = await Network.request({
-        url,
-        method: 'GET',
-        data: params,
-      });
+        if (lat && lng) {
+          params.latitude = lat;
+          params.longitude = lng;
+          params.radius = 50; // 50km范围内
+        }
 
-      if (res.data && Array.isArray(res.data)) {
-        setOrders(res.data);
+        console.log('教师抢单列表请求:', { url: '/api/order/nearby', params });
+        const res = await Network.request({
+          url: '/api/order/nearby',
+          method: 'GET',
+          data: params,
+        });
+        console.log('教师抢单列表响应:', res.data);
+
+        if (res.data && res.data.list) {
+          setOrders(res.data.list);
+        } else if (res.data && Array.isArray(res.data)) {
+          setOrders(res.data);
+        }
       }
     } catch (error) {
       console.error('加载订单失败:', error);
@@ -168,7 +196,15 @@ const OrdersPage = () => {
                     <View className="flex flex-col gap-2">
                       <View className="flex flex-row items-center justify-between">
                         <Text className="text-orange-500 font-semibold">¥{order.hourly_rate}/小时</Text>
-                        <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
+                        {currentRole === 1 && order.distance !== undefined && order.distance !== null && (
+                          <View className="flex flex-row items-center">
+                            <MapPin size={14} color="#2563EB" />
+                            <Text className="text-blue-600 text-sm ml-1">{order.distance}km</Text>
+                          </View>
+                        )}
+                        {currentRole === 0 && (
+                          <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
+                        )}
                       </View>
                       
                       <View className="flex flex-row items-center text-gray-500 text-sm">

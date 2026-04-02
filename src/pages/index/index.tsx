@@ -18,15 +18,14 @@ interface TeacherItem {
   nickname: string
   avatar: string
   real_name: string
-  subjects: string[]
-  grades: string[]
+  subjects: string
+  grades: string
   teaching_years: number
-  hourly_rate_min: number
-  hourly_rate_max: number
+  hourly_rate: number
   rating: number
   review_count: number
-  one_line_intro: string
-  distance_text: string
+  education: string
+  distance: number | null
 }
 
 // 学科筛选标签
@@ -46,45 +45,42 @@ const MOCK_TEACHERS: TeacherItem[] = [
     nickname: '张明',
     avatar: '',
     real_name: '张明',
-    subjects: ['数学', '物理'],
-    grades: ['初中', '高中'],
+    subjects: '数学,物理',
+    grades: '初中,高中',
     teaching_years: 8,
-    hourly_rate_min: 150,
-    hourly_rate_max: 200,
+    hourly_rate: 150,
     rating: 4.9,
     review_count: 56,
-    one_line_intro: '8年教学经验，擅长中考数学提分，帮助学生快速掌握解题技巧',
-    distance_text: '2.5km'
+    education: '北京大学·硕士',
+    distance: 2.5
   },
   {
     id: 2,
     nickname: '李芳',
     avatar: '',
     real_name: '李芳',
-    subjects: ['英语'],
-    grades: ['小学', '初中'],
+    subjects: '英语',
+    grades: '小学,初中',
     teaching_years: 5,
-    hourly_rate_min: 120,
-    hourly_rate_max: 150,
+    hourly_rate: 120,
     rating: 4.8,
     review_count: 32,
-    one_line_intro: '英语专业八级，擅长培养英语学习兴趣，提升口语表达能力',
-    distance_text: '3.2km'
+    education: '清华大学·本科',
+    distance: 3.2
   },
   {
     id: 3,
     nickname: '王老师',
     avatar: '',
     real_name: '王强',
-    subjects: ['语文', '物理'],
-    grades: ['高中'],
+    subjects: '语文,物理',
+    grades: '高中',
     teaching_years: 10,
-    hourly_rate_min: 180,
-    hourly_rate_max: 250,
+    hourly_rate: 180,
     rating: 4.9,
     review_count: 89,
-    one_line_intro: '重点中学教师，擅长高考语文提分，教学风格生动有趣',
-    distance_text: '1.8km'
+    education: '北京师范大学·博士',
+    distance: 1.8
   }
 ]
 
@@ -151,11 +147,13 @@ const HomePage: FC = () => {
         params.subject = activeSubject
       }
 
+      console.log('请求教师列表参数:', params)
       const res = await Network.request({
-        url: '/api/teacher-profile/recommend',
+        url: '/api/teacher/list',
         method: 'GET',
         data: params
       })
+      console.log('教师列表响应:', res.data)
 
       if (res.data && res.data.data && res.data.data.list) {
         setTeachers(res.data.data.list)
@@ -362,18 +360,23 @@ const HomePage: FC = () => {
                         <Text className="rating-text">{teacher.rating}</Text>
                       </View>
                     </View>
-                    <Text className="teacher-edu">北京大学·硕士</Text>
+                    <Text className="teacher-edu">{teacher.education || '学历未填写'}</Text>
                     <View className="teacher-subjects">
-                      {teacher.subjects && teacher.subjects.slice(0, 2).map((subject, idx) => (
+                      {teacher.subjects && teacher.subjects.split(',').slice(0, 2).map((subject, idx) => (
                         <View key={idx} className="subject-tag">
                           <Text className="subject-tag-text">{subject}</Text>
                         </View>
                       ))}
+                      {teacher.distance !== null && teacher.distance !== undefined && (
+                        <View className="distance-tag">
+                          <MapPin size={12} color="#6B7280" />
+                          <Text className="distance-text">{teacher.distance}km</Text>
+                        </View>
+                      )}
                     </View>
                     <Text className="teacher-price">
-                      ¥{teacher.hourly_rate_min} - {teacher.hourly_rate_max}/小时
+                      ¥{teacher.hourly_rate}/小时
                     </Text>
-                    <Text className="teacher-intro">{teacher.one_line_intro}</Text>
                     <View className="detail-btn" onClick={(e) => { e.stopPropagation(); goToTeacherDetail(teacher.id) }}>
                       <Text className="detail-btn-text">查看详情</Text>
                     </View>
