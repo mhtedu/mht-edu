@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { ConfigModule } from '@/modules/config/config.module';
@@ -36,10 +37,12 @@ import { DocumentModule } from '@/modules/document/document.module';
 import { InvitationModule } from '@/modules/invitation/invitation.module';
 import { SeedModule } from '@/modules/seed/seed.module';
 import { NotificationModule } from '@/modules/notification/notification.module';
+import { DemoModule } from '@/modules/demo/demo.module';
 
 @Module({
   imports: [
     NestConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ConfigModule,
     // 核心模块
     UserModule,
@@ -81,6 +84,8 @@ import { NotificationModule } from '@/modules/notification/notification.module';
     InvitationModule,
     // 通知模块
     NotificationModule,
+    // 演示数据模块
+    DemoModule,
     // 测试数据初始化模块
     SeedModule,
     // 管理后台

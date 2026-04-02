@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from '@tarojs/components';
+import { View, Text, ScrollView, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useState, useEffect } from 'react';
 import { Network } from '@/network';
@@ -124,6 +124,7 @@ const MENUS = [
   { id: 'commissions', label: '分佣管理', icon: Percent },
   { id: 'withdrawals', label: '提现审核', icon: CreditCard },
   { id: 'agents', label: '代理商管理', icon: MapPin },
+  { id: 'demo', label: '演示数据', icon: Users },
   { id: 'config', label: '系统配置', icon: Settings },
   { id: 'payment', label: '支付配置', icon: DollarSign },
 ];
@@ -192,6 +193,9 @@ const AdminPage = () => {
           break;
         case 'config':
           await loadSiteConfig();
+          break;
+        case 'demo':
+          await loadDemoData();
           break;
       }
     } catch (error) {
@@ -389,6 +393,243 @@ const AdminPage = () => {
       });
     }
   };
+
+  // ==================== 演示数据管理 ====================
+
+  interface DemoConfig {
+    enabled: boolean;
+    robotTeachers: number;
+    robotParents: number;
+    demoOrders: number;
+    autoGrabEnabled: boolean;
+    autoCommentEnabled: boolean;
+    activeHours: { start: number; end: number };
+  }
+
+  interface RobotUser {
+    id: number;
+    nickname: string;
+    avatar: string;
+    role: number;
+    city_name: string;
+    membership_type: number;
+    real_name: string;
+    subjects: string[];
+    rating: number;
+  }
+
+  const [demoConfig, setDemoConfig] = useState<DemoConfig | null>(null);
+  const [robotUsers, setRobotUsers] = useState<RobotUser[]>([]);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const loadDemoData = async () => {
+    try {
+      // 加载配置
+      const configRes = await Network.request({ url: '/api/admin/demo/config', method: 'GET' });
+      if (configRes.data) {
+        setDemoConfig(configRes.data);
+      }
+      // 加载机器人列表
+      const robotsRes = await Network.request({ url: '/api/admin/demo/robots', method: 'GET' });
+      if (robotsRes.data) {
+        setRobotUsers(robotsRes.data || []);
+      }
+    } catch (error) {
+      console.error('加载演示数据失败:', error);
+    }
+  };
+
+  const initDemoData = async () => {
+    Taro.showModal({
+      title: '初始化演示数据',
+      content: '将创建机器人老师和家长，以及演示订单。是否继续？',
+      success: async (res) => {
+        if (res.confirm) {
+          setDemoLoading(true);
+          try {
+            // 创建老师
+            await Network.request({ url: '/api/admin/demo/teachers/batch', method: 'POST', data: { count: 20 } });
+            // 创建家长
+            await Network.request({ url: '/api/admin/demo/parents/batch', method: 'POST', data: { count: 30 } });
+            // 创建订单
+            await Network.request({ url: '/api/admin/demo/orders/batch', method: 'POST', data: { count: 15 } });
+            Taro.showToast({ title: '初始化成功', icon: 'success' });
+            loadDemoData();
+          } catch (error) {
+            Taro.showToast({ title: '初始化失败', icon: 'error' });
+          } finally {
+            setDemoLoading(false);
+          }
+        }
+      },
+    });
+  };
+
+  const clearDemoData = async () => {
+    Taro.showModal({
+      title: '清除演示数据',
+      content: '将删除所有演示数据，此操作不可恢复。是否继续？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({ url: '/api/admin/demo/clear', method: 'DELETE' });
+            Taro.showToast({ title: '清除成功', icon: 'success' });
+            loadDemoData();
+          } catch (error) {
+            Taro.showToast({ title: '清除失败', icon: 'error' });
+          }
+        }
+      },
+    });
+  };
+
+  const triggerGrab = async () => {
+    try {
+      await Network.request({ url: '/api/admin/demo/trigger/grab', method: 'POST' });
+      Taro.showToast({ title: '已触发抢单', icon: 'success' });
+    } catch (error) {
+      Taro.showToast({ title: '触发失败', icon: 'error' });
+    }
+  };
+
+  const updateDemoConfig = async (key: string, value: any) => {
+    try {
+      await Network.request({
+        url: '/api/admin/demo/config',
+        method: 'PUT',
+        data: { ...demoConfig, [key]: value },
+      });
+      loadDemoData();
+    } catch (error) {
+      Taro.showToast({ title: '保存失败', icon: 'error' });
+    }
+  };
+
+  const renderDemo = () => (
+    <View className="p-6">
+      {/* 配置卡片 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>演示数据配置</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <View className="flex flex-col gap-4">
+            <View className="flex items-center justify-between">
+              <View>
+                <Text className="font-medium">启用演示数据</Text>
+                <Text className="text-xs text-gray-500">开启后机器人将自动活动</Text>
+              </View>
+              <Button 
+                size="sm" 
+                variant={demoConfig?.enabled ? 'default' : 'outline'}
+                onClick={() => updateDemoConfig('enabled', !demoConfig?.enabled)}
+              >
+                {demoConfig?.enabled ? '已开启' : '已关闭'}
+              </Button>
+            </View>
+            <View className="flex items-center justify-between">
+              <View>
+                <Text className="font-medium">自动抢单</Text>
+                <Text className="text-xs text-gray-500">机器人老师自动抢单</Text>
+              </View>
+              <Button 
+                size="sm" 
+                variant={demoConfig?.autoGrabEnabled ? 'default' : 'outline'}
+                onClick={() => updateDemoConfig('autoGrabEnabled', !demoConfig?.autoGrabEnabled)}
+              >
+                {demoConfig?.autoGrabEnabled ? '已开启' : '已关闭'}
+              </Button>
+            </View>
+            <View className="flex items-center justify-between">
+              <View>
+                <Text className="font-medium">自动评论</Text>
+                <Text className="text-xs text-gray-500">机器人自动评论动态</Text>
+              </View>
+              <Button 
+                size="sm" 
+                variant={demoConfig?.autoCommentEnabled ? 'default' : 'outline'}
+                onClick={() => updateDemoConfig('autoCommentEnabled', !demoConfig?.autoCommentEnabled)}
+              >
+                {demoConfig?.autoCommentEnabled ? '已开启' : '已关闭'}
+              </Button>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      {/* 操作按钮 */}
+      <View className="flex gap-4 mb-6">
+        <Button onClick={initDemoData} disabled={demoLoading}>
+          {demoLoading ? '处理中...' : '一键初始化演示数据'}
+        </Button>
+        <Button variant="outline" onClick={triggerGrab}>手动触发抢单</Button>
+        <Button variant="destructive" onClick={clearDemoData}>清除所有演示数据</Button>
+      </View>
+
+      {/* 统计卡片 */}
+      <View className="grid grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-blue-500">{robotUsers.filter(r => r.role === 1).length}</Text>
+            <Text className="text-sm text-gray-500 mt-1">机器人老师</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-green-500">{robotUsers.filter(r => r.role === 0).length}</Text>
+            <Text className="text-sm text-gray-500 mt-1">机器人家长</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-orange-500">{demoConfig?.demoOrders || 0}</Text>
+            <Text className="text-sm text-gray-500 mt-1">演示订单</Text>
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* 机器人列表 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>机器人用户列表</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-16">ID</Text>
+              <Text className="flex-1">用户信息</Text>
+              <Text className="w-20">角色</Text>
+              <Text className="w-24">科目/城市</Text>
+              <Text className="w-16">会员</Text>
+              <Text className="w-16">评分</Text>
+            </View>
+            {robotUsers.map((robot) => (
+              <View key={robot.id} className="admin-table-row">
+                <Text className="w-16">{robot.id}</Text>
+                <View className="flex-1 flex items-center gap-2">
+                  <Image src={robot.avatar} className="w-8 h-8 rounded-full" mode="aspectFill" />
+                  <Text className="font-medium">{robot.nickname}</Text>
+                </View>
+                <Text className="w-20">{robot.role === 1 ? '老师' : '家长'}</Text>
+                <Text className="w-24">
+                  {robot.role === 1 
+                    ? (robot.subjects && robot.subjects.slice(0, 2).join(','))
+                    : robot.city_name}
+                </Text>
+                <Text className="w-16">{robot.membership_type ? '是' : '否'}</Text>
+                <Text className="w-16">{robot.rating?.toFixed(1) || '-'}</Text>
+              </View>
+            ))}
+            {robotUsers.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <Text>暂无演示数据，请点击「一键初始化」创建</Text>
+              </View>
+            )}
+          </View>
+        </CardContent>
+      </Card>
+    </View>
+  );
 
   // ==================== 操作方法 ====================
 
@@ -1291,6 +1532,7 @@ const AdminPage = () => {
       case 'banners': return renderBanners();
       case 'config': return renderConfig();
       case 'payment': return renderPayment();
+      case 'demo': return renderDemo();
       case 'elite-class': return renderEliteClass();
       case 'commissions': return renderCommissions();
       case 'withdrawals': return renderWithdrawals();
