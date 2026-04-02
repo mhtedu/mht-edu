@@ -255,7 +255,7 @@ export default function TeacherDetailPage() {
   }
 
   return (
-    <View className="teacher-detail-page">
+    <View className="min-h-screen bg-gray-100">
       <ScrollView scrollY className="h-screen box-border">
         {/* 封面照片 */}
         <View className="relative">
@@ -272,8 +272,8 @@ export default function TeacherDetailPage() {
           </View>
         </View>
 
-      {/* 牛师基本信息 */}
-      <View className="p-4 bg-white">
+        {/* 牛师基本信息 */}
+        <View className="p-4 bg-white">
         <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }} className="mb-4">
           <Image
             src={teacher.avatar}
