@@ -1510,4 +1510,54 @@ export class AdminController {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * 创建commissions表（佣金）
+   */
+  @Public()
+  @Post('create-commissions-table')
+  async createCommissionsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS commissions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID（佣金受益人）',
+          from_user_id INT NOT NULL COMMENT '来源用户ID',
+          payment_id INT COMMENT '关联支付ID',
+          level_type TINYINT NOT NULL COMMENT '分佣级别: 1=一级, 2=二级, 3=城市代理, 4=机构',
+          amount DECIMAL(10,2) NOT NULL COMMENT '佣金金额',
+          rate DECIMAL(5,2) COMMENT '分佣比例',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待结算, 1=已结算, 2=已提现',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          settled_at TIMESTAMP NULL COMMENT '结算时间',
+          INDEX idx_user (user_id),
+          INDEX idx_from_user (from_user_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='佣金表'
+      `);
+
+      // 创建提现记录表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS withdraw_records (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          amount DECIMAL(10,2) NOT NULL COMMENT '提现金额',
+          account_type VARCHAR(20) COMMENT '账户类型',
+          account_no VARCHAR(100) COMMENT '账号',
+          account_name VARCHAR(50) COMMENT '账户名',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待处理, 1=已通过, 2=已拒绝, 3=已打款',
+          reason VARCHAR(255) COMMENT '拒绝原因',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          processed_at TIMESTAMP NULL COMMENT '处理时间',
+          INDEX idx_user (user_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提现记录表'
+      `);
+
+      return { success: true, message: 'commissions和withdraw_records表创建成功' };
+    } catch (error) {
+      console.error('创建表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
