@@ -1,13 +1,18 @@
 export default defineAppConfig({
   pages: [
-    'pages/login/index',
     'pages/index/index',
+    'pages/mall/index',
+    'pages/message/index',
+    'pages/profile/index',
+    'pages/login/index',
     'pages/teacher/list',
     'pages/teacher/detail',
     'pages/org/list',
     'pages/org/detail',
-    'pages/message/index',
-    'pages/profile/index',
+    'pages/orders/index',
+    'pages/order-detail/index',
+    'pages/publish-demand/index',
+    'pages/member/index',
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -28,16 +33,10 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/home-active.png',
       },
       {
-        pagePath: 'pages/teacher/list',
-        text: '找老师',
-        iconPath: './assets/tabbar/teacher.png',
-        selectedIconPath: './assets/tabbar/teacher-active.png',
-      },
-      {
-        pagePath: 'pages/org/list',
-        text: '找机构',
-        iconPath: './assets/tabbar/building.png',
-        selectedIconPath: './assets/tabbar/building-active.png',
+        pagePath: 'pages/mall/index',
+        text: '商城',
+        iconPath: './assets/tabbar/mall.png',
+        selectedIconPath: './assets/tabbar/mall-active.png',
       },
       {
         pagePath: 'pages/message/index',

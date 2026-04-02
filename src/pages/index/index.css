@@ -1,59 +1,81 @@
 .home-page {
   min-height: 100vh;
-  background: #F3F4F6;
+  background: #F5F5F5;
 }
 
+/* 顶部定位栏 */
 .location-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 12px 16px;
+  justify-content: space-between;
+  padding: 10px 16px;
   background: #fff;
   border-bottom: 1px solid #E5E7EB;
 }
 
-.location-text {
+.location-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   flex: 1;
-  margin-left: 8px;
+}
+
+.location-text {
+  margin-left: 6px;
+  margin-right: 6px;
   font-size: 14px;
   color: #374151;
 }
 
-.location-refresh {
-  padding: 4px;
-}
-
-.home-scroll {
-  height: calc(100vh - 45px);
-}
-
-.search-bar {
-  padding: 12px 16px;
-  background: #fff;
-}
-
-.search-input {
+.role-switch {
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: #F3F4F6;
-  border-radius: 20px;
-  padding: 10px 16px;
+  padding: 4px 10px;
+  background: #EFF6FF;
+  border-radius: 14px;
 }
 
-.search-placeholder {
-  margin-left: 8px;
-  font-size: 14px;
-  color: #9CA3AF;
+.role-text {
+  font-size: 13px;
+  color: #2563EB;
+  font-weight: 500;
 }
 
+.home-scroll {
+  height: calc(100vh - 44px);
+}
+
+/* 轮播图区域 */
+.banner-area {
+  padding: 12px;
+  background: #fff;
+}
+
+.banner-placeholder {
+  height: 120px;
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-text {
+  font-size: 16px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 快捷入口 */
 .quick-entry {
   display: flex;
   flex-direction: row;
   justify-content: space-around;
-  padding: 20px 16px;
+  padding: 16px;
   background: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .entry-item {
@@ -63,29 +85,12 @@
 }
 
 .entry-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
-}
-
-.entry-icon.teacher {
-  background: #DBEAFE;
-}
-
-.entry-icon.org {
-  background: #D1FAE5;
-}
-
-.entry-icon.demand {
-  background: #FEF3C7;
-}
-
-.entry-icon.activity {
-  background: #FEE2E2;
+  margin-bottom: 6px;
 }
 
 .entry-text {
@@ -93,9 +98,11 @@
   color: #374151;
 }
 
-.section-card {
-  margin: 0 12px 12px;
-  border-radius: 12px;
+/* 列表容器 */
+.section-container {
+  background: #fff;
+  padding: 0 12px;
+  margin-bottom: 10px;
 }
 
 .section-header {
@@ -103,20 +110,14 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  padding-bottom: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid #F3F4F6;
 }
 
 .section-title {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
   font-size: 16px;
   font-weight: 600;
-}
-
-.section-title svg {
-  margin-right: 8px;
+  color: #111827;
 }
 
 .section-more {
@@ -130,59 +131,58 @@
   color: #6B7280;
 }
 
-.section-content {
-  padding: 0 16px 16px;
-}
-
-.teacher-item {
+/* 教师卡片 */
+.teacher-card {
   display: flex;
   flex-direction: row;
-  padding: 12px 0;
+  padding: 14px 4px;
   border-bottom: 1px solid #F3F4F6;
 }
 
-.teacher-item:last-child {
+.teacher-card:last-child {
   border-bottom: none;
 }
 
 .teacher-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 28px;
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
   margin-right: 12px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .avatar-img {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
 }
 
 .avatar-placeholder {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   background: #DBEAFE;
-  border-radius: 28px;
+  border-radius: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .avatar-text {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #2563EB;
 }
 
 .teacher-info {
   flex: 1;
+  min-width: 0;
 }
 
 .teacher-name-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   margin-bottom: 4px;
 }
 
@@ -192,45 +192,43 @@
   color: #111827;
 }
 
-.teacher-rating {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+.teacher-gender {
+  font-size: 11px;
+  color: #6B7280;
 }
 
-.rating-text {
-  font-size: 12px;
-  color: #F59E0B;
-  margin-left: 2px;
+.teacher-education {
+  font-size: 11px;
+  color: #6B7280;
+}
+
+.teacher-subjects {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.subject-tag {
+  background: #EFF6FF;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.subject-tag text {
+  font-size: 11px;
+  color: #2563EB;
 }
 
 .teacher-intro {
   font-size: 12px;
   color: #6B7280;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.teacher-tags {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.tag {
-  font-size: 11px;
-  padding: 2px 6px;
-}
-
-.teacher-exp {
-  font-size: 11px;
-  color: #6B7280;
 }
 
 .teacher-bottom {
@@ -243,86 +241,179 @@
 .teacher-price {
   font-size: 14px;
   font-weight: 600;
-  color: #EF4444;
+  color: #F97316;
+}
+
+.teacher-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.teacher-exp {
+  font-size: 11px;
+  color: #6B7280;
 }
 
 .teacher-distance {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #2563EB;
 }
 
-.org-item {
+.teacher-action {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  padding: 12px 0;
+  margin-left: 8px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  background: #2563EB;
+  border-radius: 16px;
+}
+
+.action-btn-text {
+  font-size: 12px;
+  color: #fff;
+}
+
+/* 需求卡片 */
+.demand-card {
+  padding: 14px 4px;
   border-bottom: 1px solid #F3F4F6;
 }
 
-.org-item:last-child {
+.demand-card:last-child {
   border-bottom: none;
 }
 
-.org-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  margin-right: 12px;
-  overflow: hidden;
-}
-
-.logo-img {
-  width: 48px;
-  height: 48px;
-}
-
-.logo-placeholder {
-  width: 48px;
-  height: 48px;
-  background: #F3F4F6;
-  border-radius: 8px;
+.demand-header {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
-.org-info {
-  flex: 1;
+.demand-subject {
+  background: #2563EB;
+  border-radius: 4px;
+  padding: 4px 10px;
 }
 
-.org-name {
-  font-size: 15px;
+.subject-text {
+  font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: #fff;
+}
+
+.status-badge {
+  background: #DBEAFE !important;
+}
+
+.status-text {
+  font-size: 11px;
+  color: #2563EB;
+}
+
+.demand-info {
+  margin-bottom: 10px;
+}
+
+.demand-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 4px;
 }
 
-.org-desc {
+.demand-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #F97316;
+}
+
+.demand-time {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.demand-grade {
   font-size: 12px;
   color: #6B7280;
+  margin-right: 10px;
+}
+
+.demand-gender {
+  font-size: 12px;
+  color: #6B7280;
+  margin-right: 10px;
+}
+
+.demand-distance {
+  font-size: 12px;
+  color: #2563EB;
+}
+
+.demand-desc {
+  font-size: 13px;
+  color: #374151;
   margin-bottom: 6px;
+  line-height: 1.4;
 }
 
-.org-meta {
+.demand-address {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
 }
 
-.org-teachers {
+.address-text {
   font-size: 12px;
   color: #6B7280;
+  margin-left: 4px;
 }
 
-.org-rating {
+.demand-actions {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
+.action-btn-secondary {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+}
+
+.action-btn-secondary-text {
+  font-size: 12px;
+  color: #6B7280;
+  margin-left: 4px;
+}
+
+.action-btn-primary {
+  padding: 6px 16px;
+  background: #2563EB;
+  border-radius: 16px;
+}
+
+.action-btn-primary-text {
+  font-size: 12px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 空状态 */
 .empty-state {
-  padding: 24px 0;
+  padding: 30px 0;
   text-align: center;
 }
 
@@ -331,6 +422,7 @@
   color: #9CA3AF;
 }
 
+/* 登录提示 */
 .login-tip-card {
   margin: 0 12px 12px;
   border-radius: 12px;
