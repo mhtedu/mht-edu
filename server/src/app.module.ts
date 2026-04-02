@@ -38,6 +38,8 @@ import { InvitationModule } from '@/modules/invitation/invitation.module';
 import { SeedModule } from '@/modules/seed/seed.module';
 import { NotificationModule } from '@/modules/notification/notification.module';
 import { DemoModule } from '@/modules/demo/demo.module';
+import { OrgMembershipModule } from '@/modules/org-membership/org-membership.module';
+import { OrgValueModule } from '@/modules/org-value/org-value.module';
 
 @Module({
   imports: [
@@ -73,6 +75,8 @@ import { DemoModule } from '@/modules/demo/demo.module';
     TeachingModule,
     // 机构模块
     OrgAssignModule,
+    OrgMembershipModule,
+    OrgValueModule,
     // 订单关闭模块
     OrderCloseModule,
     // 工具模块
