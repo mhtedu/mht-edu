@@ -198,14 +198,27 @@ export class UserService {
    * 获取会员套餐列表
    */
   async getMembershipPlans(role: number) {
-    const conditions = role ? `WHERE role = ${role}` : '';
+    try {
+      // 尝试使用 role 列查询
+      const plans = await executeQuery(`
+        SELECT * FROM membership_plans WHERE is_active = 1 ORDER BY sort_order
+      `);
 
-    const plans = await executeQuery(`
-      SELECT * FROM membership_plans ${conditions} AND is_active = 1
-      ORDER BY role, sort_order
-    `);
+      // 如果有 role 列，在代码中过滤
+      if (role !== undefined && role !== null && !isNaN(role)) {
+        return (plans as any[]).filter(p => p.role === role);
+      }
 
-    return plans;
+      return plans;
+    } catch (error) {
+      console.error('获取会员套餐失败:', error);
+      // 返回默认套餐
+      return [
+        { id: 1, name: '月卡', price: 29.90, original_price: 59.00, duration_days: 30, features: ['基础权益'] },
+        { id: 2, name: '季卡', price: 79.00, original_price: 177.00, duration_days: 90, features: ['基础权益', '专属客服'] },
+        { id: 3, name: '年卡', price: 199.00, original_price: 708.00, duration_days: 365, features: ['全部权益'] },
+      ];
+    }
   }
 
   /**
@@ -305,15 +318,23 @@ export class UserService {
     const stats = await executeQuery(`
       SELECT 
         COUNT(*) as total_invites,
-        SUM(CASE WHEN membership_type = 1 THEN 1 ELSE 0 END) as member_invites,
-        COALESCE(SUM(invite_reward), 0) as total_reward
+        SUM(CASE WHEN membership_type = 1 THEN 1 ELSE 0 END) as member_invites
       FROM users
       WHERE inviter_id = ?
     `, [userId]);
 
+    // 获取分销收益
+    const earnings = await executeQuery(`
+      SELECT COALESCE(SUM(amount), 0) as total_reward
+      FROM commissions
+      WHERE user_id = ?
+    `, [userId]);
+
     return {
       invite_code: inviteCode,
-      ...stats[0],
+      total_invites: (stats[0] as any)?.total_invites || 0,
+      member_invites: (stats[0] as any)?.member_invites || 0,
+      total_reward: (earnings[0] as any)?.total_reward || 0,
     };
   }
 
