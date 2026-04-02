@@ -83,7 +83,7 @@ const ProfilePage: FC = () => {
   ]
 
   const settingItems = [
-    { icon: Award, title: '牛师认证', path: '/pages/profile/teacher-auth', color: '#10B981' },
+    { icon: Award, title: '牛师认证', path: '/pages/teacher-auth/index', color: '#10B981' },
     { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
     { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
     { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
