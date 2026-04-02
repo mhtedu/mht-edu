@@ -34,6 +34,7 @@ import { SmsModule } from '@/modules/sms/sms.module';
 import { RobotModule } from '@/modules/robot/robot.module';
 import { DocumentModule } from '@/modules/document/document.module';
 import { InvitationModule } from '@/modules/invitation/invitation.module';
+import { SeedModule } from '@/modules/seed/seed.module';
 
 @Module({
   imports: [
@@ -77,6 +78,8 @@ import { InvitationModule } from '@/modules/invitation/invitation.module';
     VisionModule,
     // 邀约模块
     InvitationModule,
+    // 测试数据初始化模块
+    SeedModule,
     // 管理后台
     AdminModule,
   ],
