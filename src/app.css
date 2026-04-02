@@ -3,22 +3,15 @@
 /* stylelint-disable number-max-precision */
 @import url('weapp-tailwindcss');
 
-/* 移动端适配 - 基于750px设计稿的响应式布局（与远程服务器一致） */
+/* 移动端适配 */
 html {
-  font-size: 20px;
+  font-size: 16px;
 }
 
-/* 小程序页面容器高度设置，确保垂直居中生效 */
+/* 小程序页面容器高度设置 */
 page {
   height: 100%;
-  font-size: 20px;
-}
-
-/* H5 端适配 - 动态计算根元素字体大小 */
-@media screen and (max-width: 750px) {
-  html {
-    font-size: calc(40 * 100vw / 750);
-  }
+  font-size: 16px;
 }
 
 /* 确保文字清晰可读 */
