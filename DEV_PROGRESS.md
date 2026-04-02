@@ -270,3 +270,53 @@ chore: 构建/工具链
   - 活动创建页面（机构端）- 完整表单、时间地点、费用设置
   - 活动管理页面（机构端）- 活动列表、状态筛选、操作管理
 
+### 2025-04-02（路由修复 + API接口对接）
+- ✅ 修复首页快捷入口路由问题
+  - 将32个缺失页面添加到 app.config.ts 路由配置
+  - 修复"工作台"和"收益中心"无法跳转的问题
+  - 修复"创建牛师班"按钮从"功能开发中"改为正确跳转
+
+- ✅ 修复前后端API接口不匹配问题
+  - 抢单接口：`/api/demands/:id/grab` → `/api/teacher/orders/:id/grab`
+  - 发布需求接口：`/api/demands` → `/api/order/create`
+  - 同步数据库表结构：添加 `order_no`, `grade`, `student_info`, `schedule`, `budget`, `requirement` 字段
+
+- 🚧 待解决：数据库连接问题
+  - MySQL 服务未运行，API 返回 500 错误
+  - 前端已有 mock 数据 fallback，页面可正常显示
+  - 需要配置 Supabase 或启动 MySQL 服务
+
+---
+
+## 后端API接口清单
+
+### 订单模块 `/api/order`
+| 接口 | 方法 | 说明 | 状态 |
+|------|------|------|------|
+| `/create` | POST | 家长发布订单 | ✅ 已实现 |
+| `/list` | GET | 获取订单列表（家长视角） | ✅ 已实现 |
+| `/:id` | GET | 获取订单详情 | ✅ 已实现 |
+| `/:id/matches` | GET | 获取抢单列表 | ✅ 已实现 |
+| `/:id/select-teacher` | POST | 选择教师（匹配） | ✅ 已实现 |
+| `/:id/status` | POST | 更新订单状态 | ✅ 已实现 |
+| `/:id/cancel` | POST | 取消订单 | ✅ 已实现 |
+| `/:id/review` | POST | 评价订单 | ✅ 已实现 |
+| `/nearby` | GET | 获取附近订单（教师视角） | ✅ 已实现 |
+
+### 教师模块 `/api/teacher`
+| 接口 | 方法 | 说明 | 状态 |
+|------|------|------|------|
+| `/orders/:orderId/grab` | POST | 抢单 | ✅ 已实现 |
+| `/orders/matched` | GET | 获取已匹配订单 | ✅ 已实现 |
+| `/nearby` | GET | 获取附近教师 | ✅ 已实现 |
+
+### 消息模块 `/api/message`
+| 接口 | 方法 | 说明 | 状态 |
+|------|------|------|------|
+| `/conversations` | GET | 获取会话列表 | ✅ 已实现 |
+| `/conversations/:id/messages` | GET | 获取会话消息 | ✅ 已实现 |
+| `/send` | POST | 发送消息 | ✅ 已实现 |
+| `/conversation/order` | POST | 创建订单会话 | ✅ 已实现 |
+| `/unread-count` | GET | 获取未读消息数 | ✅ 已实现 |
+| `/reminders` | GET | 获取消息提醒 | ✅ 已实现 |
+

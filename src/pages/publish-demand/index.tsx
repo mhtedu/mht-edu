@@ -178,11 +178,23 @@ const PublishDemandPage: FC = () => {
         if (res.confirm) {
           setLoading(true)
           try {
-            console.log('发布需求请求:', { url: '/api/demands', data: formData })
+            // 构造后端需要的参数格式
+            const submitData = {
+              subject: formData.subject,
+              grade: formData.student_grade,
+              student_info: formData.student_gender === 0 ? '男生' : '女生',
+              schedule: `${formData.time_slots.join('、')}，${formData.frequency}`,
+              address: formData.address,
+              latitude: formData.latitude,
+              longitude: formData.longitude,
+              budget: parseFloat(formData.budget.replace(/[^0-9]/g, '')) || 0,
+              requirement: formData.description,
+            }
+            console.log('发布需求请求:', { url: '/api/order/create', data: submitData })
             const result = await Network.request({
-              url: '/api/demands',
+              url: '/api/order/create',
               method: 'POST',
-              data: formData
+              data: submitData
             })
             console.log('发布需求响应:', result.data)
             

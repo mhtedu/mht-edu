@@ -235,7 +235,7 @@ const HomePage: FC = () => {
         if (res.confirm) {
           Taro.showLoading({ title: '抢单中...' })
           Network.request({ 
-            url: `/api/demands/${demand.id}/grab`, 
+            url: `/api/teacher/orders/${demand.id}/grab`, 
             method: 'POST' 
           }).then((result) => {
             Taro.hideLoading()

@@ -20,21 +20,20 @@ export class OrderService {
 
     const result = await executeQuery(`
       INSERT INTO orders (
-        order_no, parent_id, subject, grade, student_info, schedule,
-        address, latitude, longitude, budget, requirement, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        order_no, parent_id, subject, hourly_rate, student_grade, student_gender,
+        address, latitude, longitude, description, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `, [
       orderNo,
       userId,
       data.subject,
-      data.grade,
-      data.student_info,
-      data.schedule,
+      data.budget || data.hourly_rate || 0,
+      data.grade || data.student_grade || '',
+      data.student_gender || 0,
       data.address,
       data.latitude,
       data.longitude,
-      data.budget,
-      data.requirement || '',
+      data.requirement || data.description || '',
     ]);
 
     return {
