@@ -3,9 +3,29 @@
 /* stylelint-disable number-max-precision */
 @import url('weapp-tailwindcss');
 
+/* 移动端适配 - 设置根元素字体大小 */
+html {
+  font-size: 16px;
+}
+
 /* 小程序页面容器高度设置，确保垂直居中生效 */
 page {
   height: 100%;
+  font-size: 16px;
+}
+
+/* H5 端适配 */
+@media screen and (max-width: 750px) {
+  html {
+    font-size: calc(100vw / 23.4375); /* 基于 375px 设计稿 */
+  }
+}
+
+/* 确保文字清晰可读 */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 :root,

@@ -11,7 +11,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 18px 24px;
   background: #fff;
   border-bottom: 1px solid #E5E7EB;
   position: sticky;
@@ -26,14 +26,14 @@
 }
 
 .city-name {
-  font-size: 18px;
+  font-size: 20px;
   color: #2563EB;
   font-weight: 500;
-  margin-left: 4px;
+  margin-left: 6px;
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: #1F2937;
 }
@@ -42,21 +42,21 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 8px 14px;
+  padding: 10px 16px;
   background: #EFF6FF;
-  border-radius: 18px;
+  border-radius: 20px;
 }
 
 .role-text {
-  font-size: 15px;
+  font-size: 16px;
   color: #2563EB;
-  margin-left: 4px;
+  margin-left: 6px;
 }
 
 /* 滚动区域 */
 .home-scroll {
   flex: 1;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 70px);
 }
 
 /* 功能入口栏 */
@@ -64,7 +64,7 @@
   display: flex;
   flex-direction: row;
   justify-content: space-around;
-  padding: 24px 16px;
+  padding: 28px 20px;
   background: #fff;
 }
 
@@ -75,13 +75,13 @@
 }
 
 .entry-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .entry-icon.publish {
@@ -101,21 +101,21 @@
 }
 
 .entry-text {
-  font-size: 15px;
+  font-size: 17px;
   color: #374151;
-  margin-top: 6px;
+  margin-top: 8px;
   font-weight: 500;
 }
 
 /* 轮播图区域 */
 .banner-section {
-  padding: 16px;
+  padding: 20px;
   background: #fff;
 }
 
 .banner-swiper {
-  height: 180px;
-  border-radius: 16px;
+  height: 200px;
+  border-radius: 18px;
   overflow: hidden;
 }
 
@@ -124,7 +124,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 28px;
+  padding: 32px;
 }
 
 .banner-green {
@@ -140,30 +140,30 @@
 }
 
 .banner-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .banner-desc {
-  font-size: 17px;
+  font-size: 18px;
   color: rgba(255, 255, 255, 0.9);
 }
 
 /* 教师模块 */
 .teacher-section {
-  margin-top: 12px;
+  margin-top: 14px;
   background: #fff;
-  padding: 20px 16px;
+  padding: 24px 20px;
 }
 
 .section-header {
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: #1F2937;
 }
@@ -172,16 +172,16 @@
 .filter-tabs {
   display: flex;
   flex-direction: row;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 .filter-tab {
-  padding: 10px 20px;
+  padding: 12px 22px;
   background: #F3F4F6;
-  border-radius: 22px;
-  margin-right: 12px;
+  border-radius: 24px;
+  margin-right: 14px;
   flex-shrink: 0;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .filter-text {
-  font-size: 15px;
+  font-size: 16px;
   color: #6B7280;
 }
 
@@ -204,10 +204,10 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px;
+  padding: 18px 20px;
   background: #FEF3C7;
-  border-radius: 14px;
-  margin-bottom: 18px;
+  border-radius: 16px;
+  margin-bottom: 20px;
 }
 
 .tip-left {
@@ -217,19 +217,19 @@
 }
 
 .tip-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #92400E;
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
 .tip-btn {
   background: #F59E0B;
-  border-radius: 18px;
-  padding: 8px 16px;
+  border-radius: 20px;
+  padding: 10px 18px;
 }
 
 .tip-btn-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #fff;
   font-weight: 500;
 }
@@ -243,18 +243,18 @@
 .teacher-card {
   display: flex;
   flex-direction: row;
-  padding: 20px;
+  padding: 22px;
   background: #F9FAFB;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid #E5E7EB;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .teacher-avatar {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  margin-right: 18px;
+  margin-right: 20px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -274,7 +274,7 @@
 }
 
 .avatar-text {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: bold;
   color: #fff;
 }
@@ -288,7 +288,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .name-row {
@@ -298,15 +298,15 @@
 }
 
 .teacher-name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1F2937;
 }
 
 .teacher-gender {
-  font-size: 15px;
+  font-size: 16px;
   color: #6B7280;
-  margin-left: 10px;
+  margin-left: 12px;
 }
 
 .rating-row {
@@ -316,60 +316,60 @@
 }
 
 .rating-text {
-  font-size: 15px;
+  font-size: 16px;
   color: #F59E0B;
-  margin-left: 4px;
+  margin-left: 6px;
   font-weight: 500;
 }
 
 .teacher-edu {
-  font-size: 14px;
+  font-size: 15px;
   color: #6B7280;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .teacher-subjects {
   display: flex;
   flex-direction: row;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .subject-tag {
   background: #EFF6FF;
-  padding: 6px 12px;
-  border-radius: 14px;
-  margin-right: 8px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  margin-right: 10px;
 }
 
 .subject-tag-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #2563EB;
 }
 
 .teacher-price {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #EF4444;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .teacher-intro {
-  font-size: 14px;
+  font-size: 15px;
   color: #6B7280;
   line-height: 1.6;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   display: block;
 }
 
 .detail-btn {
   align-self: flex-start;
   background: #2563EB;
-  padding: 10px 20px;
-  border-radius: 18px;
+  padding: 12px 24px;
+  border-radius: 20px;
 }
 
 .detail-btn-text {
-  font-size: 14px;
+  font-size: 15px;
   color: #fff;
   font-weight: 500;
 }
@@ -383,6 +383,7 @@
 }
 
 .empty-text {
-  font-size: 16px;
+  font-size: 18px;
   color: #9CA3AF;
 }
+

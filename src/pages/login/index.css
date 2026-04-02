@@ -1,7 +1,7 @@
 .login-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #DBEAFE 0%, #EFF6FF 50%, #F3F4F6 100%);
-  padding: 80px 32px 40px;
+  padding: 100px 32px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9,38 +9,38 @@
 
 .login-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 60px;
 }
 
 .login-title {
   display: block;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: bold;
   color: #1D4ED8;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .login-subtitle {
   display: block;
-  font-size: 16px;
+  font-size: 18px;
   color: #6B7280;
 }
 
 .login-card {
   width: 100%;
   background: #fff;
-  border-radius: 20px;
-  padding: 32px 24px;
+  border-radius: 24px;
+  padding: 40px 28px;
   box-shadow: 0 8px 32px rgba(37, 99, 235, 0.1);
 }
 
 .card-title {
   display: block;
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 600;
   color: #1F2937;
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .input-row {
@@ -48,19 +48,19 @@
   flex-direction: row;
   align-items: center;
   background: #F9FAFB;
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
   border: 1px solid #E5E7EB;
 }
 
 .input-icon {
-  margin-right: 12px;
+  margin-right: 14px;
 }
 
 .login-input {
   flex: 1;
-  font-size: 16px;
+  font-size: 18px;
   background: transparent;
   color: #1F2937;
 }
@@ -72,9 +72,9 @@
 .code-btn {
   flex-shrink: 0;
   background: #2563EB;
-  padding: 10px 16px;
-  border-radius: 10px;
-  margin-left: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-left: 14px;
 }
 
 .code-btn.disabled {
@@ -82,7 +82,7 @@
 }
 
 .code-btn-text {
-  font-size: 14px;
+  font-size: 16px;
   color: #fff;
   font-weight: 500;
   white-space: nowrap;
@@ -90,18 +90,18 @@
 
 .login-btn {
   width: 100%;
-  height: 52px;
-  border-radius: 14px;
+  height: 58px;
+  border-radius: 16px;
   background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 28px;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .login-btn-text {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #fff;
 }
@@ -114,39 +114,40 @@
 }
 
 .loading-text {
-  font-size: 16px;
+  font-size: 18px;
   color: #fff;
-  margin-left: 10px;
+  margin-left: 12px;
 }
 
 .quick-login-btn {
   width: 100%;
-  height: 48px;
-  border-radius: 14px;
+  height: 54px;
+  border-radius: 16px;
   background: #F3F4F6;
   border: 1px solid #D1D5DB;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .quick-login-text {
-  font-size: 16px;
+  font-size: 18px;
   color: #6B7280;
 }
 
 .login-footer {
   margin-top: auto;
-  padding-top: 50px;
+  padding-top: 60px;
   text-align: center;
 }
 
 .footer-text {
-  font-size: 13px;
+  font-size: 15px;
   color: #9CA3AF;
 }
 
 .link {
   color: #2563EB;
 }
+
