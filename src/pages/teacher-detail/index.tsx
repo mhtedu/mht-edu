@@ -264,9 +264,9 @@ export default function TeacherDetailPage() {
           mode="aspectFill"
         />
         <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
-          <Text className="text-white text-lg font-bold">{teacher.nickname}</Text>
+          <Text className="block text-white text-lg font-bold">{teacher.nickname}</Text>
           {teacher.one_line_intro && (
-            <Text className="text-gray-200 text-sm mt-1">{teacher.one_line_intro}</Text>
+            <Text className="block text-gray-200 text-sm mt-1">{teacher.one_line_intro}</Text>
           )}
         </View>
       </View>
@@ -338,10 +338,10 @@ export default function TeacherDetailPage() {
       {/* 标签页 */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="sticky top-0 bg-white z-10">
-          <TabsTrigger value="intro">简介</TabsTrigger>
-          <TabsTrigger value="photos">相册</TabsTrigger>
-          <TabsTrigger value="moments">动态</TabsTrigger>
-          <TabsTrigger value="reviews">评价</TabsTrigger>
+          <TabsTrigger value="intro"><Text className="text-sm">简介</Text></TabsTrigger>
+          <TabsTrigger value="photos"><Text className="text-sm">相册</Text></TabsTrigger>
+          <TabsTrigger value="moments"><Text className="text-sm">动态</Text></TabsTrigger>
+          <TabsTrigger value="reviews"><Text className="text-sm">评价</Text></TabsTrigger>
         </TabsList>
 
         {/* 简介Tab */}
@@ -515,7 +515,7 @@ export default function TeacherDetailPage() {
       </Tabs>
 
       {/* 底部操作栏 */}
-      <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 flex gap-3 z-50">
+      <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', zIndex: 50 }}>
         <Button
           className="flex-1"
           variant="outline"
