@@ -89,12 +89,45 @@ const MessagePage: FC = () => {
   const loadMessages = async () => {
     const siteName = getSiteName()
     try {
+      // 调用消息提醒接口
       const res = await Network.request({
-        url: '/api/messages',
-        data: { type: activeTab === 'all' ? undefined : activeTab }
+        url: '/api/message/reminders',
+        data: { page: 1, pageSize: 50 }
       })
-      if (res.data) {
-        const list = Array.isArray(res.data) ? res.data : res.data.list || []
+      
+      console.log('消息提醒响应:', res.data)
+      
+      if (res.data && res.data.list) {
+        // 转换后端数据格式到前端格式
+        const list = res.data.list.map((item: any) => {
+          // 后端类型: 1-订单 2-评价 3-消息 4-系统
+          // 前端类型: 'system' | 'order' | 'interact' | 'invitation'
+          const typeMap: Record<number, 'system' | 'order' | 'interact'> = {
+            1: 'order',     // 订单
+            2: 'interact',  // 评价
+            3: 'interact',  // 消息
+            4: 'system',    // 系统
+          }
+          
+          const typeTitleMap: Record<number, string> = {
+            1: '订单消息',
+            2: '评价消息',
+            3: '互动消息',
+            4: '系统通知',
+          }
+          
+          return {
+            id: item.id,
+            type: typeMap[item.type] || 'system',
+            title: typeTitleMap[item.type] || '消息通知',
+            content: item.content,
+            time: formatTime(item.created_at),
+            read: item.is_read === 1,
+            from_nickname: item.from_nickname,
+            from_avatar: item.from_avatar,
+            target_id: item.target_id,
+          }
+        })
         setMessages(list)
       }
     } catch (error) {

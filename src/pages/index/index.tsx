@@ -165,9 +165,9 @@ const HomePage: FC = () => {
       if (selectedSubject !== '全部') {
         params.subject = selectedSubject
       }
-      console.log('加载附近牛师请求:', { url: '/api/teachers/nearby', params })
+      console.log('加载附近牛师请求:', { url: '/api/teacher-profile/nearby', params })
       const res = await Network.request({
-        url: '/api/teachers/nearby',
+        url: '/api/teacher-profile/nearby',
         data: params
       })
       console.log('加载附近牛师响应:', res.data)
