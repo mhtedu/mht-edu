@@ -160,21 +160,22 @@ export class ConfigService {
   // 获取广告位列表
   async getAdsByPosition(positionKey: string) {
     try {
-      const [rows]: any = await db.query(
-        'SELECT * FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
+      const [rows] = await db.query(
+        'SELECT id, position_key, title, image_url, link_url, sort_order, is_active FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
         [positionKey]
       );
-      return rows;
+      return rows || [];
     } catch (error: any) {
+      console.error('查询广告失败:', error);
       // 如果表不存在，创建表并插入示例数据
       if (error.code === 'ER_NO_SUCH_TABLE') {
         await this.createAdPositionsTable();
         await this.insertDefaultAds();
-        const [rows]: any = await db.query(
-          'SELECT * FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
+        const [rows] = await db.query(
+          'SELECT id, position_key, title, image_url, link_url, sort_order, is_active FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
           [positionKey]
         );
-        return rows;
+        return rows || [];
       }
       throw error;
     }

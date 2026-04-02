@@ -386,42 +386,96 @@ export class OrderService {
       sqlParams.push(params.subject);
     }
 
-    // 计算距离并筛选
+    // 先获取所有符合条件的订单
+    console.log('查询参数:', { conditions, sqlParams, pageSize: params.pageSize, offset });
+    
     const orders = await executeQuery(`
       SELECT 
-        o.*,
-        u.nickname as parent_nickname, u.avatar as parent_avatar,
-        ROUND(
-          6371 * acos(
-            cos(radians(?)) * cos(radians(o.latitude)) *
-            cos(radians(o.longitude) - radians(?)) +
-            sin(radians(?)) * sin(radians(o.latitude))
-          ), 2
-        ) as distance
+        o.id,
+        o.subject,
+        o.student_grade,
+        o.hourly_rate,
+        o.description,
+        o.address,
+        o.status,
+        o.created_at,
+        o.parent_id,
+        o.latitude,
+        o.longitude,
+        u.nickname as parent_nickname, 
+        u.avatar as parent_avatar
       FROM orders o
       LEFT JOIN users u ON o.parent_id = u.id
       WHERE ${conditions.join(' AND ')}
-      HAVING distance <= ?
-      ORDER BY distance ASC
+      ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
     `, [
-      params.latitude,
-      params.longitude,
-      params.latitude,
       ...sqlParams,
-      params.radius,
       params.pageSize,
       offset,
     ]);
 
-    // 隐藏联系方式
-    orders.forEach((order: any) => {
-      order.contact_hidden = true;
-      delete order.contact_phone;
-    });
+    console.log('查询到的订单数量:', orders.length);
+    if (orders.length > 0) {
+      console.log('第一个订单数据:', JSON.stringify(orders[0], null, 2));
+    }
+
+    // 在代码中计算距离
+    const processedOrders = orders.map((order: any) => {
+      let distance = 9999;
+      let distance_text = '';
+      
+      // 尝试从坐标对象中提取数值
+      let lat = order.latitude;
+      let lng = order.longitude;
+      
+      // 处理可能的Decimal对象格式
+      if (lat && typeof lat === 'object' && lat !== null) {
+        // 尝试转换为数值
+        lat = parseFloat(String(lat));
+      }
+      if (lng && typeof lng === 'object' && lng !== null) {
+        lng = parseFloat(String(lng));
+      }
+      
+      // 如果有有效坐标，计算距离
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        const R = 6371; // 地球半径（公里）
+        const dLat = (lat - params.latitude) * Math.PI / 180;
+        const dLon = (lng - params.longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(params.latitude * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        distance = R * c;
+        
+        if (distance < 1) {
+          distance_text = `${Math.round(distance * 1000)}m`;
+        } else {
+          distance_text = `${distance.toFixed(1)}km`;
+        }
+      }
+      
+      return {
+        id: order.id,
+        subject: order.subject,
+        student_grade: order.student_grade,
+        hourly_rate: order.hourly_rate,
+        description: order.description,
+        address: order.address,
+        status: order.status,
+        created_at: order.created_at,
+        parent_id: order.parent_id,
+        parent_nickname: order.parent_nickname,
+        parent_avatar: order.parent_avatar,
+        distance: distance,
+        distance_text: distance_text,
+        contact_hidden: true,
+      };
+    }).filter((order: any) => order.distance <= params.radius);
 
     return {
-      list: orders,
+      list: processedOrders,
       page: params.page,
       pageSize: params.pageSize,
     };

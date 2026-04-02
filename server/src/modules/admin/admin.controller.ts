@@ -703,13 +703,88 @@ export class AdminController {
   }
 
   /**
-   * 初始化演示数据（牛师坐标、广告位等）
+   * 查询数据库表结构和数据
+   */
+  @Public()
+  @Get('table-structure')
+  async getTableStructure(@Query('table') table: string = 'orders') {
+    try {
+      const [structure] = await db.query(`DESCRIBE ${table}`);
+      const [data] = await db.query(`SELECT * FROM ${table} LIMIT 5`);
+      return { success: true, structure, sampleData: data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 查询牛师数据
+   */
+  @Public()
+  @Get('teachers-check')
+  async checkTeachers() {
+    try {
+      const [teachers] = await db.query(`
+        SELECT u.id, u.nickname, u.role, u.latitude, u.longitude, tp.real_name, tp.subjects
+        FROM users u
+        LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+        WHERE u.role = 1
+        LIMIT 20
+      `);
+      return { success: true, teachers };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 查询广告数据
+   */
+  @Public()
+  @Get('ads-check')
+  async checkAds() {
+    try {
+      const [ads] = await db.query(`SELECT * FROM ad_positions LIMIT 10`);
+      return { success: true, ads };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 清理重复的广告数据
+   */
+  @Public()
+  @Post('clean-ads')
+  async cleanAds() {
+    try {
+      // 删除所有广告
+      await db.update(`DELETE FROM ad_positions`);
+      
+      // 重新插入4条广告
+      await db.update(`
+        INSERT INTO ad_positions (position_key, title, image_url, link_url, sort_order, is_active) VALUES
+        ('home_top', '新人专享福利', 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=400&fit=crop', '/pages/member/index', 1, 1),
+        ('home_top', '会员日特惠', 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=400&fit=crop', '/pages/membership/index', 2, 1),
+        ('home_top', '名师一对一定制课程', 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&h=400&fit=crop', '/pages/teacher/list', 3, 1),
+        ('home_top', '暑期集训营火热报名', 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&h=400&fit=crop', '/pages/activities/index', 4, 1)
+      `);
+      
+      return { success: true, message: '广告数据已清理' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 初始化演示数据（牛师坐标、广告位、家长需求等）
    */
   @Public()
   @Post('init-demo-data')
   async initDemoData() {
     try {
       // 更新北京牛师坐标
+      await db.update(`UPDATE users SET latitude = 39.9042, longitude = 116.4074 WHERE id = 100`);
       await db.update(`UPDATE users SET latitude = 39.9042, longitude = 116.4074 WHERE id = 101`);
       await db.update(`UPDATE users SET latitude = 39.9142, longitude = 116.4174 WHERE id = 102`);
       await db.update(`UPDATE users SET latitude = 39.9242, longitude = 116.4274 WHERE id = 103`);
@@ -729,17 +804,6 @@ export class AdminController {
       await db.update(`UPDATE users SET latitude = 23.1491, longitude = 113.2844 WHERE id = 303`);
       await db.update(`UPDATE users SET latitude = 23.1591, longitude = 113.2944 WHERE id = 304`);
       await db.update(`UPDATE users SET latitude = 23.1691, longitude = 113.3044 WHERE id = 305`);
-      
-      // 更新订单坐标
-      await db.update(`UPDATE orders SET latitude = 39.9142, longitude = 116.4174 WHERE id = 6`);
-      await db.update(`UPDATE orders SET latitude = 39.9342, longitude = 116.4374 WHERE id = 7`);
-      await db.update(`UPDATE orders SET latitude = 39.9542, longitude = 116.4574 WHERE id = 8`);
-      await db.update(`UPDATE orders SET latitude = 31.2404, longitude = 121.4837 WHERE id = 9`);
-      await db.update(`UPDATE orders SET latitude = 31.2604, longitude = 121.5037 WHERE id = 10`);
-      await db.update(`UPDATE orders SET latitude = 31.2804, longitude = 121.5237 WHERE id = 11`);
-      await db.update(`UPDATE orders SET latitude = 23.1391, longitude = 113.2744 WHERE id = 12`);
-      await db.update(`UPDATE orders SET latitude = 23.1591, longitude = 113.2944 WHERE id = 13`);
-      await db.update(`UPDATE orders SET latitude = 23.1791, longitude = 113.3144 WHERE id = 14`);
 
       // 创建广告位表（如果不存在）
       await db.update(`
@@ -773,6 +837,47 @@ export class AdminController {
         VALUES ('site_name', '牛师很忙', 1, NOW(), NOW())
         ON DUPLICATE KEY UPDATE config_value = '牛师很忙', updated_at = NOW()
       `);
+
+      // 插入家长需求订单数据
+      // 先检查是否已存在这些订单
+      const [existingOrders] = await db.query(`SELECT id FROM orders WHERE id IN (6,7,8,9,10,11,12,13,14)`);
+      
+      if (!existingOrders || (existingOrders as any[]).length === 0) {
+        // 插入北京家长需求 (user_id使用家长ID)
+        await db.update(`
+          INSERT INTO orders (id, user_id, subject, student_grade, hourly_rate, description, address, latitude, longitude, status, parent_id, created_at) VALUES
+          (6, 401, '数学', '高二', 180, '孩子数学成绩一直在及格线徘徊，希望找到有经验的老师帮助提高成绩', '朝阳区望京', 39.9142, 116.4174, 0, 401, NOW()),
+          (7, 402, '英语', '初三', 150, '希望提高英语口语和写作能力，为中考做准备', '海淀区中关村', 39.9342, 116.4374, 0, 402, NOW()),
+          (8, 403, '物理', '高一', 200, '孩子对物理概念理解困难，需要老师耐心讲解', '西城区金融街', 39.9542, 116.4574, 0, 403, NOW())
+        `);
+        
+        // 插入上海家长需求
+        await db.update(`
+          INSERT INTO orders (id, user_id, subject, student_grade, hourly_rate, description, address, latitude, longitude, status, parent_id, created_at) VALUES
+          (9, 501, '数学', '高三', 250, '高考冲刺阶段，需要强化数学解题技巧', '浦东新区陆家嘴', 31.2404, 121.4837, 0, 501, NOW()),
+          (10, 502, '化学', '高二', 180, '化学实验部分薄弱，希望加强实验原理理解', '徐汇区徐家汇', 31.2604, 121.5037, 0, 502, NOW()),
+          (11, 503, '语文', '初三', 150, '作文写不好，希望老师指导写作技巧', '静安区南京西路', 31.2804, 121.5237, 0, 503, NOW())
+        `);
+        
+        // 插入广州家长需求
+        await db.update(`
+          INSERT INTO orders (id, user_id, subject, student_grade, hourly_rate, description, address, latitude, longitude, status, parent_id, created_at) VALUES
+          (12, 601, '英语', '高一', 160, '英语语法基础差，希望系统补习', '天河区珠江新城', 23.1391, 113.2744, 0, 601, NOW()),
+          (13, 602, '物理', '高二', 180, '物理力学部分理解困难，需要老师详细讲解', '越秀区东山口', 23.1591, 113.2944, 0, 602, NOW()),
+          (14, 603, '数学', '高三', 220, '高考冲刺，数学需要提高到130分以上', '海珠区江南西', 23.1791, 113.3144, 0, 603, NOW())
+        `);
+      } else {
+        // 更新订单坐标
+        await db.update(`UPDATE orders SET latitude = 39.9142, longitude = 116.4174 WHERE id = 6`);
+        await db.update(`UPDATE orders SET latitude = 39.9342, longitude = 116.4374 WHERE id = 7`);
+        await db.update(`UPDATE orders SET latitude = 39.9542, longitude = 116.4574 WHERE id = 8`);
+        await db.update(`UPDATE orders SET latitude = 31.2404, longitude = 121.4837 WHERE id = 9`);
+        await db.update(`UPDATE orders SET latitude = 31.2604, longitude = 121.5037 WHERE id = 10`);
+        await db.update(`UPDATE orders SET latitude = 31.2804, longitude = 121.5237 WHERE id = 11`);
+        await db.update(`UPDATE orders SET latitude = 23.1391, longitude = 113.2744 WHERE id = 12`);
+        await db.update(`UPDATE orders SET latitude = 23.1591, longitude = 113.2944 WHERE id = 13`);
+        await db.update(`UPDATE orders SET latitude = 23.1791, longitude = 113.3144 WHERE id = 14`);
+      }
 
       return { success: true, message: '演示数据初始化成功' };
     } catch (error) {

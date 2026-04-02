@@ -24,7 +24,7 @@ export class TeacherService {
     pageSize: number;
   }) {
     const offset = (params.page - 1) * params.pageSize;
-    const conditions: string[] = ['u.role = 1', 'u.status = 1', 'tp.verify_status = 1'];
+    const conditions: string[] = ['u.role = 1', 'u.status = 1', 'tp.verify_status = 2'];
     const sqlParams: any[] = [];
 
     // 科目筛选
@@ -68,7 +68,7 @@ export class TeacherService {
       SELECT 
         u.id, u.nickname, u.avatar, u.latitude, u.longitude,
         tp.real_name, tp.education, tp.subjects, tp.grades, 
-        tp.teaching_years, tp.hourly_rate, tp.rating, tp.review_count,
+        tp.teaching_years, tp.hourly_rate_min, tp.hourly_rate_max, tp.rating, tp.review_count,
         ${distanceSelect}
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
