@@ -535,31 +535,6 @@ const HomePage: FC = () => {
           ))}
         </View>
 
-        {/* 中间横幅广告位 */}
-        {bannerAds.length > 0 && (
-          <View className="bg-white mb-2 px-4 py-3">
-            <ScrollView scrollX className="whitespace-nowrap">
-              {bannerAds.map((ad) => (
-                <View 
-                  key={ad.id} 
-                  className="inline-block w-full h-20 rounded-xl overflow-hidden mr-3"
-                  onClick={() => {
-                    if (ad.link_url) {
-                      Taro.navigateTo({ url: ad.link_url })
-                    }
-                  }}
-                >
-                  <Image 
-                    src={ad.image_url} 
-                    mode="aspectFill"
-                    className="w-full h-full"
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
         {/* 内容区域 */}
         <View className="bg-white mb-2">
           <View className="flex flex-row items-center justify-between px-4 py-3" onClick={currentView === 'teacher' ? goToDemandList : goToTeacherList}>
@@ -796,6 +771,31 @@ const HomePage: FC = () => {
                       <Text className="block text-xs text-purple-600">报名中</Text>
                     </View>
                   </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 中间横幅广告位 */}
+        {bannerAds.length > 0 && (
+          <View className="bg-white mb-2 px-4 py-3">
+            <ScrollView scrollX className="whitespace-nowrap">
+              {bannerAds.map((ad) => (
+                <View 
+                  key={ad.id} 
+                  className="inline-block w-full h-20 rounded-xl overflow-hidden mr-3"
+                  onClick={() => {
+                    if (ad.link_url) {
+                      Taro.navigateTo({ url: ad.link_url })
+                    }
+                  }}
+                >
+                  <Image 
+                    src={ad.image_url} 
+                    mode="aspectFill"
+                    className="w-full h-full"
+                  />
                 </View>
               ))}
             </ScrollView>
