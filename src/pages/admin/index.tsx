@@ -167,6 +167,8 @@ const AdminPage = () => {
   const [financeStats, setFinanceStats] = useState<any>({});
   const [refunds, setRefunds] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [showProductDialog, setShowProductDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', description: '' });
   
@@ -219,6 +221,12 @@ const AdminPage = () => {
           break;
         case 'refunds':
           await loadRefunds();
+          break;
+        case 'commissions':
+          await loadCommissions();
+          break;
+        case 'withdrawals':
+          await loadWithdrawals();
           break;
         case 'config':
           await loadSiteConfig();
@@ -577,6 +585,76 @@ const AdminPage = () => {
         }
       }
     });
+  };
+
+  // ==================== 分佣管理 ====================
+
+  const loadCommissions = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/commissions',
+        method: 'GET',
+        data: { page, pageSize, status: statusFilter }
+      });
+      console.log('[Admin] Commissions response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setCommissions(data.list || []);
+        setTotal(data.total || 0);
+      }
+    } catch (error) {
+      console.error('加载分佣列表失败:', error);
+      setCommissions([]);
+    }
+  };
+
+  const settleCommission = async (id: number) => {
+    try {
+      await Network.request({
+        url: '/api/admin/commissions/settle',
+        method: 'POST',
+        data: { ids: [id] }
+      });
+      Taro.showToast({ title: '结算成功', icon: 'success' });
+      loadCommissions();
+    } catch (error) {
+      Taro.showToast({ title: '结算失败', icon: 'error' });
+    }
+  };
+
+  // ==================== 提现审核 ====================
+
+  const loadWithdrawals = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/withdrawals',
+        method: 'GET',
+        data: { page, pageSize, status: statusFilter }
+      });
+      console.log('[Admin] Withdrawals response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setWithdrawals(data.list || []);
+        setTotal(data.total || 0);
+      }
+    } catch (error) {
+      console.error('加载提现列表失败:', error);
+      setWithdrawals([]);
+    }
+  };
+
+  const auditWithdrawal = async (id: number, status: number) => {
+    try {
+      await Network.request({
+        url: `/api/admin/withdrawals/${id}/audit`,
+        method: 'POST',
+        data: { status }
+      });
+      Taro.showToast({ title: status === 1 ? '已通过' : '已拒绝', icon: 'success' });
+      loadWithdrawals();
+    } catch (error) {
+      Taro.showToast({ title: '操作失败', icon: 'error' });
+    }
   };
 
   // ==================== 演示数据管理 ====================
@@ -1760,6 +1838,178 @@ const AdminPage = () => {
         </CardContent>
       </Card>
 
+      <Card className="mt-4">
+        <CardHeader><CardTitle>短信配置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="grid grid-cols-2 gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">短信服务商</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_provider || ''}
+                  placeholder="如: 阿里云、腾讯云"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_provider: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">AccessKey ID</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_access_key_id || ''}
+                  placeholder="短信服务AccessKey ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_access_key_id: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">AccessKey Secret</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_access_key_secret || ''}
+                  placeholder="短信服务AccessKey Secret"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_access_key_secret: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">短信签名</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_sign_name || ''}
+                  placeholder="如: 棉花糖教育"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_sign_name: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">验证码模板ID</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_template_code_verify || ''}
+                  placeholder="验证码短信模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_template_code_verify: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">通知模板ID</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.sms_template_code_notify || ''}
+                  placeholder="通知短信模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, sms_template_code_notify: e.detail.value })}
+                />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>小程序订阅消息配置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="grid grid-cols-2 gap-4">
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">订单通知模板</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.wx_template_order_notify || ''}
+                  placeholder="订单状态变更通知模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, wx_template_order_notify: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">抢单通知模板</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.wx_template_grab_notify || ''}
+                  placeholder="牛师抢单成功通知模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, wx_template_grab_notify: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">会员到期提醒</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.wx_template_member_expire || ''}
+                  placeholder="会员即将到期提醒模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, wx_template_member_expire: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className="flex items-center gap-4">
+              <Text className="w-32 text-gray-600">活动提醒模板</Text>
+              <View className="flex-1">
+                <Input
+                  value={siteConfig.wx_template_activity_remind || ''}
+                  placeholder="活动开始前提醒模板ID"
+                  onInput={(e) => setSiteConfig({ ...siteConfig, wx_template_activity_remind: e.detail.value })}
+                />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>通知开关配置</CardTitle></CardHeader>
+        <CardContent>
+          <View className="space-y-3">
+            <View className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <View>
+                <Text className="font-medium">订单状态变更通知</Text>
+                <Text className="text-xs text-gray-400">订单状态变更时通知用户</Text>
+              </View>
+              <View 
+                className={`w-12 h-6 rounded-full ${siteConfig.notify_order_enabled === '1' ? 'bg-blue-500' : 'bg-gray-300'} relative`}
+                onClick={() => setSiteConfig({ ...siteConfig, notify_order_enabled: siteConfig.notify_order_enabled === '1' ? '0' : '1' })}
+              >
+                <View className={`w-5 h-5 bg-white rounded-full absolute top-1 ${siteConfig.notify_order_enabled === '1' ? 'right-1' : 'left-1'}`} />
+              </View>
+            </View>
+            <View className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <View>
+                <Text className="font-medium">抢单成功通知</Text>
+                <Text className="text-xs text-gray-400">牛师抢单成功后通知双方</Text>
+              </View>
+              <View 
+                className={`w-12 h-6 rounded-full ${siteConfig.notify_grab_enabled === '1' ? 'bg-blue-500' : 'bg-gray-300'} relative`}
+                onClick={() => setSiteConfig({ ...siteConfig, notify_grab_enabled: siteConfig.notify_grab_enabled === '1' ? '0' : '1' })}
+              >
+                <View className={`w-5 h-5 bg-white rounded-full absolute top-1 ${siteConfig.notify_grab_enabled === '1' ? 'right-1' : 'left-1'}`} />
+              </View>
+            </View>
+            <View className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <View>
+                <Text className="font-medium">会员到期提醒</Text>
+                <Text className="text-xs text-gray-400">会员即将到期前7天提醒</Text>
+              </View>
+              <View 
+                className={`w-12 h-6 rounded-full ${siteConfig.notify_member_expire_enabled === '1' ? 'bg-blue-500' : 'bg-gray-300'} relative`}
+                onClick={() => setSiteConfig({ ...siteConfig, notify_member_expire_enabled: siteConfig.notify_member_expire_enabled === '1' ? '0' : '1' })}
+              >
+                <View className={`w-5 h-5 bg-white rounded-full absolute top-1 ${siteConfig.notify_member_expire_enabled === '1' ? 'right-1' : 'left-1'}`} />
+              </View>
+            </View>
+            <View className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <View>
+                <Text className="font-medium">短信验证码</Text>
+                <Text className="text-xs text-gray-400">登录/注册时发送短信验证码</Text>
+              </View>
+              <View 
+                className={`w-12 h-6 rounded-full ${siteConfig.sms_enabled === '1' ? 'bg-blue-500' : 'bg-gray-300'} relative`}
+                onClick={() => setSiteConfig({ ...siteConfig, sms_enabled: siteConfig.sms_enabled === '1' ? '0' : '1' })}
+              >
+                <View className={`w-5 h-5 bg-white rounded-full absolute top-1 ${siteConfig.sms_enabled === '1' ? 'right-1' : 'left-1'}`} />
+              </View>
+            </View>
+          </View>
+        </CardContent>
+      </Card>
+
       <View className="mt-4 flex justify-end">
         <Button onClick={saveSiteConfig}>保存配置</Button>
       </View>
@@ -1854,9 +2104,9 @@ const AdminPage = () => {
       <View className="flex justify-between items-center mb-4">
         <Text className="text-lg font-semibold">分佣管理</Text>
         <View className="flex gap-2">
-          <Button variant="outline" onClick={() => setStatusFilter('0')}>待结算</Button>
-          <Button variant="outline" onClick={() => setStatusFilter('1')}>已结算</Button>
-          <Button><Check size={16} color="#fff" className="mr-1" /> 批量结算</Button>
+          <Button size="sm" variant={statusFilter === '' ? 'default' : 'outline'} onClick={() => setStatusFilter('')}>全部</Button>
+          <Button size="sm" variant={statusFilter === '0' ? 'default' : 'outline'} onClick={() => setStatusFilter('0')}>待结算</Button>
+          <Button size="sm" variant={statusFilter === '1' ? 'default' : 'outline'} onClick={() => setStatusFilter('1')}>已结算</Button>
         </View>
       </View>
 
@@ -1865,17 +2115,38 @@ const AdminPage = () => {
           <View className="admin-table">
             <View className="admin-table-header">
               <Text className="w-16">ID</Text>
-              <Text className="flex-1">用户</Text>
+              <Text className="w-32">用户</Text>
               <Text className="w-32">来源用户</Text>
               <Text className="w-20">级别</Text>
               <Text className="w-24">金额</Text>
               <Text className="w-20">状态</Text>
               <Text className="w-32">时间</Text>
+              <Text className="w-24">操作</Text>
             </View>
-            <View className="p-8 text-center text-gray-400">
-              <Percent size={48} color="#9ca3af" />
-              <Text className="mt-4 block">暂无分佣记录</Text>
-            </View>
+            {commissions.map(c => (
+              <View key={c.id} className="admin-table-row">
+                <Text className="w-16">{c.id}</Text>
+                <Text className="w-32 truncate">{c.user_nickname || c.user_id}</Text>
+                <Text className="w-32 truncate">{c.from_nickname || c.from_user_id}</Text>
+                <Text className="w-20">{c.level}级</Text>
+                <Text className="w-24 text-green-600">+¥{c.amount}</Text>
+                <Text className={`w-20 ${c.status === 1 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {c.status === 1 ? '已结算' : '待结算'}
+                </Text>
+                <Text className="w-32">{c.created_at?.substring(0, 10)}</Text>
+                <View className="w-24">
+                  {c.status === 0 && (
+                    <Button size="sm" onClick={() => settleCommission(c.id)}>结算</Button>
+                  )}
+                </View>
+              </View>
+            ))}
+            {commissions.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <Percent size={48} color="#9ca3af" />
+                <Text className="mt-4 block">暂无分佣记录</Text>
+              </View>
+            )}
           </View>
         </CardContent>
       </Card>
@@ -1887,9 +2158,10 @@ const AdminPage = () => {
       <View className="flex justify-between items-center mb-4">
         <Text className="text-lg font-semibold">提现审核</Text>
         <View className="flex gap-2">
-          <Button variant="outline" onClick={() => setStatusFilter('0')}>待审核</Button>
-          <Button variant="outline" onClick={() => setStatusFilter('1')}>已通过</Button>
-          <Button variant="outline" onClick={() => setStatusFilter('2')}>已拒绝</Button>
+          <Button size="sm" variant={statusFilter === '' ? 'default' : 'outline'} onClick={() => setStatusFilter('')}>全部</Button>
+          <Button size="sm" variant={statusFilter === '0' ? 'default' : 'outline'} onClick={() => setStatusFilter('0')}>待审核</Button>
+          <Button size="sm" variant={statusFilter === '1' ? 'default' : 'outline'} onClick={() => setStatusFilter('1')}>已通过</Button>
+          <Button size="sm" variant={statusFilter === '2' ? 'default' : 'outline'} onClick={() => setStatusFilter('2')}>已拒绝</Button>
         </View>
       </View>
 
@@ -1898,17 +2170,39 @@ const AdminPage = () => {
           <View className="admin-table">
             <View className="admin-table-header">
               <Text className="w-16">ID</Text>
-              <Text className="flex-1">用户信息</Text>
+              <Text className="w-32">用户信息</Text>
               <Text className="w-24">金额</Text>
-              <Text className="w-32">账户</Text>
+              <Text className="flex-1">账户信息</Text>
               <Text className="w-20">状态</Text>
               <Text className="w-32">申请时间</Text>
-              <Text className="w-24">操作</Text>
+              <Text className="w-32">操作</Text>
             </View>
-            <View className="p-8 text-center text-gray-400">
-              <CreditCard size={48} color="#9ca3af" />
-              <Text className="mt-4 block">暂无提现申请</Text>
-            </View>
+            {withdrawals.map(w => (
+              <View key={w.id} className="admin-table-row">
+                <Text className="w-16">{w.id}</Text>
+                <Text className="w-32 truncate">{w.nickname || w.user_id}</Text>
+                <Text className="w-24 text-red-600">¥{w.amount}</Text>
+                <Text className="flex-1 truncate">{w.account_info || '-'}</Text>
+                <Text className={`w-20 ${w.status === 1 ? 'text-green-600' : w.status === 2 ? 'text-red-600' : 'text-orange-600'}`}>
+                  {w.status === 1 ? '已通过' : w.status === 2 ? '已拒绝' : '待审核'}
+                </Text>
+                <Text className="w-32">{w.created_at?.substring(0, 16)}</Text>
+                <View className="w-32 flex gap-1">
+                  {w.status === 0 && (
+                    <>
+                      <Button size="sm" variant="default" onClick={() => auditWithdrawal(w.id, 1)}>通过</Button>
+                      <Button size="sm" variant="destructive" onClick={() => auditWithdrawal(w.id, 2)}>拒绝</Button>
+                    </>
+                  )}
+                </View>
+              </View>
+            ))}
+            {withdrawals.length === 0 && (
+              <View className="p-8 text-center text-gray-400">
+                <CreditCard size={48} color="#9ca3af" />
+                <Text className="mt-4 block">暂无提现申请</Text>
+              </View>
+            )}
           </View>
         </CardContent>
       </Card>
