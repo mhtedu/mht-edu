@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
-import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Share2, Wallet, Users } from 'lucide-react-taro'
+import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Share2, Wallet, Search, Building2, Plus, Crown, Star, Phone, Heart } from 'lucide-react-taro'
 import './index.css'
 
 // 需求/订单数据类型
@@ -22,6 +22,21 @@ interface DemandItem {
   created_at: string
 }
 
+// 教师数据类型
+interface TeacherItem {
+  id: number
+  name: string
+  avatar?: string
+  subjects: string[]
+  hourly_rate: number
+  rating: number
+  order_count: number
+  education: string
+  experience: string
+  distance_text: string
+  tags: string[]
+}
+
 // 学科选项
 const subjectOptions = ['全部', '语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
 
@@ -31,6 +46,7 @@ const HomePage: FC = () => {
   const [currentRole, setCurrentRole] = useState(1) // 0: 家长端, 1: 教师端
   const [selectedSubject, setSelectedSubject] = useState('全部')
   const [demands, setDemands] = useState<DemandItem[]>([])
+  const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [listLoading, setListLoading] = useState(false)
 
   const { isLoggedIn, setLocation: setUserLocation } = useUserStore()
@@ -59,8 +75,12 @@ const HomePage: FC = () => {
         setUserLocation(loc)
       }
 
-      // 加载需求数据
-      await loadNearbyDemands(loc)
+      // 根据角色加载不同数据
+      if (currentRole === 1) {
+        await loadNearbyDemands(loc)
+      } else {
+        await loadNearbyTeachers(loc)
+      }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -141,6 +161,79 @@ const HomePage: FC = () => {
     }
   }
 
+  // 加载附近教师（家长端选择）
+  const loadNearbyTeachers = async (loc?: { latitude: number; longitude: number } | null) => {
+    setListLoading(true)
+    try {
+      const params: Record<string, any> = { page: 1, pageSize: 10, radius: 50 }
+      if (loc) {
+        params.latitude = loc.latitude
+        params.longitude = loc.longitude
+      }
+      if (selectedSubject !== '全部') {
+        params.subject = selectedSubject
+      }
+      console.log('加载附近教师请求:', { url: '/api/teachers/nearby', params })
+      const res = await Network.request({
+        url: '/api/teachers/nearby',
+        data: params
+      })
+      console.log('加载附近教师响应:', res.data)
+      if (res.data) {
+        const list = Array.isArray(res.data) ? res.data : res.data.list || []
+        setTeachers(list.map((item: any) => ({
+          ...item,
+          distance_text: item.distance_text || (item.distance ? 
+            (item.distance < 1 ? `${Math.round(item.distance * 1000)}m` : `${item.distance.toFixed(1)}km`) 
+            : '')
+        })))
+      }
+    } catch (error) {
+      console.error('加载附近教师失败:', error)
+      // 使用模拟数据
+      setTeachers([
+        {
+          id: 1,
+          name: '张老师',
+          subjects: ['数学', '物理'],
+          hourly_rate: 200,
+          rating: 4.9,
+          order_count: 128,
+          education: '北京大学硕士',
+          experience: '8年教学经验',
+          distance_text: '1.2km',
+          tags: ['耐心细致', '提分快', '名校背景']
+        },
+        {
+          id: 2,
+          name: '李老师',
+          subjects: ['英语'],
+          hourly_rate: 180,
+          rating: 4.8,
+          order_count: 86,
+          education: '北外硕士',
+          experience: '6年教学经验',
+          distance_text: '2.5km',
+          tags: ['口语地道', '语法扎实', '留学背景']
+        },
+        {
+          id: 3,
+          name: '王老师',
+          subjects: ['语文', '历史'],
+          hourly_rate: 160,
+          rating: 4.7,
+          order_count: 95,
+          education: '北师大本科',
+          experience: '5年教学经验',
+          distance_text: '3.0km',
+          tags: ['亲和力强', '写作辅导', '文史兼修']
+        }
+      ])
+    } finally {
+      setListLoading(false)
+    }
+  }
+
   const handleRefreshLocation = async () => {
     Taro.showLoading({ title: '定位中...' })
     const loc = await getLocation()
@@ -148,7 +241,11 @@ const HomePage: FC = () => {
     if (loc) {
       setLocation(loc)
       setUserLocation(loc)
-      loadNearbyDemands(loc)
+      if (currentRole === 1) {
+        loadNearbyDemands(loc)
+      } else {
+        loadNearbyTeachers(loc)
+      }
       Taro.showToast({ title: '定位成功', icon: 'success' })
     } else {
       Taro.showToast({ title: '定位失败', icon: 'none' })
@@ -158,12 +255,22 @@ const HomePage: FC = () => {
   const handleSwitchRole = () => {
     const newRole = currentRole === 0 ? 1 : 0
     setCurrentRole(newRole)
-    loadNearbyDemands(location)
+    setSelectedSubject('全部')
+    // 切换角色后加载对应数据
+    if (newRole === 1) {
+      loadNearbyDemands(location)
+    } else {
+      loadNearbyTeachers(location)
+    }
   }
 
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject)
-    loadNearbyDemands(location)
+    if (currentRole === 1) {
+      loadNearbyDemands(location)
+    } else {
+      loadNearbyTeachers(location)
+    }
   }
 
   const goToMember = () => {
@@ -174,7 +281,32 @@ const HomePage: FC = () => {
     Taro.navigateTo({ url: '/pages/login/index' })
   }
 
+  const goToTeacherDetail = (id: number) => {
+    Taro.navigateTo({ url: `/pages/teacher/detail?id=${id}` })
+  }
+
+  const goToOrgList = () => {
+    Taro.navigateTo({ url: '/pages/org/list' })
+  }
+
+  const goToPublishDemand = () => {
+    Taro.navigateTo({ url: '/pages/publish-demand/index' })
+  }
+
   const handleGrabOrder = (id: number) => {
+    if (!isLoggedIn) {
+      Taro.showModal({
+        title: '提示',
+        content: '请先登录后再抢单',
+        confirmText: '去登录',
+        success: (res) => {
+          if (res.confirm) {
+            goToLogin()
+          }
+        }
+      })
+      return
+    }
     Taro.showModal({
       title: '确认抢单',
       content: '确定要接这个订单吗？',
@@ -194,6 +326,33 @@ const HomePage: FC = () => {
     })
   }
 
+  const handleContactTeacher = (teacher: TeacherItem) => {
+    if (!isLoggedIn) {
+      Taro.showModal({
+        title: '提示',
+        content: '请先登录后再联系教师',
+        confirmText: '去登录',
+        success: (res) => {
+          if (res.confirm) {
+            goToLogin()
+          }
+        }
+      })
+      return
+    }
+    Taro.showModal({
+      title: '联系方式',
+      content: `即将查看${teacher.name}的联系方式`,
+      confirmText: '查看',
+      success: (res) => {
+        if (res.confirm) {
+          // 跳转到教师详情页
+          goToTeacherDetail(teacher.id)
+        }
+      }
+    })
+  }
+
   // 格式化时间
   const formatTime = (dateStr: string): string => {
     const date = new Date(dateStr)
@@ -208,13 +367,21 @@ const HomePage: FC = () => {
 
   // 教师端功能入口
   const teacherEntries = [
-    { icon: <Briefcase size={22} color="#10B981" />, text: '工作台', bgColor: '#D1FAE5', action: () => Taro.showToast({ title: '功能开发中', icon: 'none' }) },
+    { icon: <Briefcase size={22} color="#10B981" />, text: '工作台', bgColor: '#D1FAE5', action: () => Taro.navigateTo({ url: '/pages/teacher-workbench/index' }) },
     { icon: <GraduationCap size={22} color="#8B5CF6" />, text: '创建牛师班', bgColor: '#EDE9FE', action: () => Taro.showToast({ title: '功能开发中', icon: 'none' }) },
     { icon: <Share2 size={22} color="#F59E0B" />, text: '转发赚钱', bgColor: '#FEF3C7', action: () => Taro.showToast({ title: '功能开发中', icon: 'none' }) },
-    { icon: <Wallet size={22} color="#2563EB" />, text: '收益中心', bgColor: '#DBEAFE', action: () => Taro.showToast({ title: '功能开发中', icon: 'none' }) },
+    { icon: <Wallet size={22} color="#2563EB" />, text: '收益中心', bgColor: '#DBEAFE', action: () => Taro.navigateTo({ url: '/pages/earnings/index' }) },
   ]
 
-  const entries = teacherEntries
+  // 家长端功能入口
+  const parentEntries = [
+    { icon: <Search size={22} color="#2563EB" />, text: '找教师', bgColor: '#DBEAFE', action: () => Taro.navigateTo({ url: '/pages/teacher/list' }) },
+    { icon: <Building2 size={22} color="#10B981" />, text: '找机构', bgColor: '#D1FAE5', action: () => goToOrgList() },
+    { icon: <Plus size={22} color="#F59E0B" />, text: '发布需求', bgColor: '#FEF3C7', action: () => goToPublishDemand() },
+    { icon: <Crown size={22} color="#8B5CF6" />, text: '会员中心', bgColor: '#EDE9FE', action: () => goToMember() },
+  ]
+
+  const entries = currentRole === 1 ? teacherEntries : parentEntries
 
   return (
     <View className="home-page">
@@ -257,10 +424,10 @@ const HomePage: FC = () => {
           ))}
         </View>
 
-        {/* 附近需求区域 */}
+        {/* 内容区域 - 根据角色显示不同内容 */}
         <View className="demand-section">
           <View className="section-header">
-            <Text className="section-title">附近需求</Text>
+            <Text className="section-title">{currentRole === 1 ? '附近需求' : '附近教师'}</Text>
             <View className="section-more">
               <Text className="more-text">更多</Text>
               <ChevronRight size={16} color="#9CA3AF" />
@@ -288,8 +455,8 @@ const HomePage: FC = () => {
             </View>
           </View>
 
-          {/* 需求列表 */}
-          {loading || listLoading ? (
+          {/* 教师端 - 需求列表 */}
+          {currentRole === 1 && (loading || listLoading ? (
             <View className="loading-area">
               <Text className="loading-text">加载中...</Text>
             </View>
@@ -337,31 +504,125 @@ const HomePage: FC = () => {
             <View className="empty-area">
               <Text className="empty-text">暂无附近需求</Text>
             </View>
+          ))}
+
+          {/* 家长端 - 教师列表 */}
+          {currentRole === 0 && (loading || listLoading ? (
+            <View className="loading-area">
+              <Text className="loading-text">加载中...</Text>
+            </View>
+          ) : teachers.length > 0 ? (
+            teachers.map((teacher) => (
+              <View key={teacher.id} className="teacher-card" onClick={() => goToTeacherDetail(teacher.id)}>
+                <View className="teacher-header">
+                  <View className="teacher-avatar">
+                    <Text className="avatar-text">{teacher.name.charAt(0)}</Text>
+                  </View>
+                  <View className="teacher-info">
+                    <View className="teacher-name-row">
+                      <Text className="teacher-name">{teacher.name}</Text>
+                      <View className="teacher-rating">
+                        <Star size={12} color="#F59E0B" />
+                        <Text className="rating-text">{teacher.rating}</Text>
+                      </View>
+                    </View>
+                    <Text className="teacher-subjects">{teacher.subjects.join(' · ')}</Text>
+                    <View className="teacher-tags">
+                      {teacher.tags.slice(0, 3).map((tag, idx) => (
+                        <View key={idx} className="teacher-tag">
+                          <Text className="tag-text">{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                <View className="teacher-detail">
+                  <View className="detail-row">
+                    <Text className="detail-item">{teacher.education}</Text>
+                    <Text className="detail-item">{teacher.experience}</Text>
+                    <Text className="detail-distance">{teacher.distance_text}</Text>
+                  </View>
+                  <View className="teacher-footer">
+                    <Text className="teacher-price">¥{teacher.hourly_rate}/小时</Text>
+                    <Text className="teacher-orders">已接单{teacher.order_count}单</Text>
+                  </View>
+                </View>
+
+                <View className="teacher-actions">
+                  <View className="action-favorite" onClick={(e) => { e.stopPropagation(); Taro.showToast({ title: '已收藏', icon: 'success' }) }}>
+                    <Heart size={14} color="#6B7280" />
+                    <Text className="action-favorite-text">收藏</Text>
+                  </View>
+                  <View className="action-contact" onClick={(e) => { e.stopPropagation(); handleContactTeacher(teacher) }}>
+                    <Phone size={14} color="#fff" />
+                    <Text className="action-contact-text">联系TA</Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View className="empty-area">
+              <Text className="empty-text">暂无附近教师</Text>
+            </View>
+          ))}
+
+          {/* 推荐卡片 */}
+          {currentRole === 1 && (
+            <>
+              {/* 优秀教师推荐卡片 - 教师端看机构推荐 */}
+              <View className="recommend-card" onClick={goToOrgList}>
+                <View className="recommend-left">
+                  <View className="recommend-tag">
+                    <Text className="recommend-tag-text">优质机构</Text>
+                  </View>
+                  <Text className="recommend-title">合作机构推荐</Text>
+                  <Text className="recommend-desc">查看平台优质合作机构</Text>
+                </View>
+                <ChevronRight size={20} color="#9CA3AF" />
+              </View>
+
+              {/* 新用户福利卡片 */}
+              <View className="welfare-card">
+                <View className="welfare-left">
+                  <View className="welfare-tag">
+                    <Text className="welfare-tag-text">新用户福利</Text>
+                  </View>
+                  <Text className="welfare-title">首次抢单立减优惠</Text>
+                  <Text className="welfare-desc">新用户专享特权</Text>
+                </View>
+                <ChevronRight size={20} color="#9CA3AF" />
+              </View>
+            </>
           )}
 
-          {/* 优秀教师推荐卡片 */}
-          <View className="recommend-card">
-            <View className="recommend-left">
-              <View className="recommend-tag">
-                <Text className="recommend-tag-text">优秀教师</Text>
+          {currentRole === 0 && (
+            <>
+              {/* 家长端 - 发布需求引导 */}
+              <View className="recommend-card" onClick={goToPublishDemand}>
+                <View className="recommend-left">
+                  <View className="recommend-tag">
+                    <Text className="recommend-tag-text">快速匹配</Text>
+                  </View>
+                  <Text className="recommend-title">发布您的需求</Text>
+                  <Text className="recommend-desc">让优质教师主动联系您</Text>
+                </View>
+                <ChevronRight size={20} color="#9CA3AF" />
               </View>
-              <Text className="recommend-title">优秀教师推荐</Text>
-              <Text className="recommend-desc">查看平台精选优质教师</Text>
-            </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </View>
 
-          {/* 新用户福利卡片 */}
-          <View className="welfare-card">
-            <View className="welfare-left">
-              <View className="welfare-tag">
-                <Text className="welfare-tag-text">新用户福利</Text>
+              {/* 家长端 - 会员权益 */}
+              <View className="welfare-card" onClick={goToMember}>
+                <View className="welfare-left">
+                  <View className="welfare-tag">
+                    <Text className="welfare-tag-text">会员权益</Text>
+                  </View>
+                  <Text className="welfare-title">开通会员享更多权益</Text>
+                  <Text className="welfare-desc">无限次查看联系方式</Text>
+                </View>
+                <ChevronRight size={20} color="#9CA3AF" />
               </View>
-              <Text className="welfare-title">首次抢单立减优惠</Text>
-              <Text className="welfare-desc">新用户专享特权</Text>
-            </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </View>
+            </>
+          )}
         </View>
 
         {/* 热门活动区域 */}
@@ -381,7 +642,7 @@ const HomePage: FC = () => {
               </View>
               <Text className="activity-title">新人专属礼包</Text>
               <View className="activity-users">
-                <Users size={12} color="#fff" />
+                <Briefcase size={12} color="#fff" />
                 <Text className="activity-users-text">128人参与</Text>
               </View>
             </View>
@@ -391,7 +652,7 @@ const HomePage: FC = () => {
               </View>
               <Text className="activity-title">会员日特惠</Text>
               <View className="activity-users">
-                <Users size={12} color="#fff" />
+                <Crown size={12} color="#fff" />
                 <Text className="activity-users-text">256人参与</Text>
               </View>
             </View>

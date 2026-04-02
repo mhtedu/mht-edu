@@ -206,6 +206,7 @@ export default defineConfig<'vite'>(async (merge, _env) => {
           enable: true,
           config: {
             platform: 'h5',
+            designWidth: 750,
           },
         },
         cssModules: {

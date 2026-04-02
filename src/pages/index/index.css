@@ -541,6 +541,177 @@
   color: #fff;
 }
 
+/* 教师卡片 */
+.teacher-card {
+  margin: 0 16px 12px;
+  padding: 14px;
+  background: #F9FAFB;
+  border-radius: 12px;
+}
+
+.teacher-header {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 12px;
+}
+
+.teacher-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.avatar-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.teacher-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.teacher-name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.teacher-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.teacher-rating {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.rating-text {
+  font-size: 13px;
+  color: #F59E0B;
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.teacher-subjects {
+  font-size: 13px;
+  color: #6B7280;
+  margin-bottom: 6px;
+}
+
+.teacher-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.teacher-tag {
+  background: #EFF6FF;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.tag-text {
+  font-size: 11px;
+  color: #2563EB;
+}
+
+.teacher-detail {
+  margin-bottom: 12px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.detail-item {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.detail-distance {
+  font-size: 12px;
+  color: #2563EB;
+  margin-left: auto;
+}
+
+.teacher-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teacher-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2563EB;
+}
+
+.teacher-orders {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.teacher-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #E5E7EB;
+  padding-top: 12px;
+}
+
+.action-favorite {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+}
+
+.action-favorite-text {
+  font-size: 12px;
+  color: #6B7280;
+  margin-left: 4px;
+}
+
+.action-contact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #2563EB;
+  padding: 6px 16px;
+  border-radius: 16px;
+}
+
+.action-contact-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  margin-left: 4px;
+}
+
 .bottom-space {
   height: 20px;
 }
