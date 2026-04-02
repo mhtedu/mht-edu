@@ -1206,4 +1206,113 @@ export class AdminController {
       return { success: false, message: '初始化失败', error: error.message };
     }
   }
+
+  // ==================== 会员套餐管理 ====================
+
+  @Get('membership-plans')
+  @RequirePermission('config:view')
+  async getMembershipPlans() {
+    try {
+      const [plans] = await db.query(`SELECT * FROM membership_plans ORDER BY role, sort_order, id`);
+      return plans.map(p => ({...p, features: p.features ? JSON.parse(p.features) : []}));
+    } catch (error) {
+      return [
+        { id: 1, name: '家长年卡', role: 0, price: 199, original_price: 708, duration_days: 365, features: ['查看联系方式', '无限发布需求'], is_active: 1 },
+        { id: 2, name: '牛师年卡', role: 1, price: 199, original_price: 708, duration_days: 365, features: ['无限抢单', '优先展示'], is_active: 1 },
+        { id: 3, name: '机构年卡', role: 2, price: 999, original_price: 2388, duration_days: 365, features: ['无限发布牛师', '优先展示'], is_active: 1 },
+      ];
+    }
+  }
+
+  @Put('membership-plans/:id')
+  @RequirePermission('config:edit')
+  async updateMembershipPlan(@Param('id') id: string, @Body() body: any) {
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (body.name) { updates.push('name = ?'); params.push(body.name); }
+    if (body.price !== undefined) { updates.push('price = ?'); params.push(body.price); }
+    if (body.is_active !== undefined) { updates.push('is_active = ?'); params.push(body.is_active); }
+    if (updates.length === 0) return { success: true };
+    updates.push('updated_at = NOW()');
+    params.push(parseInt(id));
+    await db.update(`UPDATE membership_plans SET ${updates.join(', ')} WHERE id = ?`, params);
+    return { success: true };
+  }
+
+  // ==================== 活动管理 ====================
+
+  @Get('activities')
+  @RequirePermission('activity:view')
+  async getActivities(@Query('page') page = '1', @Query('pageSize') pageSize = '20', @Query('status') status = '') {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+    if (status) { whereClause += ' AND a.status = ?'; params.push(status); }
+    try {
+      const [list] = await db.query(`SELECT a.*, u.nickname as creator_name FROM activities a LEFT JOIN users u ON a.creator_id = u.id ${whereClause} ORDER BY a.created_at DESC LIMIT ? OFFSET ?`, [...params, pageSizeNum, offset]);
+      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM activities a ${whereClause}`, params);
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  @Post('activities/:id/audit')
+  @RequirePermission('activity:audit')
+  async auditActivity(@Param('id') id: string, @Body() body: { status: number; reason?: string }) {
+    await db.update('UPDATE activities SET status = ?, updated_at = NOW() WHERE id = ?', [body.status, parseInt(id)]);
+    return { success: true };
+  }
+
+  // ==================== 广告位管理 ====================
+
+  @Get('banners')
+  @RequirePermission('config:view')
+  async getBanners() {
+    try {
+      const [banners] = await db.query(`SELECT * FROM ad_positions ORDER BY position_key, sort_order, id`);
+      return banners;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  @Post('banners')
+  @RequirePermission('config:edit')
+  async createBanner(@Body() body: { position_key: string; title: string; image_url: string; link_url?: string; sort_order?: number }) {
+    const insertId = await db.insert(`INSERT INTO ad_positions (position_key, title, image_url, link_url, sort_order, is_active, created_at) VALUES (?, ?, ?, ?, ?, 1, NOW())`, [body.position_key, body.title, body.image_url, body.link_url || '', body.sort_order || 0]);
+    return { success: true, id: insertId };
+  }
+
+  @Put('banners/:id')
+  @RequirePermission('config:edit')
+  async updateBanner(@Param('id') id: string, @Body() body: any) {
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (body.title) { updates.push('title = ?'); params.push(body.title); }
+    if (body.image_url) { updates.push('image_url = ?'); params.push(body.image_url); }
+    if (body.is_active !== undefined) { updates.push('is_active = ?'); params.push(body.is_active); }
+    if (updates.length === 0) return { success: true };
+    updates.push('updated_at = NOW()');
+    params.push(parseInt(id));
+    await db.update(`UPDATE ad_positions SET ${updates.join(', ')} WHERE id = ?`, params);
+    return { success: true };
+  }
+
+  @Delete('banners/:id')
+  @RequirePermission('config:edit')
+  async deleteBanner(@Param('id') id: string) {
+    await db.update('DELETE FROM ad_positions WHERE id = ?', [parseInt(id)]);
+    return { success: true };
+  }
+
+  // ==================== 统计数据别名 ====================
+
+  @Get('stats')
+  @RequirePermission('dashboard:view')
+  async getStats() {
+    return this.getStatsOverview();
+  }
 }
