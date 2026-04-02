@@ -91,7 +91,7 @@ const PublishDemandPage: FC = () => {
       setFormData(prev => ({
         ...prev,
         contact_name: userInfo.nickname || '',
-        contact_phone: userInfo.phone || ''
+        contact_phone: userInfo.mobile || ''
       }))
     }
   })
