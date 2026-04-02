@@ -32,10 +32,10 @@ export class PaymentService {
     // 生成支付单号
     const paymentNo = this.generatePaymentNo();
 
-    // 创建支付记录
+    // 创建支付记录 - 使用现有的表结构（membership_id字段）
     await executeQuery(`
-      INSERT INTO payments (user_id, target_type, target_id, amount, payment_no, status)
-      VALUES (?, 1, ?, ?, ?, 0)
+      INSERT INTO payments (user_id, membership_id, amount, payment_no, status)
+      VALUES (?, ?, ?, ?, 0)
     `, [userId, planId, plan.price, paymentNo]);
 
     // 获取用户openid
@@ -88,10 +88,10 @@ export class PaymentService {
     const totalAmount = Number(product.price) * quantity;
     const paymentNo = this.generatePaymentNo();
 
-    // 创建支付记录
+    // 创建支付记录 - 使用现有的表结构（order_id字段）
     await executeQuery(`
-      INSERT INTO payments (user_id, target_type, target_id, amount, payment_no, status)
-      VALUES (?, 2, ?, ?, ?, 0)
+      INSERT INTO payments (user_id, order_id, amount, payment_no, status)
+      VALUES (?, ?, ?, ?, 0)
     `, [userId, productId, totalAmount, paymentNo]);
 
     // 获取用户openid
@@ -224,13 +224,13 @@ export class PaymentService {
       WHERE payment_no = ?
     `, [transactionId, paymentNo]);
 
-    // 根据支付类型处理
-    if (payment.target_type === 1) {
+    // 根据支付类型处理（通过字段是否为空判断）
+    if (payment.membership_id) {
       // 会员支付
       await this.handleMembershipPayment(payment);
-    } else if (payment.target_type === 2) {
-      // 商品支付
-      await this.handleProductPayment(payment);
+    } else if (payment.order_id) {
+      // 订单支付
+      await this.handleOrderPayment(payment);
     }
 
     // 处理分佣
@@ -244,7 +244,7 @@ export class PaymentService {
     // 获取套餐信息
     const plans = await executeQuery(`
       SELECT * FROM membership_plans WHERE id = ?
-    `, [payment.target_id]);
+    `, [payment.membership_id]);
 
     const plan = plans[0] as any;
 
@@ -268,14 +268,13 @@ export class PaymentService {
   }
 
   /**
-   * 处理商品支付
+   * 处理订单支付
    */
-  private async handleProductPayment(payment: any) {
-    // 扣减库存
+  private async handleOrderPayment(payment: any) {
+    // 更新订单状态为已支付
     await executeQuery(`
-      UPDATE products SET stock = stock - 1, sales = sales + 1
-      WHERE id = ?
-    `, [payment.target_id]);
+      UPDATE orders SET status = 1 WHERE id = ?
+    `, [payment.order_id]);
   }
 
   /**
@@ -333,10 +332,9 @@ export class PaymentService {
    */
   async getPaymentStatus(userId: number, paymentNo: string) {
     const payments = await executeQuery(`
-      SELECT p.*, mp.name as plan_name, pr.name as product_name
+      SELECT p.*, mp.name as plan_name
       FROM payments p
-      LEFT JOIN membership_plans mp ON p.target_type = 1 AND p.target_id = mp.id
-      LEFT JOIN products pr ON p.target_type = 2 AND p.target_id = pr.id
+      LEFT JOIN membership_plans mp ON p.membership_id = mp.id
       WHERE p.payment_no = ? AND p.user_id = ?
     `, [paymentNo, userId]);
 
@@ -354,10 +352,9 @@ export class PaymentService {
     const offset = (page - 1) * pageSize;
 
     const records = await executeQuery(`
-      SELECT p.*, mp.name as plan_name, pr.name as product_name
+      SELECT p.*, mp.name as plan_name
       FROM payments p
-      LEFT JOIN membership_plans mp ON p.target_type = 1 AND p.target_id = mp.id
-      LEFT JOIN products pr ON p.target_type = 2 AND p.target_id = pr.id
+      LEFT JOIN membership_plans mp ON p.membership_id = mp.id
       WHERE p.user_id = ?
       ORDER BY p.created_at DESC
       LIMIT ? OFFSET ?

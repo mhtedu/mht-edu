@@ -15,7 +15,7 @@ export class UserService {
     const users = await executeQuery(`
       SELECT u.*, 
         tp.real_name, tp.subjects, tp.rating as teacher_rating,
-        o.org_name, o.status as org_status
+        o.name as org_name, o.verify_status as org_status
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
       LEFT JOIN organizations o ON u.id = o.user_id

@@ -335,6 +335,25 @@ export class TeacherService {
    * 抢单
    */
   async grabOrder(orderId: number, userId: number) {
+    // 检查会员状态 - 抢单功能需要会员权限
+    const memberCheck = await executeQuery(`
+      SELECT membership_type, membership_expire_at, role FROM users WHERE id = ?
+    `, [userId]);
+    
+    const user = memberCheck[0] as any;
+    const isMember = user?.membership_type === 1 && 
+                     user?.membership_expire_at && 
+                     new Date(user.membership_expire_at) > new Date();
+    
+    // 教师角色(role=2)需要会员才能抢单
+    if (user?.role === 2 && !isMember) {
+      return { 
+        success: false, 
+        need_member: true,
+        message: '开通会员后可无限抢单，查看家长联系方式' 
+      };
+    }
+
     // 检查订单状态
     const orders = await executeQuery(`
       SELECT * FROM orders WHERE id = ? FOR UPDATE

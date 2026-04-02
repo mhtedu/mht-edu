@@ -1428,4 +1428,53 @@ export class AdminController {
     await db.update('DELETE FROM ad_positions WHERE id = ?', [parseInt(id)]);
     return { success: true };
   }
+
+  // ==================== 支付表管理 ====================
+
+  /**
+   * 创建支付表（如果不存在）
+   */
+  @Public()
+  @Post('create-payments-table')
+  async createPaymentsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          target_type TINYINT NOT NULL COMMENT '目标类型: 1=会员, 2=商品',
+          target_id INT NOT NULL COMMENT '目标ID',
+          amount DECIMAL(10,2) NOT NULL COMMENT '支付金额',
+          payment_no VARCHAR(64) NOT NULL COMMENT '支付单号',
+          transaction_id VARCHAR(64) COMMENT '第三方交易号',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待支付, 1=已支付, 2=已取消, 3=已退款',
+          paid_at TIMESTAMP NULL COMMENT '支付时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_user (user_id),
+          INDEX idx_payment_no (payment_no),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付订单表'
+      `);
+      return { success: true, message: 'payments表创建成功' };
+    } catch (error) {
+      console.error('创建payments表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 检查payments表结构
+   */
+  @Public()
+  @Get('check-payments-table')
+  async checkPaymentsTable() {
+    try {
+      const [structure] = await db.query(`DESCRIBE payments`);
+      const [data] = await db.query(`SELECT * FROM payments LIMIT 5`);
+      return { success: true, structure, sampleData: data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
