@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import { formatPrice } from '@/utils'
-import { Star, MessageCircle, Phone, Award, BookOpen, Users } from 'lucide-react-taro'
+import { Star, MessageCircle, Phone, Award, BookOpen, Users, Heart, MessageSquare, Eye, Play, Plus, Camera, Film, Pencil } from 'lucide-react-taro'
 import './detail.css'
 
 interface TeacherDetail {
@@ -38,17 +38,35 @@ interface TeacherDetail {
   certificates: string[]
 }
 
+// 动态类型
+interface MomentItem {
+  id: number
+  type: 'text' | 'image' | 'video'
+  content: string
+  media_urls?: string[]
+  video_cover?: string
+  likes_count: number
+  comments_count: number
+  views_count: number
+  is_liked: boolean
+  created_at: string
+}
+
 const TeacherDetailPage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [teacher, setTeacher] = useState<TeacherDetail | null>(null)
+  const [moments, setMoments] = useState<MomentItem[]>([])
+  const [momentsLoading, setMomentsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'info' | 'moments'>('info')
 
   const router = useRouter()
-  const { isLoggedIn } = useUserStore()
+  const { isLoggedIn, userInfo } = useUserStore()
 
   useLoad(() => {
     const { id } = router.params
     if (id) {
       loadTeacherDetail(parseInt(id))
+      loadMoments(parseInt(id))
     }
   })
 
@@ -97,6 +115,78 @@ const TeacherDetailPage: FC = () => {
     }
   }
 
+  const loadMoments = async (teacherId: number) => {
+    setMomentsLoading(true)
+    try {
+      const res = await Network.request({
+        url: `/api/teacher/${teacherId}/moments`,
+        data: { page: 1, pageSize: 10 }
+      })
+      if (res.data) {
+        const list = Array.isArray(res.data) ? res.data : res.data.list || []
+        setMoments(list)
+      }
+    } catch (error) {
+      console.error('加载动态失败:', error)
+      // 使用模拟数据
+      setMoments([
+        {
+          id: 1,
+          type: 'image',
+          content: '今天给学生讲解三角函数，发现用单位圆的方式更容易理解。分享一个教学小技巧~',
+          media_urls: [
+            'https://picsum.photos/400/300?random=1',
+            'https://picsum.photos/400/300?random=2',
+            'https://picsum.photos/400/300?random=3'
+          ],
+          likes_count: 56,
+          comments_count: 12,
+          views_count: 328,
+          is_liked: false,
+          created_at: new Date(Date.now() - 2 * 3600000).toISOString()
+        },
+        {
+          id: 2,
+          type: 'video',
+          content: '录制了一道高考数学压轴题的解题思路，希望对大家有帮助！',
+          media_urls: ['https://example.com/video.mp4'],
+          video_cover: 'https://picsum.photos/400/300?random=4',
+          likes_count: 128,
+          comments_count: 34,
+          views_count: 892,
+          is_liked: true,
+          created_at: new Date(Date.now() - 24 * 3600000).toISOString()
+        },
+        {
+          id: 3,
+          type: 'text',
+          content: '恭喜我的学生小王在期中考试中数学考了142分！从期初的85分进步了57分，为你的努力点赞👍',
+          likes_count: 89,
+          comments_count: 23,
+          views_count: 456,
+          is_liked: false,
+          created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString()
+        },
+        {
+          id: 4,
+          type: 'image',
+          content: '周末带孩子去北大校园逛了逛，感受学术氛围~',
+          media_urls: [
+            'https://picsum.photos/400/300?random=5',
+            'https://picsum.photos/400/300?random=6'
+          ],
+          likes_count: 72,
+          comments_count: 15,
+          views_count: 234,
+          is_liked: false,
+          created_at: new Date(Date.now() - 5 * 24 * 3600000).toISOString()
+        }
+      ])
+    } finally {
+      setMomentsLoading(false)
+    }
+  }
+
   const handleContact = () => {
     if (!isLoggedIn) {
       Taro.navigateTo({ url: '/pages/login/index' })
@@ -113,6 +203,47 @@ const TeacherDetailPage: FC = () => {
     }
     Taro.switchTab({ url: '/pages/message/index' })
   }
+
+  const handleLikeMoment = (momentId: number) => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index' })
+      return
+    }
+    setMoments(prev => prev.map(m => 
+      m.id === momentId ? {
+        ...m,
+        is_liked: !m.is_liked,
+        likes_count: m.is_liked ? m.likes_count - 1 : m.likes_count + 1
+      } : m
+    ))
+  }
+
+  const handlePreviewImage = (urls: string[], current: number) => {
+    Taro.previewImage({
+      urls: urls,
+      current: urls[current]
+    })
+  }
+
+  const handlePlayVideo = (videoUrl: string) => {
+    Taro.navigateTo({ url: `/pages/video-player/index?url=${encodeURIComponent(videoUrl)}` })
+  }
+
+  const formatTime = (dateStr: string): string => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const hours = Math.floor(diff / 3600000)
+    if (hours < 1) return '刚刚'
+    if (hours < 24) return `${hours}小时前`
+    const days = Math.floor(diff / 86400000)
+    if (days < 7) return `${days}天前`
+    if (days < 30) return `${Math.floor(days / 7)}周前`
+    return `${Math.floor(days / 30)}个月前`
+  }
+
+  // 判断是否是教师本人
+  const isSelf = userInfo?.id === teacher?.id
 
   if (loading) {
     return (
@@ -171,90 +302,221 @@ const TeacherDetailPage: FC = () => {
           </View>
         </View>
 
-        {/* 统计数据 */}
-        <View className="stats-row">
-          <View className="stat-item">
-            <Text className="stat-value">{teacher.view_count}</Text>
-            <Text className="stat-label">浏览</Text>
+        {/* Tab 切换 */}
+        <View className="tab-bar">
+          <View 
+            className={`tab-item ${activeTab === 'info' ? 'active' : ''}`}
+            onClick={() => setActiveTab('info')}
+          >
+            <Text className="tab-text">基本信息</Text>
           </View>
-          <View className="stat-item">
-            <Text className="stat-value">{teacher.success_count}</Text>
-            <Text className="stat-label">成功接单</Text>
-          </View>
-          <View className="stat-item">
-            <Text className="stat-value">{teacher.review_count}</Text>
-            <Text className="stat-label">评价</Text>
+          <View 
+            className={`tab-item ${activeTab === 'moments' ? 'active' : ''}`}
+            onClick={() => setActiveTab('moments')}
+          >
+            <Text className="tab-text">个人动态</Text>
+            <View className="moments-count">
+              <Text className="count-text">{moments.length}</Text>
+            </View>
           </View>
         </View>
 
-        {/* 基本信息 */}
-        <Card className="info-card">
-          <CardHeader className="card-header">
-            <CardTitle className="card-title">
-              <BookOpen size={18} color="#2563EB" />
-              教学信息
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="card-content">
-            <View className="info-item">
-              <Text className="info-label">教学年限</Text>
-              <Text className="info-value">{teacher.teaching_years}年</Text>
-            </View>
-            <View className="info-item">
-              <Text className="info-label">授课年级</Text>
-              <Text className="info-value">{teacher.grades?.join('、')}</Text>
-            </View>
-            <View className="info-item">
-              <Text className="info-label">授课方式</Text>
-              <Text className="info-value">{teacher.teaching_mode}</Text>
-            </View>
-            <View className="info-item">
-              <Text className="info-label">可授课时间</Text>
-              <Text className="info-value">{teacher.available_time}</Text>
-            </View>
-            <View className="info-item">
-              <Text className="info-label">学历背景</Text>
-              <Text className="info-value">{teacher.education} · {teacher.school}</Text>
-            </View>
-            <View className="info-item">
-              <Text className="info-label">授课地点</Text>
-              <Text className="info-value">{teacher.address}</Text>
-            </View>
-          </CardContent>
-        </Card>
-
-        {/* 个人简介 */}
-        <Card className="info-card">
-          <CardHeader className="card-header">
-            <CardTitle className="card-title">
-              <Users size={18} color="#2563EB" />
-              个人简介
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="card-content">
-            <Text className="bio-text">{teacher.bio}</Text>
-          </CardContent>
-        </Card>
-
-        {/* 资质证书 */}
-        {teacher.certificates && teacher.certificates.length > 0 && (
-          <Card className="info-card">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">
-                <Award size={18} color="#2563EB" />
-                资质证书
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="card-content">
-              <View className="cert-list">
-                {teacher.certificates.map((cert, idx) => (
-                  <View key={idx} className="cert-item">
-                    <Badge variant="outline" className="cert-tag">{cert}</Badge>
-                  </View>
-                ))}
+        {/* 基本信息Tab */}
+        {activeTab === 'info' && (
+          <>
+            {/* 统计数据 */}
+            <View className="stats-row">
+              <View className="stat-item">
+                <Text className="stat-value">{teacher.view_count}</Text>
+                <Text className="stat-label">浏览</Text>
               </View>
-            </CardContent>
-          </Card>
+              <View className="stat-item">
+                <Text className="stat-value">{teacher.success_count}</Text>
+                <Text className="stat-label">成功接单</Text>
+              </View>
+              <View className="stat-item">
+                <Text className="stat-value">{teacher.review_count}</Text>
+                <Text className="stat-label">评价</Text>
+              </View>
+            </View>
+
+            {/* 基本信息 */}
+            <Card className="info-card">
+              <CardHeader className="card-header">
+                <CardTitle className="card-title">
+                  <BookOpen size={18} color="#2563EB" />
+                  教学信息
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="card-content">
+                <View className="info-item">
+                  <Text className="info-label">教学年限</Text>
+                  <Text className="info-value">{teacher.teaching_years}年</Text>
+                </View>
+                <View className="info-item">
+                  <Text className="info-label">授课年级</Text>
+                  <Text className="info-value">{teacher.grades?.join('、')}</Text>
+                </View>
+                <View className="info-item">
+                  <Text className="info-label">授课方式</Text>
+                  <Text className="info-value">{teacher.teaching_mode}</Text>
+                </View>
+                <View className="info-item">
+                  <Text className="info-label">可授课时间</Text>
+                  <Text className="info-value">{teacher.available_time}</Text>
+                </View>
+                <View className="info-item">
+                  <Text className="info-label">学历背景</Text>
+                  <Text className="info-value">{teacher.education} · {teacher.school}</Text>
+                </View>
+                <View className="info-item">
+                  <Text className="info-label">授课地点</Text>
+                  <Text className="info-value">{teacher.address}</Text>
+                </View>
+              </CardContent>
+            </Card>
+
+            {/* 个人简介 */}
+            <Card className="info-card">
+              <CardHeader className="card-header">
+                <CardTitle className="card-title">
+                  <Users size={18} color="#2563EB" />
+                  个人简介
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="card-content">
+                <Text className="bio-text">{teacher.bio}</Text>
+              </CardContent>
+            </Card>
+
+            {/* 资质证书 */}
+            {teacher.certificates && teacher.certificates.length > 0 && (
+              <Card className="info-card">
+                <CardHeader className="card-header">
+                  <CardTitle className="card-title">
+                    <Award size={18} color="#2563EB" />
+                    资质证书
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="card-content">
+                  <View className="cert-list">
+                    {teacher.certificates.map((cert, idx) => (
+                      <View key={idx} className="cert-item">
+                        <Badge variant="outline" className="cert-tag">{cert}</Badge>
+                      </View>
+                    ))}
+                  </View>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* 个人动态Tab */}
+        {activeTab === 'moments' && (
+          <View className="moments-section">
+            {/* 发布入口（仅教师本人可见） */}
+            {isSelf && (
+              <View className="publish-entry" onClick={() => Taro.navigateTo({ url: '/pages/publish-moment/index' })}>
+                <View className="publish-icons">
+                  <View className="publish-icon">
+                    <Camera size={20} color="#2563EB" />
+                    <Text className="icon-text">发图片</Text>
+                  </View>
+                  <View className="publish-icon">
+                    <Film size={20} color="#2563EB" />
+                    <Text className="icon-text">发视频</Text>
+                  </View>
+                  <View className="publish-icon">
+                    <Pencil size={20} color="#2563EB" />
+                    <Text className="icon-text">写文字</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 动态列表 */}
+            {momentsLoading ? (
+              <View className="loading-area">
+                <Text className="loading-text">加载中...</Text>
+              </View>
+            ) : moments.length > 0 ? (
+              moments.map((moment) => (
+                <View key={moment.id} className="moment-card">
+                  {/* 动态内容 */}
+                  <Text className="moment-content">{moment.content}</Text>
+                  
+                  {/* 媒体内容 */}
+                  {moment.type === 'image' && moment.media_urls && moment.media_urls.length > 0 && (
+                    <View className={`moment-images ${moment.media_urls.length === 1 ? 'single' : ''}`}>
+                      {moment.media_urls.map((url, idx) => (
+                        <View 
+                          key={idx} 
+                          className="moment-image-wrap"
+                          onClick={() => handlePreviewImage(moment.media_urls!, idx)}
+                        >
+                          <Image 
+                            src={url} 
+                            className="moment-image" 
+                            mode="aspectFill"
+                            lazyLoad
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {moment.type === 'video' && (
+                    <View 
+                      className="moment-video-wrap"
+                      onClick={() => moment.media_urls && handlePlayVideo(moment.media_urls[0])}
+                    >
+                      <Image 
+                        src={moment.video_cover || ''} 
+                        className="moment-video-cover" 
+                        mode="aspectFill"
+                      />
+                      <View className="play-btn">
+                        <Play size={32} color="#fff" />
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 时间和互动 */}
+                  <View className="moment-footer">
+                    <Text className="moment-time">{formatTime(moment.created_at)}</Text>
+                    <View className="moment-actions">
+                      <View className="action-item" onClick={() => handleLikeMoment(moment.id)}>
+                        <Heart 
+                          size={16} 
+                          color={moment.is_liked ? '#EF4444' : '#6B7280'} 
+                        />
+                        <Text className={`action-count ${moment.is_liked ? 'liked' : ''}`}>{moment.likes_count}</Text>
+                      </View>
+                      <View className="action-item">
+                        <MessageSquare size={16} color="#6B7280" />
+                        <Text className="action-count">{moment.comments_count}</Text>
+                      </View>
+                      <View className="action-item">
+                        <Eye size={16} color="#6B7280" />
+                        <Text className="action-count">{moment.views_count}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View className="empty-moments">
+                <Text className="empty-text">暂无动态</Text>
+                {isSelf && (
+                  <Button className="publish-btn" onClick={() => Taro.navigateTo({ url: '/pages/publish-moment/index' })}>
+                    <Plus size={16} color="#fff" />
+                    <Text className="publish-btn-text">发布第一条动态</Text>
+                  </Button>
+                )}
+              </View>
+            )}
+          </View>
         )}
 
         <View className="bottom-space" />

@@ -288,3 +288,223 @@
   color: #fff;
   margin-left: 6px;
 }
+
+/* Tab 切换 */
+.tab-bar {
+  display: flex;
+  flex-direction: row;
+  background: #fff;
+  margin: 0 12px 12px;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.tab-item.active {
+  background: #EFF6FF;
+}
+
+.tab-text {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.tab-item.active .tab-text {
+  color: #2563EB;
+  font-weight: 500;
+}
+
+.moments-count {
+  background: #2563EB;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  margin-left: 6px;
+}
+
+.count-text {
+  font-size: 11px;
+  color: #fff;
+}
+
+/* 动态区域 */
+.moments-section {
+  padding: 0 12px;
+}
+
+.publish-entry {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.publish-icons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.publish-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.icon-text {
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 6px;
+}
+
+/* 动态卡片 */
+.moment-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.moment-content {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* 图片网格 */
+.moment-images {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.moment-images.single .moment-image-wrap {
+  width: 100%;
+}
+
+.moment-image-wrap {
+  width: calc(33.33% - 4px);
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.moment-image {
+  width: 100%;
+  height: 100%;
+}
+
+/* 视频封面 */
+.moment-video-wrap {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.moment-video-cover {
+  width: 100%;
+  height: 100%;
+}
+
+.play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 动态底部 */
+.moment-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.moment-time {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.moment-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.action-count {
+  font-size: 12px;
+  color: #6B7280;
+  margin-left: 4px;
+}
+
+.action-count.liked {
+  color: #EF4444;
+}
+
+/* 空状态 */
+.empty-moments {
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.publish-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.publish-btn-text {
+  font-size: 14px;
+  color: #fff;
+  margin-left: 6px;
+}
+
+.loading-area {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #9CA3AF;
+}
