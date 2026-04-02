@@ -16,17 +16,56 @@ export namespace Network {
         return `${PROJECT_DOMAIN}${url}`
     }
 
+    const getToken = (): string => {
+        try {
+            const storage = Taro.getStorageSync('user-storage')
+            if (storage) {
+                const data = typeof storage === 'string' ? JSON.parse(storage) : storage
+                return data.state?.token || ''
+            }
+        } catch (e) {
+            console.error('获取token失败:', e)
+        }
+        return ''
+    }
+
     export const request: typeof Taro.request = option => {
+        const token = getToken()
+        const header = {
+            'Content-Type': 'application/json',
+            ...option.header,
+        }
+        if (token) {
+            header['Authorization'] = `Bearer ${token}`
+        }
+
+        console.log('Network request:', {
+            url: createUrl(option.url),
+            method: option.method || 'GET',
+            data: option.data,
+            header
+        })
+
         return Taro.request({
             ...option,
             url: createUrl(option.url),
+            header,
         })
     }
 
     export const uploadFile: typeof Taro.uploadFile = option => {
+        const token = getToken()
+        const header = {
+            ...option.header,
+        }
+        if (token) {
+            header['Authorization'] = `Bearer ${token}`
+        }
+
         return Taro.uploadFile({
             ...option,
             url: createUrl(option.url),
+            header,
         })
     }
 
@@ -37,3 +76,4 @@ export namespace Network {
         })
     }
 }
+

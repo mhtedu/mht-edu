@@ -56,7 +56,7 @@
 /* 滚动区域 */
 .home-scroll {
   flex: 1;
-  height: 0;
+  height: calc(100vh - 60px);
 }
 
 /* 功能入口栏 */
