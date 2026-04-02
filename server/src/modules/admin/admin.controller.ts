@@ -921,10 +921,13 @@ export class AdminController {
 
   /**
    * 初始化消息演示数据
+   * 支持传入 userId 为指定用户创建演示数据
    */
   @Public()
   @Post('init-messages')
-  async initMessages() {
+  async initMessages(@Body() body: { userId?: number } = {}) {
+    const targetUserId = body.userId || 401;
+    
     try {
       // 先删除再重建表（确保结构正确）
       await db.update(`DROP TABLE IF EXISTS message_reminders`);
@@ -1003,20 +1006,15 @@ export class AdminController {
         (4, 1, '欢迎使用牛师很忙平台！祝您找到满意的老师。', 0, 1, DATE_SUB(NOW(), INTERVAL 1 DAY))
       `);
 
-      // 插入消息提醒数据
+      // 插入消息提醒数据 - 为目标用户创建演示数据
       await db.update(`
         INSERT INTO message_reminders (user_id, from_user_id, type, target_id, content, is_read, created_at) VALUES
-        (401, 100, 1, 6, '张老师接受了您的订单，请查看详情', 0, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
-        (401, 100, 3, 1, '张老师回复了您的消息', 0, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
-        (501, 100, 1, 9, '张老师接受了您的订单', 0, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-        (402, 101, 3, 3, '王老师回复了您的消息', 0, DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-        (100, 401, 1, 6, '您收到新的订单抢单请求', 1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
-        (100, 501, 1, 9, '您收到新的订单抢单请求', 1, DATE_SUB(NOW(), INTERVAL 2 DAY)),
-        (401, 0, 4, NULL, '系统将于今晚进行维护，请提前保存重要信息', 1, DATE_SUB(NOW(), INTERVAL 3 DAY)),
-        (403, 103, 2, 8, '请对李老师的试课进行评价', 1, DATE_SUB(NOW(), INTERVAL 4 DAY))
+        (${targetUserId}, 100, 1, 6, '张老师接受了您的订单，请查看详情', 0, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+        (${targetUserId}, 100, 3, 1, '张老师回复了您的消息', 0, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+        (${targetUserId}, 0, 4, NULL, '系统将于今晚进行维护，请提前保存重要信息', 1, DATE_SUB(NOW(), INTERVAL 3 DAY))
       `);
 
-      return { success: true, message: '消息演示数据初始化成功' };
+      return { success: true, message: `消息演示数据初始化成功，userId: ${targetUserId}` };
     } catch (error) {
       return { success: false, error: error.message };
     }

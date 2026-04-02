@@ -1,7 +1,15 @@
 import Taro from '@tarojs/taro'
 
+// 默认坐标（北京天安门）
+const DEFAULT_LOCATION = {
+  latitude: 39.9042,
+  longitude: 116.4074,
+  address: '北京市'
+}
+
 /**
  * 获取当前位置
+ * 如果获取失败，返回默认坐标（北京）
  */
 export const getLocation = async (): Promise<{
   latitude: number
@@ -9,13 +17,20 @@ export const getLocation = async (): Promise<{
   address: string
 } | null> => {
   try {
+    // H5 端可能没有定位权限，使用默认坐标
+    const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+    if (isH5) {
+      console.log('H5 环境，使用默认坐标')
+      return DEFAULT_LOCATION
+    }
+    
     const { latitude, longitude } = await Taro.getLocation({ type: 'gcj02' })
     // 逆地理编码获取地址
     const address = await reverseGeocode(latitude, longitude)
     return { latitude, longitude, address }
   } catch (error) {
-    console.error('获取位置失败:', error)
-    return null
+    console.error('获取位置失败，使用默认坐标:', error)
+    return DEFAULT_LOCATION
   }
 }
 

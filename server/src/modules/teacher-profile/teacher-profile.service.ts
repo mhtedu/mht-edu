@@ -98,19 +98,25 @@ export class TeacherProfileService {
       let distanceText = '';
       let distance = 0;
       if (latitude && longitude && teacher.latitude && teacher.longitude) {
-        const R = 6371; // 地球半径（公里）
-        const dLat = (teacher.latitude - latitude) * Math.PI / 180;
-        const dLon = (teacher.longitude - longitude) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(latitude * Math.PI / 180) * Math.cos(teacher.latitude * Math.PI / 180) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        distance = R * c;
+        // 将 Decimal 类型坐标转换为数字
+        const teacherLat = parseFloat(teacher.latitude);
+        const teacherLon = parseFloat(teacher.longitude);
         
-        if (distance < 1) {
-          distanceText = `${Math.round(distance * 1000)}m`;
-        } else {
-          distanceText = `${distance.toFixed(1)}km`;
+        if (!isNaN(teacherLat) && !isNaN(teacherLon)) {
+          const R = 6371; // 地球半径（公里）
+          const dLat = (teacherLat - latitude) * Math.PI / 180;
+          const dLon = (teacherLon - longitude) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(latitude * Math.PI / 180) * Math.cos(teacherLat * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          distance = R * c;
+          
+          if (distance < 1) {
+            distanceText = `${Math.round(distance * 1000)}m`;
+          } else {
+            distanceText = `${distance.toFixed(1)}km`;
+          }
         }
       }
 

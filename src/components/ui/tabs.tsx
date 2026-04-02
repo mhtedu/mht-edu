@@ -29,7 +29,8 @@ const Tabs = React.forwardRef<
       <TabsContext.Provider value={{ value, onValueChange: handleValueChange }}>
         <View
           ref={ref}
-          className={cn(className)}
+          className={cn("w-full", className)}
+          style={{ width: '100%' }}
           {...props}
         />
     </TabsContext.Provider>
@@ -47,7 +48,7 @@ const TabsList = React.forwardRef<
       "h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className
     )}
-    style={{ display: 'flex', flexDirection: 'row' }}
+    style={{ display: 'flex', flexDirection: 'row', width: '100%' }}
     {...props}
   />
 ))
@@ -107,6 +108,7 @@ const TabsContent = React.forwardRef<
         "mt-2 ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
         className
       )}
+      style={{ width: '100%' }}
       {...props}
     />
   )

@@ -101,7 +101,7 @@ const MessagePage: FC = () => {
       
       console.log('消息提醒响应:', res.data)
       
-      if (res.data && res.data.list) {
+      if (res.data && res.data.list && res.data.list.length > 0) {
         // 转换后端数据格式到前端格式
         const list = res.data.list.map((item: any) => {
           // 后端类型: 1-订单 2-评价 3-消息 4-系统
@@ -133,35 +133,55 @@ const MessagePage: FC = () => {
           }
         })
         setMessages(list)
+      } else {
+        // 如果没有数据，为当前用户初始化演示数据
+        console.log('无消息数据，为用户初始化演示数据:', effectiveUserId)
+        try {
+          await Network.request({
+            url: '/api/admin/init-messages',
+            method: 'POST',
+            data: { userId: effectiveUserId }
+          })
+          // 重新加载消息
+          const retryRes = await Network.request({
+            url: `/api/message/reminders?userId=${effectiveUserId}&page=1&pageSize=50`
+          })
+          if (retryRes.data && retryRes.data.list) {
+            const list = retryRes.data.list.map((item: any) => {
+              const typeMap: Record<number, 'system' | 'order' | 'interact'> = {
+                1: 'order', 2: 'interact', 3: 'interact', 4: 'system',
+              }
+              const typeTitleMap: Record<number, string> = {
+                1: '订单消息', 2: '评价消息', 3: '互动消息', 4: '系统通知',
+              }
+              return {
+                id: item.id,
+                type: typeMap[item.type] || 'system',
+                title: typeTitleMap[item.type] || '消息通知',
+                content: item.content,
+                time: formatTime(item.created_at),
+                read: item.is_read === 1,
+              }
+            })
+            setMessages(list)
+          }
+        } catch (initError) {
+          console.error('初始化演示数据失败:', initError)
+          // 使用本地演示数据
+          setMessages([
+            { id: 1, type: 'system', title: '系统通知', content: `欢迎使用${siteName}平台，祝您使用愉快！`, time: '10:30', read: false },
+            { id: 2, type: 'order', title: '订单消息', content: '您的订单已被老师接单，请及时确认。', time: '昨天', read: false },
+            { id: 3, type: 'interact', title: '互动消息', content: '张老师回复了您的评价：感谢您的认可！', time: '2天前', read: true }
+          ])
+        }
       }
     } catch (error) {
       console.error('加载消息失败:', error)
       // 如果未登录或请求失败，使用演示数据
       setMessages([
-        {
-          id: 1,
-          type: 'system',
-          title: '系统通知',
-          content: `欢迎使用${siteName}平台，祝您使用愉快！`,
-          time: '10:30',
-          read: false
-        },
-        {
-          id: 2,
-          type: 'order',
-          title: '订单消息',
-          content: '您的订单已被老师接单，请及时确认。',
-          time: '昨天',
-          read: false
-        },
-        {
-          id: 3,
-          type: 'interact',
-          title: '互动消息',
-          content: '张老师回复了您的评价：感谢您的认可！',
-          time: '2天前',
-          read: true
-        }
+        { id: 1, type: 'system', title: '系统通知', content: `欢迎使用${siteName}平台，祝您使用愉快！`, time: '10:30', read: false },
+        { id: 2, type: 'order', title: '订单消息', content: '您的订单已被老师接单，请及时确认。', time: '昨天', read: false },
+        { id: 3, type: 'interact', title: '互动消息', content: '张老师回复了您的评价：感谢您的认可！', time: '2天前', read: true }
       ])
     }
   }
