@@ -11,7 +11,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
+  padding: 0.45rem 0.6rem;
   background: #fff;
   border-bottom: 1px solid #E5E7EB;
   position: sticky;
@@ -26,14 +26,14 @@
 }
 
 .city-name {
-  font-size: 20px;
+  font-size: 0.5rem;
   color: #2563EB;
   font-weight: 500;
-  margin-left: 6px;
+  margin-left: 0.15rem;
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 0.55rem;
   font-weight: 600;
   color: #1F2937;
 }
@@ -42,21 +42,21 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 10px 16px;
+  padding: 0.25rem 0.4rem;
   background: #EFF6FF;
-  border-radius: 20px;
+  border-radius: 0.5rem;
 }
 
 .role-text {
-  font-size: 16px;
+  font-size: 0.4rem;
   color: #2563EB;
-  margin-left: 6px;
+  margin-left: 0.15rem;
 }
 
 /* 滚动区域 */
 .home-scroll {
   flex: 1;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 1.75rem);
 }
 
 /* 功能入口栏 */
@@ -64,7 +64,7 @@
   display: flex;
   flex-direction: row;
   justify-content: space-around;
-  padding: 28px 20px;
+  padding: 0.7rem 0.5rem;
   background: #fff;
 }
 
@@ -75,13 +75,13 @@
 }
 
 .entry-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 18px;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 0.3rem;
 }
 
 .entry-icon.publish {
@@ -101,21 +101,21 @@
 }
 
 .entry-text {
-  font-size: 17px;
+  font-size: 0.425rem;
   color: #374151;
-  margin-top: 8px;
+  margin-top: 0.2rem;
   font-weight: 500;
 }
 
 /* 轮播图区域 */
 .banner-section {
-  padding: 20px;
+  padding: 0.5rem;
   background: #fff;
 }
 
 .banner-swiper {
-  height: 200px;
-  border-radius: 18px;
+  height: 5rem;
+  border-radius: 0.45rem;
   overflow: hidden;
 }
 
@@ -124,7 +124,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 32px;
+  padding: 0.8rem;
 }
 
 .banner-green {
@@ -140,30 +140,30 @@
 }
 
 .banner-title {
-  font-size: 28px;
+  font-size: 0.7rem;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 14px;
+  margin-bottom: 0.35rem;
 }
 
 .banner-desc {
-  font-size: 18px;
+  font-size: 0.45rem;
   color: rgba(255, 255, 255, 0.9);
 }
 
 /* 教师模块 */
 .teacher-section {
-  margin-top: 14px;
+  margin-top: 0.35rem;
   background: #fff;
-  padding: 24px 20px;
+  padding: 0.6rem 0.5rem;
 }
 
 .section-header {
-  margin-bottom: 20px;
+  margin-bottom: 0.5rem;
 }
 
 .section-title {
-  font-size: 22px;
+  font-size: 0.55rem;
   font-weight: 600;
   color: #1F2937;
 }
@@ -172,16 +172,16 @@
 .filter-tabs {
   display: flex;
   flex-direction: row;
-  margin-bottom: 20px;
+  margin-bottom: 0.5rem;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 .filter-tab {
-  padding: 12px 22px;
+  padding: 0.3rem 0.55rem;
   background: #F3F4F6;
-  border-radius: 24px;
-  margin-right: 14px;
+  border-radius: 0.6rem;
+  margin-right: 0.35rem;
   flex-shrink: 0;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .filter-text {
-  font-size: 16px;
+  font-size: 0.4rem;
   color: #6B7280;
 }
 
@@ -204,10 +204,10 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 0.45rem 0.5rem;
   background: #FEF3C7;
-  border-radius: 16px;
-  margin-bottom: 20px;
+  border-radius: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .tip-left {
@@ -217,19 +217,19 @@
 }
 
 .tip-text {
-  font-size: 15px;
+  font-size: 0.375rem;
   color: #92400E;
-  margin-left: 10px;
+  margin-left: 0.25rem;
 }
 
 .tip-btn {
   background: #F59E0B;
-  border-radius: 20px;
-  padding: 10px 18px;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.45rem;
 }
 
 .tip-btn-text {
-  font-size: 15px;
+  font-size: 0.375rem;
   color: #fff;
   font-weight: 500;
 }
@@ -243,18 +243,18 @@
 .teacher-card {
   display: flex;
   flex-direction: row;
-  padding: 22px;
+  padding: 0.55rem;
   background: #F9FAFB;
-  border-radius: 18px;
+  border-radius: 0.45rem;
   border: 1px solid #E5E7EB;
-  margin-bottom: 18px;
+  margin-bottom: 0.45rem;
 }
 
 .teacher-avatar {
-  width: 80px;
-  height: 80px;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
-  margin-right: 20px;
+  margin-right: 0.5rem;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -274,7 +274,7 @@
 }
 
 .avatar-text {
-  font-size: 32px;
+  font-size: 0.8rem;
   font-weight: bold;
   color: #fff;
 }
@@ -288,7 +288,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 0.25rem;
 }
 
 .name-row {
@@ -298,15 +298,15 @@
 }
 
 .teacher-name {
-  font-size: 20px;
+  font-size: 0.5rem;
   font-weight: 600;
   color: #1F2937;
 }
 
 .teacher-gender {
-  font-size: 16px;
+  font-size: 0.4rem;
   color: #6B7280;
-  margin-left: 12px;
+  margin-left: 0.3rem;
 }
 
 .rating-row {
@@ -316,33 +316,33 @@
 }
 
 .rating-text {
-  font-size: 16px;
+  font-size: 0.4rem;
   color: #F59E0B;
-  margin-left: 6px;
+  margin-left: 0.15rem;
   font-weight: 500;
 }
 
 .teacher-edu {
-  font-size: 15px;
+  font-size: 0.375rem;
   color: #6B7280;
-  margin-bottom: 12px;
+  margin-bottom: 0.3rem;
 }
 
 .teacher-subjects {
   display: flex;
   flex-direction: row;
-  margin-bottom: 12px;
+  margin-bottom: 0.3rem;
 }
 
 .subject-tag {
   background: #EFF6FF;
-  padding: 8px 14px;
-  border-radius: 16px;
-  margin-right: 10px;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.4rem;
+  margin-right: 0.25rem;
 }
 
 .subject-tag-text {
-  font-size: 14px;
+  font-size: 0.35rem;
   color: #2563EB;
 }
 
@@ -351,41 +351,41 @@
   flex-direction: row;
   align-items: center;
   background: #F3F4F6;
-  padding: 6px 12px;
-  border-radius: 14px;
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.35rem;
   margin-left: auto;
 }
 
 .distance-text {
-  font-size: 13px;
+  font-size: 0.325rem;
   color: #6B7280;
-  margin-left: 4px;
+  margin-left: 0.1rem;
 }
 
 .teacher-price {
-  font-size: 18px;
+  font-size: 0.45rem;
   font-weight: 600;
   color: #EF4444;
-  margin-bottom: 12px;
+  margin-bottom: 0.3rem;
 }
 
 .teacher-intro {
-  font-size: 15px;
+  font-size: 0.375rem;
   color: #6B7280;
   line-height: 1.6;
-  margin-bottom: 16px;
+  margin-bottom: 0.4rem;
   display: block;
 }
 
 .detail-btn {
   align-self: flex-start;
   background: #2563EB;
-  padding: 12px 24px;
-  border-radius: 20px;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.5rem;
 }
 
 .detail-btn-text {
-  font-size: 15px;
+  font-size: 0.375rem;
   color: #fff;
   font-weight: 500;
 }
@@ -395,11 +395,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 60px;
+  padding: 1.5rem;
 }
 
 .empty-text {
-  font-size: 18px;
+  font-size: 0.45rem;
   color: #9CA3AF;
 }
 
