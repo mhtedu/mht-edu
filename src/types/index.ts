@@ -1,14 +1,13 @@
 // 用户相关类型
 export interface UserInfo {
   id: number
-  phone?: string
-  mobile?: string
+  phone: string
   nickname?: string
   avatar?: string
-  role: 'parent' | 'teacher' | 'org' | 'admin' | number
-  status?: number
-  created_at?: string
-  updated_at?: string
+  role: 'parent' | 'teacher' | 'org' | 'admin'
+  status: number
+  created_at: string
+  updated_at: string
   // 教师扩展字段
   teacher_profile?: TeacherProfile
   // 机构扩展字段

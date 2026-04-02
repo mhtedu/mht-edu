@@ -1,71 +1,59 @@
 .home-page {
   min-height: 100vh;
-  background: #F5F5F5;
-  display: flex;
-  flex-direction: column;
+  background: #F3F4F6;
 }
 
-/* 顶部栏 */
-.top-bar {
+.location-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   padding: 12px 16px;
   background: #fff;
   border-bottom: 1px solid #E5E7EB;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
-.location-area {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.city-name {
-  font-size: 15px;
-  color: #2563EB;
-  font-weight: 500;
-  margin-left: 4px;
-}
-
-.page-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1F2937;
-}
-
-.role-switch-btn {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 6px 12px;
-  background: #EFF6FF;
-  border-radius: 16px;
-}
-
-.role-text {
-  font-size: 13px;
-  color: #2563EB;
-  margin-left: 4px;
-}
-
-/* 滚动区域 */
-.home-scroll {
+.location-text {
   flex: 1;
-  height: calc(100vh - 50px);
+  margin-left: 8px;
+  font-size: 14px;
+  color: #374151;
 }
 
-/* 功能入口栏 */
-.quick-entry-bar {
+.location-refresh {
+  padding: 4px;
+}
+
+.home-scroll {
+  height: calc(100vh - 45px);
+}
+
+.search-bar {
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.search-input {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F3F4F6;
+  border-radius: 20px;
+  padding: 10px 16px;
+}
+
+.search-placeholder {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #9CA3AF;
+}
+
+.quick-entry {
   display: flex;
   flex-direction: row;
   justify-content: space-around;
   padding: 20px 16px;
   background: #fff;
+  margin-bottom: 12px;
 }
 
 .entry-item {
@@ -75,8 +63,8 @@
 }
 
 .entry-icon {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -84,322 +72,284 @@
   margin-bottom: 8px;
 }
 
-.entry-icon.publish {
-  background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+.entry-icon.teacher {
+  background: #DBEAFE;
 }
 
-.entry-icon.elite {
-  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+.entry-icon.org {
+  background: #D1FAE5;
 }
 
-.entry-icon.favorite {
-  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+.entry-icon.demand {
+  background: #FEF3C7;
 }
 
-.entry-icon.member {
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+.entry-icon.activity {
+  background: #FEE2E2;
 }
 
 .entry-text {
-  font-size: 13px;
+  font-size: 12px;
   color: #374151;
-  margin-top: 4px;
-  font-weight: 500;
 }
 
-/* 轮播图区域 */
-.banner-section {
-  padding: 12px 16px;
-  background: #fff;
-}
-
-.banner-swiper {
-  height: 140px;
+.section-card {
+  margin: 0 12px 12px;
   border-radius: 12px;
-  overflow: hidden;
-}
-
-.banner-item {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 20px;
-}
-
-.banner-green {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-}
-
-.banner-blue {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-}
-
-.banner-orange {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-}
-
-.banner-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 8px;
-}
-
-.banner-desc {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-/* 教师模块 */
-.teacher-section {
-  margin-top: 10px;
-  background: #fff;
-  padding: 16px;
 }
 
 .section-header {
-  margin-bottom: 12px;
-}
-
-.section-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1F2937;
-}
-
-/* 筛选标签 */
-.filter-tabs {
-  display: flex;
-  flex-direction: row;
-  margin-bottom: 12px;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.filter-tab {
-  padding: 6px 14px;
-  background: #F3F4F6;
-  border-radius: 16px;
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
-.filter-tab.active {
-  background: #2563EB;
-}
-
-.filter-text {
-  font-size: 13px;
-  color: #6B7280;
-}
-
-.filter-text.active {
-  color: #fff;
-}
-
-/* 会员提示栏 */
-.member-tip-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  background: #FEF3C7;
-  border-radius: 8px;
-  margin-bottom: 12px;
+  padding: 16px;
+  padding-bottom: 12px;
 }
 
-.tip-left {
+.section-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-title svg {
+  margin-right: 8px;
+}
+
+.section-more {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-.tip-text {
-  font-size: 12px;
-  color: #92400E;
-  margin-left: 6px;
+.more-text {
+  font-size: 13px;
+  color: #6B7280;
 }
 
-.tip-btn {
-  background: #F59E0B;
-  border-radius: 12px;
-  padding: 4px 10px;
+.section-content {
+  padding: 0 16px 16px;
 }
 
-.tip-btn-text {
-  font-size: 12px;
-  color: #fff;
-  font-weight: 500;
-}
-
-/* 教师卡片列表 */
-.teacher-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.teacher-card {
+.teacher-item {
   display: flex;
   flex-direction: row;
-  padding: 14px;
-  background: #F9FAFB;
-  border-radius: 12px;
-  border: 1px solid #E5E7EB;
-  margin-bottom: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.teacher-item:last-child {
+  border-bottom: none;
 }
 
 .teacher-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
   margin-right: 12px;
-  flex-shrink: 0;
   overflow: hidden;
 }
 
 .avatar-img {
-  width: 100%;
-  height: 100%;
+  width: 56px;
+  height: 56px;
 }
 
 .avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  width: 56px;
+  height: 56px;
+  background: #DBEAFE;
+  border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .avatar-text {
-  font-size: 24px;
-  font-weight: bold;
-  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2563EB;
 }
 
 .teacher-info {
   flex: 1;
 }
 
-.teacher-header {
+.teacher-name-row {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 4px;
 }
 
-.name-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
 .teacher-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1F2937;
+  color: #111827;
 }
 
-.teacher-gender {
-  font-size: 13px;
-  color: #6B7280;
-  margin-left: 8px;
-}
-
-.rating-row {
+.teacher-rating {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
 .rating-text {
-  font-size: 13px;
-  color: #F59E0B;
-  margin-left: 4px;
-  font-weight: 500;
-}
-
-.teacher-edu {
   font-size: 12px;
-  color: #6B7280;
-  margin-bottom: 6px;
-}
-
-.teacher-subjects {
-  display: flex;
-  flex-direction: row;
-  margin-bottom: 6px;
-  align-items: center;
-}
-
-.subject-tag {
-  background: #EFF6FF;
-  padding: 3px 8px;
-  border-radius: 8px;
-  margin-right: 6px;
-}
-
-.subject-tag-text {
-  font-size: 11px;
-  color: #2563EB;
-}
-
-.distance-tag {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  background: #F3F4F6;
-  padding: 2px 6px;
-  border-radius: 6px;
-  margin-left: auto;
-}
-
-.distance-text {
-  font-size: 11px;
-  color: #6B7280;
+  color: #F59E0B;
   margin-left: 2px;
-}
-
-.teacher-price {
-  font-size: 15px;
-  font-weight: 600;
-  color: #EF4444;
-  margin-bottom: 6px;
 }
 
 .teacher-intro {
   font-size: 12px;
   color: #6B7280;
-  line-height: 1.5;
-  margin-bottom: 8px;
-  display: block;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.detail-btn {
-  align-self: flex-start;
-  background: #2563EB;
-  padding: 6px 14px;
-  border-radius: 12px;
+.teacher-tags {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
-.detail-btn-text {
-  font-size: 12px;
-  color: #fff;
-  font-weight: 500;
+.tag {
+  font-size: 11px;
+  padding: 2px 6px;
 }
 
-/* 空状态 */
-.empty-state {
+.teacher-exp {
+  font-size: 11px;
+  color: #6B7280;
+}
+
+.teacher-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teacher-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #EF4444;
+}
+
+.teacher-distance {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.org-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.org-item:last-child {
+  border-bottom: none;
+}
+
+.org-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  margin-right: 12px;
+  overflow: hidden;
+}
+
+.logo-img {
+  width: 48px;
+  height: 48px;
+}
+
+.logo-placeholder {
+  width: 48px;
+  height: 48px;
+  background: #F3F4F6;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+}
+
+.org-info {
+  flex: 1;
+}
+
+.org-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.org-desc {
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 6px;
+}
+
+.org-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.org-teachers {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.org-rating {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.empty-state {
+  padding: 24px 0;
+  text-align: center;
 }
 
 .empty-text {
   font-size: 14px;
   color: #9CA3AF;
+}
+
+.login-tip-card {
+  margin: 0 12px 12px;
+  border-radius: 12px;
+  background: #DBEAFE;
+}
+
+.login-tip-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.login-tip-text {
+  font-size: 14px;
+  color: #1D4ED8;
+}
+
+.bottom-space {
+  height: 20px;
 }

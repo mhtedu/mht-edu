@@ -1,209 +1,217 @@
 .profile-page {
   min-height: 100vh;
-  background: #F5F5F5;
-  display: flex;
-  flex-direction: column;
+  background: #F3F4F6;
 }
 
-/* 用户头部区域 */
+.profile-scroll {
+  height: 100vh;
+}
+
 .user-header {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-  padding: 44px 28px 32px;
+  background: linear-gradient(180deg, #2563EB 0%, #3B82F6 100%);
+  padding: 30px 16px 20px;
 }
 
-.user-info-card {
+.user-info, .login-prompt {
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-bottom: 28px;
-}
-
-.user-avatar-area {
-  margin-right: 20px;
 }
 
 .user-avatar {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-}
-
-.avatar-placeholder {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  background: #fff;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid rgba(255, 255, 255, 0.3);
 }
 
-.user-details {
-  flex: 1;
+.avatar-img {
+  width: 64px;
+  height: 64px;
 }
 
-.user-name-row {
+.avatar-placeholder {
+  width: 64px;
+  height: 64px;
+  background: #DBEAFE;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.user-basic {
+  flex: 1;
+  margin-left: 16px;
 }
 
 .user-name {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   color: #fff;
 }
 
-.verified-badge {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 6px 14px;
-  border-radius: 14px;
-  margin-left: 14px;
+.user-role {
+  margin-top: 6px;
 }
 
-.verified-text {
-  font-size: 14px;
+.login-text {
+  font-size: 18px;
+  font-weight: 600;
   color: #fff;
 }
 
-.user-phone {
-  font-size: 16px;
+.login-hint {
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 12px;
+  margin-top: 4px;
 }
 
-.user-vip {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+.member-card {
+  margin: -20px 12px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
 }
 
-.vip-text {
-  font-size: 16px;
-  font-weight: 500;
-  margin-left: 8px;
-}
-
-.vip-expire {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-left: 14px;
-}
-
-/* 会员特权卡片 */
-.vip-card {
+.member-content {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  padding: 20px 24px;
-  border-radius: 20px;
+  padding: 16px;
 }
 
-.vip-left {
+.member-info {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-.vip-info {
-  margin-left: 16px;
+.member-icon {
+  width: 48px;
+  height: 48px;
+  background: #fff;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.vip-title {
-  font-size: 20px;
+.member-text {
+  margin-left: 12px;
+}
+
+.member-title {
+  font-size: 15px;
   font-weight: 600;
   color: #92400E;
-  margin-bottom: 8px;
 }
 
-.vip-desc {
-  font-size: 15px;
+.member-desc {
+  font-size: 12px;
   color: #B45309;
+  margin-top: 2px;
 }
 
-.vip-btn {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-  padding: 14px 24px;
-  border-radius: 24px;
-}
-
-.vip-btn-text {
-  font-size: 16px;
-  font-weight: 500;
+.member-btn {
+  background: #F59E0B;
   color: #fff;
 }
 
-/* 滚动区域 */
-.profile-scroll {
-  flex: 1;
-  height: 0;
+.menu-card {
+  margin: 0 12px 12px;
+  border-radius: 12px;
 }
 
-/* 功能菜单 */
-.menu-section {
-  margin-top: 14px;
-  background: #fff;
+.menu-content {
+  padding: 16px;
+}
+
+.menu-grid {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
 }
 
 .menu-item {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  padding: 22px 28px;
-  border-bottom: 1px solid #F3F4F6;
-}
-
-.menu-item.last {
-  border-bottom: none;
 }
 
 .menu-icon {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
-  background: #F9FAFB;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 18px;
+  margin-bottom: 8px;
 }
 
 .menu-text {
-  flex: 1;
-  font-size: 18px;
-  color: #1F2937;
+  font-size: 13px;
+  color: #374151;
 }
 
-.menu-arrow {
-  font-size: 20px;
-  color: #9CA3AF;
+.setting-card {
+  margin: 0 12px 12px;
+  border-radius: 12px;
 }
 
-/* 切换身份 */
-.switch-role-section {
-  margin-top: 32px;
-  padding: 0 28px;
+.setting-content {
+  padding: 8px 0;
 }
 
-.switch-role-btn {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-  border-radius: 28px;
-  padding: 18px;
+.setting-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.setting-text {
+  font-size: 15px;
+  color: #374151;
+  margin-left: 12px;
+}
+
+.logout-section {
+  padding: 20px 16px;
+}
+
+.logout-btn {
+  width: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  padding: 12px;
+  border-radius: 20px;
+  border-color: #FCA5A5;
 }
 
-.switch-role-text {
-  font-size: 18px;
-  font-weight: 500;
-  color: #fff;
-  margin-left: 12px;
+.logout-text {
+  font-size: 14px;
+  color: #EF4444;
+  margin-left: 8px;
 }
 
+.bottom-space {
+  height: 40px;
+}

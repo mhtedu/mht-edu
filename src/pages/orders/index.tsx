@@ -40,14 +40,7 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'ongoing' | 'completed'>('all');
-  const { currentRole: userRole, location: userLocation } = useUserStore();
-
-  useEffect(() => {
-    // 同步用户角色
-    if (userRole !== undefined) {
-      setCurrentRole(userRole);
-    }
-  }, [userRole]);
+  const { location: userLocation } = useUserStore();
 
   useEffect(() => {
     loadOrders();
@@ -56,26 +49,20 @@ const OrdersPage = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
+      // 家长视角调用 /api/order/list，教师视角调用 /api/order/nearby
+      const url = currentRole === 0 
+        ? '/api/order/list' 
+        : '/api/order/nearby';
+      
       const params: any = {
         page: 1,
         pageSize: 20,
       };
 
       if (currentRole === 0) {
-        // 家长视角：查看自己的订单
-        const res = await Network.request({
-          url: '/api/order/list',
-          method: 'GET',
-          data: params,
-        });
-
-        if (res.data && res.data.list) {
-          setOrders(res.data.list);
-        } else if (res.data && Array.isArray(res.data)) {
-          setOrders(res.data);
-        }
+        params.parentId = 1;
       } else {
-        // 教师视角：查看附近的可抢单需求
+        // 教师视角：获取附近的待抢单订单
         let lat = userLocation?.latitude;
         let lng = userLocation?.longitude;
 
@@ -93,21 +80,41 @@ const OrdersPage = () => {
           params.longitude = lng;
           params.radius = 50; // 50km范围内
         }
-
-        console.log('教师抢单列表请求:', { url: '/api/order/nearby', params });
-        const res = await Network.request({
-          url: '/api/order/nearby',
-          method: 'GET',
-          data: params,
-        });
-        console.log('教师抢单列表响应:', res.data);
-
-        if (res.data && res.data.list) {
-          setOrders(res.data.list);
-        } else if (res.data && Array.isArray(res.data)) {
-          setOrders(res.data);
-        }
       }
+
+      // 根据tab筛选状态
+      if (activeTab === 'pending') {
+        params.status = 0;
+      } else if (activeTab === 'ongoing') {
+        params.status = [1, 2, 3].join(',');
+      } else if (activeTab === 'completed') {
+        params.status = 4;
+      }
+
+      console.log('加载订单请求:', { url, params });
+      const res = await Network.request({
+        url,
+        method: 'GET',
+        data: params,
+      });
+      console.log('加载订单响应:', res.data);
+
+      let orderList: Order[] = [];
+      if (res.data && Array.isArray(res.data)) {
+        orderList = res.data;
+      } else if (res.data && res.data.list) {
+        orderList = res.data.list;
+      }
+
+      // 格式化距离显示
+      orderList = orderList.map((order: any) => ({
+        ...order,
+        distance_text: order.distance_text || (order.distance ? 
+          (order.distance < 1 ? `${Math.round(order.distance * 1000)}m` : `${order.distance.toFixed(1)}km`) 
+          : undefined)
+      }));
+
+      setOrders(orderList);
     } catch (error) {
       console.error('加载订单失败:', error);
     } finally {
@@ -196,15 +203,7 @@ const OrdersPage = () => {
                     <View className="flex flex-col gap-2">
                       <View className="flex flex-row items-center justify-between">
                         <Text className="text-orange-500 font-semibold">¥{order.hourly_rate}/小时</Text>
-                        {currentRole === 1 && order.distance !== undefined && order.distance !== null && (
-                          <View className="flex flex-row items-center">
-                            <MapPin size={14} color="#2563EB" />
-                            <Text className="text-blue-600 text-sm ml-1">{order.distance}km</Text>
-                          </View>
-                        )}
-                        {currentRole === 0 && (
-                          <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
-                        )}
+                        <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
                       </View>
                       
                       <View className="flex flex-row items-center text-gray-500 text-sm">
@@ -215,6 +214,9 @@ const OrdersPage = () => {
                       <View className="flex flex-row items-center text-gray-500 text-sm">
                         <MapPin size={14} color="#6B7280" className="mr-1" />
                         <Text>{order.address}</Text>
+                        {order.distance_text && (
+                          <Text className="ml-2 text-blue-500">{order.distance_text}</Text>
+                        )}
                       </View>
 
                       {order.description && (
