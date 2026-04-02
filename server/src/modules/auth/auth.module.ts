@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LocalStrategy } from './strategies/local.strategy';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { PermissionGuard } from './guards/permission.guard';
 
 @Global()
 @Module({
@@ -22,7 +24,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, LocalAuthGuard],
-  exports: [AuthService, JwtModule, ConfigModule],
+  providers: [AuthService, LocalStrategy, LocalAuthGuard, JwtAuthGuard, PermissionGuard],
+  exports: [AuthService, JwtModule, ConfigModule, JwtAuthGuard, PermissionGuard],
 })
 export class AuthModule {}

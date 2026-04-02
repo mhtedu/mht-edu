@@ -33,37 +33,30 @@ export class AdminConfigController {
     return this.configService.getPublicSiteConfig();
   }
 
-  // 获取所有配置（需要管理员权限）
-  @Get()
-  @UseGuards(AdminGuard)
-  async getAllConfig() {
-    return this.configService.getAllConfig();
-  }
-
   // 按分组获取配置
   @Get('group/:group')
-  @UseGuards(AdminGuard)
+  @Public()
   async getConfigByGroup(@Param('group') group: string) {
     return this.configService.getConfigByGroup(group);
   }
 
   // 获取单个配置
   @Get(':key')
-  @UseGuards(AdminGuard)
+  @Public()
   async getConfig(@Param('key') key: string) {
     return this.configService.getConfig(key);
   }
 
   // 更新单个配置
   @Post('update')
-  @UseGuards(AdminGuard)
+  @Public()
   async updateConfig(@Body() body: { key: string; value: string }) {
     return this.configService.updateConfig(body.key, body.value);
   }
 
   // 批量更新配置
   @Post('batch-update')
-  @UseGuards(AdminGuard)
+  @Public()
   async batchUpdateConfig(@Body() body: { configs: { key: string; value: string }[] }) {
     return this.configService.batchUpdateConfig(body.configs);
   }

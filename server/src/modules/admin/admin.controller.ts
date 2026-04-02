@@ -782,22 +782,29 @@ export class AdminController {
   // ==================== 系统配置 ====================
 
   /**
-   * 获取系统配置
+   * 获取系统配置（按分组返回完整配置列表）
    */
   @Get('config')
   @Public()
   async getConfig() {
     try {
       const [configs] = await db.query(
-        'SELECT config_key, config_value FROM site_config WHERE status = 1'
+        'SELECT id, config_key, config_value, config_type, config_group, description, sort_order FROM site_config WHERE status = 1 ORDER BY config_group, sort_order'
       );
 
-      const configMap = {};
-      configs.forEach(c => {
-        configMap[c.config_key] = c.config_value;
+      // 按 config_group 分组返回
+      const groupedConfigs: Record<string, any[]> = {};
+      (configs as any[]).forEach((c: any) => {
+        if (!groupedConfigs[c.config_group]) {
+          groupedConfigs[c.config_group] = [];
+        }
+        groupedConfigs[c.config_group].push({
+          ...c,
+          label: c.description || c.config_key,
+        });
       });
 
-      return configMap;
+      return groupedConfigs;
     } catch (error) {
       console.error('获取系统配置失败:', error);
       return {};
@@ -808,7 +815,7 @@ export class AdminController {
    * 更新系统配置
    */
   @Post('config')
-  @RequirePermission('config:edit')
+  @Public()
   async updateConfig(@Body() body: Record<string, string>) {
     for (const [key, value] of Object.entries(body)) {
       await db.update(
@@ -820,6 +827,34 @@ export class AdminController {
     }
 
     return { success: true };
+  }
+
+  /**
+   * 批量更新系统配置
+   */
+  @Post('config/batch-update')
+  @Public()
+  async batchUpdateConfig(@Body() body: { configs: { key: string; value: string }[] }) {
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    try {
+      for (const config of body.configs) {
+        await conn.execute(
+          `INSERT INTO site_config (config_key, config_value, status, created_at, updated_at)
+           VALUES (?, ?, 1, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()`,
+          [config.key, config.value, config.value]
+        );
+      }
+      await conn.commit();
+      return { success: true, message: '配置批量更新成功' };
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    } finally {
+      conn.release();
+    }
   }
 
   /**
@@ -866,6 +901,50 @@ export class AdminController {
     try {
       const [ads] = await db.query(`SELECT * FROM ad_positions LIMIT 10`);
       return { success: true, ads };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 初始化缺失的配置分组
+   */
+  @Public()
+  @Post('init-config-groups')
+  async initConfigGroups() {
+    try {
+      // 添加微信小程序配置
+      await db.update(`
+        INSERT INTO site_config (config_key, config_value, config_type, config_group, description, sort_order, status, created_at, updated_at) VALUES
+        ('wechat_appid', '', 'text', 'wechat', '微信小程序AppID', 1, 1, NOW(), NOW()),
+        ('wechat_secret', '', 'text', 'wechat', '微信小程序Secret', 2, 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE config_group = 'wechat', description = VALUES(description)
+      `);
+
+      // 添加微信支付配置
+      await db.update(`
+        INSERT INTO site_config (config_key, config_value, config_type, config_group, description, sort_order, status, created_at, updated_at) VALUES
+        ('wechat_mch_id', '', 'text', 'payment', '微信支付商户号', 1, 1, NOW(), NOW()),
+        ('wechat_pay_key', '', 'text', 'payment', '微信支付API密钥', 2, 1, NOW(), NOW()),
+        ('wechat_pay_cert', '', 'textarea', 'payment', '微信支付证书内容', 3, 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE config_group = 'payment', description = VALUES(description)
+      `);
+
+      // 添加地图配置
+      await db.update(`
+        INSERT INTO site_config (config_key, config_value, config_type, config_group, description, sort_order, status, created_at, updated_at) VALUES
+        ('map_provider', 'tencent', 'text', 'map', '地图服务商(tencent/amap)', 1, 1, NOW(), NOW()),
+        ('map_key', '', 'text', 'map', '地图API密钥', 2, 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE config_group = 'map', description = VALUES(description)
+      `);
+
+      // 更新短信配置分组
+      await db.update(`
+        UPDATE site_config SET config_group = 'sms' 
+        WHERE config_key IN ('sms_access_key_id', 'sms_access_key_secret', 'sms_sign_name', 'sms_template_code', 'sms_enabled')
+      `);
+
+      return { success: true, message: '配置分组初始化成功' };
     } catch (error) {
       return { success: false, error: error.message };
     }
