@@ -11,7 +11,6 @@ import {
   User, Settings, Star, CreditCard, Users,
   ChevronRight, LogOut, Award, FileText, Bell, Info
 } from 'lucide-react-taro'
-import './index.css'
 
 interface MembershipInfo {
   is_member: boolean
@@ -74,6 +73,8 @@ const ProfilePage: FC = () => {
     Taro.navigateTo({ url: page })
   }
 
+  const goToMember = () => Taro.navigateTo({ url: '/pages/member/index' })
+
   const menuItems = [
     { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
     { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
@@ -89,24 +90,24 @@ const ProfilePage: FC = () => {
   ]
 
   return (
-    <View className="profile-page">
-      <ScrollView scrollY className="profile-scroll">
+    <View className="min-h-screen bg-gray-100">
+      <ScrollView scrollY className="h-screen box-border">
         {/* 用户信息卡片 */}
-        <View className="user-header">
+        <View className="bg-gradient-to-b from-blue-600 to-blue-500 pt-8 px-4 pb-5">
           {isLoggedIn ? (
-            <View className="user-info" onClick={() => goToPage('/pages/profile/edit')}>
-              <View className="user-avatar">
+            <View className="flex flex-row items-center" onClick={() => goToPage('/pages/profile/edit')}>
+              <View className="w-16 h-16 rounded-full bg-white overflow-hidden flex items-center justify-center">
                 {userInfo?.avatar ? (
-                  <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
+                  <Image src={userInfo.avatar} className="w-16 h-16" mode="aspectFill" />
                 ) : (
-                  <View className="avatar-placeholder">
+                  <View className="w-16 h-16 bg-blue-100 flex items-center justify-center">
                     <User size={24} color="#2563EB" />
                   </View>
                 )}
               </View>
-              <View className="user-basic">
-                <Text className="user-name">{userInfo?.nickname || '用户'}</Text>
-                <View className="user-role">
+              <View className="flex-1 ml-4">
+                <Text className="block text-lg font-semibold text-white">{userInfo?.nickname || '用户'}</Text>
+                <View className="mt-2">
                   <Badge variant="outline">
                     {userInfo?.role === 'parent' ? '家长' : userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'org' ? '机构' : '用户'}
                   </Badge>
@@ -115,13 +116,13 @@ const ProfilePage: FC = () => {
               <ChevronRight size={20} color="#9CA3AF" />
             </View>
           ) : (
-            <View className="login-prompt" onClick={goToLogin}>
-              <View className="user-avatar">
+            <View className="flex flex-row items-center" onClick={goToLogin}>
+              <View className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
                 <User size={24} color="#9CA3AF" />
               </View>
-              <View className="user-basic">
-                <Text className="login-text">点击登录</Text>
-                <Text className="login-hint">登录享受更多服务</Text>
+              <View className="flex-1 ml-4">
+                <Text className="block text-lg font-semibold text-white">点击登录</Text>
+                <Text className="block text-sm text-white opacity-80 mt-1">登录享受更多服务</Text>
               </View>
               <ChevronRight size={20} color="#9CA3AF" />
             </View>
@@ -130,27 +131,27 @@ const ProfilePage: FC = () => {
 
         {/* 会员卡片 */}
         {isLoggedIn && (
-          <Card className="member-card">
-            <CardContent className="member-content">
-              <View className="member-info">
-                <View className="member-icon">
+          <Card className="-mt-5 mx-3 mb-3 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200">
+            <CardContent className="flex flex-row items-center justify-between p-4">
+              <View className="flex flex-row items-center">
+                <View className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
                   <Award size={24} color="#F59E0B" />
                 </View>
-                <View className="member-text">
+                <View className="ml-3">
                   {membershipInfo?.is_member ? (
                     <>
-                      <Text className="member-title">会员有效</Text>
-                      <Text className="member-desc">剩余{membershipInfo.remaining_days}天</Text>
+                      <Text className="block text-base font-semibold text-amber-900">会员有效</Text>
+                      <Text className="block text-xs text-amber-700 mt-1">剩余{membershipInfo.remaining_days}天</Text>
                     </>
                   ) : (
                     <>
-                      <Text className="member-title">开通会员</Text>
-                      <Text className="member-desc">解锁更多权益</Text>
+                      <Text className="block text-base font-semibold text-amber-900">开通会员</Text>
+                      <Text className="block text-xs text-amber-700 mt-1">解锁更多权益</Text>
                     </>
                   )}
                 </View>
               </View>
-              <Button size="sm" className="member-btn">
+              <Button size="sm" className="bg-amber-500 text-white" onClick={goToMember}>
                 {membershipInfo?.is_member ? '续费' : '立即开通'}
               </Button>
             </CardContent>
@@ -158,19 +159,22 @@ const ProfilePage: FC = () => {
         )}
 
         {/* 功能菜单 */}
-        <Card className="menu-card">
-          <CardContent className="menu-content">
-            <View className="menu-grid">
+        <Card className="mx-3 mb-3 rounded-xl">
+          <CardContent className="p-4">
+            <View className="flex flex-row justify-around">
               {menuItems.map((item, idx) => (
                 <View
                   key={idx}
-                  className="menu-item"
+                  className="flex flex-col items-center"
                   onClick={() => goToPage(item.path)}
                 >
-                  <View className="menu-icon" style={{ background: `${item.color}20` }}>
+                  <View 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-2"
+                    style={{ backgroundColor: `${item.color}20` }}
+                  >
                     <item.icon size={22} color={item.color} />
                   </View>
-                  <Text className="menu-text">{item.title}</Text>
+                  <Text className="block text-sm text-gray-700">{item.title}</Text>
                 </View>
               ))}
             </View>
@@ -178,17 +182,17 @@ const ProfilePage: FC = () => {
         </Card>
 
         {/* 设置菜单 */}
-        <Card className="setting-card">
-          <CardContent className="setting-content">
+        <Card className="mx-3 mb-3 rounded-xl">
+          <CardContent className="py-2">
             {settingItems.map((item, idx) => (
               <View
                 key={idx}
-                className="setting-item"
+                className="flex flex-row items-center justify-between px-4 py-4 border-b border-gray-100 last:border-b-0"
                 onClick={() => goToPage(item.path)}
               >
-                <View className="setting-left">
+                <View className="flex flex-row items-center">
                   <item.icon size={20} color={item.color} />
-                  <Text className="setting-text">{item.title}</Text>
+                  <Text className="block text-base text-gray-700 ml-3">{item.title}</Text>
                 </View>
                 <ChevronRight size={20} color="#D1D5DB" />
               </View>
@@ -198,15 +202,15 @@ const ProfilePage: FC = () => {
 
         {/* 退出登录 */}
         {isLoggedIn && (
-          <View className="logout-section">
-            <Button variant="outline" className="logout-btn" onClick={handleLogout}>
+          <View className="px-4 py-5">
+            <Button variant="outline" className="w-full" onClick={handleLogout}>
               <LogOut size={18} color="#EF4444" />
-              <Text className="logout-text">退出登录</Text>
+              <Text className="text-red-500 ml-2">退出登录</Text>
             </Button>
           </View>
         )}
 
-        <View className="bottom-space" />
+        <View className="h-5" />
       </ScrollView>
     </View>
   )

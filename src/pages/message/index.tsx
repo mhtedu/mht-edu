@@ -4,7 +4,6 @@ import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Network } from '@/network'
 import { Bell, Megaphone, ShoppingCart, Heart, MessageCircle, ChevronRight } from 'lucide-react-taro'
-import './index.css'
 
 // 消息类型
 interface MessageItem {
@@ -145,98 +144,98 @@ const MessagePage: FC = () => {
   }
 
   return (
-    <View className="message-page">
+    <View className="min-h-screen bg-gray-100">
       {/* 顶部导航栏 */}
-      <View className="message-header">
-        <Text className="header-title">消息中心</Text>
-        <View className="header-right">
+      <View className="flex flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+        <Text className="block text-lg font-semibold text-gray-900">消息中心</Text>
+        <View className="p-2">
           <Bell size={20} color="#6B7280" />
         </View>
       </View>
 
       {/* 消息类型标签 */}
-      <View className="message-tabs">
+      <View className="flex flex-row items-center px-4 py-3 bg-white gap-3 mb-2">
         <View 
-          className={`message-tab ${activeTab === 'all' ? 'active' : ''}`}
+          className={`flex flex-row items-center px-3 py-2 rounded-full ${activeTab === 'all' ? 'bg-blue-50' : 'bg-gray-100'}`}
           onClick={() => handleTabChange('all')}
         >
-          <Text className={`tab-text ${activeTab === 'all' ? 'active' : ''}`}>全部</Text>
+          <Text className={`block text-sm ${activeTab === 'all' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>全部</Text>
           {unreadCount.all > 0 && (
-            <View className="tab-badge">
-              <Text className="badge-text">{unreadCount.all}</Text>
+            <View className="min-w-4 h-4 rounded-full bg-red-500 flex items-center justify-center px-1 ml-1">
+              <Text className="block text-xs text-white font-medium">{unreadCount.all}</Text>
             </View>
           )}
         </View>
         <View 
-          className={`message-tab ${activeTab === 'system' ? 'active' : ''}`}
+          className={`flex flex-row items-center px-3 py-2 rounded-full gap-1 ${activeTab === 'system' ? 'bg-blue-50' : 'bg-gray-100'}`}
           onClick={() => handleTabChange('system')}
         >
           <Megaphone size={14} color={activeTab === 'system' ? '#2563EB' : '#6B7280'} />
-          <Text className={`tab-text ${activeTab === 'system' ? 'active' : ''}`}>系统</Text>
+          <Text className={`block text-sm ${activeTab === 'system' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>系统</Text>
           {unreadCount.system > 0 && (
-            <View className="tab-badge">
-              <Text className="badge-text">{unreadCount.system}</Text>
+            <View className="min-w-4 h-4 rounded-full bg-red-500 flex items-center justify-center px-1">
+              <Text className="block text-xs text-white font-medium">{unreadCount.system}</Text>
             </View>
           )}
         </View>
         <View 
-          className={`message-tab ${activeTab === 'order' ? 'active' : ''}`}
+          className={`flex flex-row items-center px-3 py-2 rounded-full gap-1 ${activeTab === 'order' ? 'bg-blue-50' : 'bg-gray-100'}`}
           onClick={() => handleTabChange('order')}
         >
           <ShoppingCart size={14} color={activeTab === 'order' ? '#2563EB' : '#6B7280'} />
-          <Text className={`tab-text ${activeTab === 'order' ? 'active' : ''}`}>订单</Text>
+          <Text className={`block text-sm ${activeTab === 'order' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>订单</Text>
           {unreadCount.order > 0 && (
-            <View className="tab-badge">
-              <Text className="badge-text">{unreadCount.order}</Text>
+            <View className="min-w-4 h-4 rounded-full bg-red-500 flex items-center justify-center px-1">
+              <Text className="block text-xs text-white font-medium">{unreadCount.order}</Text>
             </View>
           )}
         </View>
         <View 
-          className={`message-tab ${activeTab === 'interact' ? 'active' : ''}`}
+          className={`flex flex-row items-center px-3 py-2 rounded-full gap-1 ${activeTab === 'interact' ? 'bg-blue-50' : 'bg-gray-100'}`}
           onClick={() => handleTabChange('interact')}
         >
           <Heart size={14} color={activeTab === 'interact' ? '#2563EB' : '#6B7280'} />
-          <Text className={`tab-text ${activeTab === 'interact' ? 'active' : ''}`}>互动</Text>
+          <Text className={`block text-sm ${activeTab === 'interact' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>互动</Text>
           {unreadCount.interact > 0 && (
-            <View className="tab-badge">
-              <Text className="badge-text">{unreadCount.interact}</Text>
+            <View className="min-w-4 h-4 rounded-full bg-red-500 flex items-center justify-center px-1">
+              <Text className="block text-xs text-white font-medium">{unreadCount.interact}</Text>
             </View>
           )}
         </View>
       </View>
 
       {/* 消息列表 */}
-      <ScrollView scrollY className="message-scroll">
+      <ScrollView scrollY className="h-screen box-border">
         {loading ? (
-          <View className="loading-area">
-            <Text className="loading-text">加载中...</Text>
+          <View className="py-10 text-center">
+            <Text className="block text-sm text-gray-400">加载中...</Text>
           </View>
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((item) => (
             <View 
               key={item.id} 
-              className={`message-item ${!item.read ? 'unread' : ''}`}
+              className={`flex flex-row items-center px-4 py-4 bg-white mb-px ${!item.read ? 'bg-white' : ''}`}
               onClick={() => handleItemClick(item)}
             >
-              <View className="item-icon">
+              <View className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-3 shrink-0">
                 {getIcon(item.type)}
               </View>
-              <View className="item-content">
-                <View className="item-header">
-                  <Text className="item-title">{item.title}</Text>
-                  <Text className="item-time">{item.time}</Text>
+              <View className="flex-1 overflow-hidden">
+                <View className="flex flex-row items-center justify-between mb-1">
+                  <Text className="block text-base font-medium text-gray-900">{item.title}</Text>
+                  <Text className="block text-xs text-gray-400">{item.time}</Text>
                 </View>
-                <Text className="item-desc">{item.content}</Text>
+                <Text className="block text-sm text-gray-500 truncate">{item.content}</Text>
               </View>
               <ChevronRight size={16} color="#D1D5DB" />
             </View>
           ))
         ) : (
-          <View className="empty-area">
-            <Text className="empty-text">暂无消息</Text>
+          <View className="py-16 text-center">
+            <Text className="block text-sm text-gray-400">暂无消息</Text>
           </View>
         )}
-        <View className="bottom-space" />
+        <View className="h-5" />
       </ScrollView>
     </View>
   )
