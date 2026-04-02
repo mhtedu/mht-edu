@@ -256,20 +256,21 @@ export default function TeacherDetailPage() {
 
   return (
     <View className="teacher-detail-page">
-      {/* 封面照片 */}
-      <View className="relative">
-        <Image
-          src={teacher.cover_photo || teacher.avatar}
-          className="w-full h-48 object-cover"
-          mode="aspectFill"
-        />
-        <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
-          <Text className="block text-white text-lg font-bold">{teacher.nickname}</Text>
-          {teacher.one_line_intro && (
-            <Text className="block text-gray-200 text-sm mt-1">{teacher.one_line_intro}</Text>
-          )}
+      <ScrollView scrollY className="h-screen box-border">
+        {/* 封面照片 */}
+        <View className="relative">
+          <Image
+            src={teacher.cover_photo || teacher.avatar}
+            className="w-full h-48 object-cover"
+            mode="aspectFill"
+          />
+          <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+            <Text className="block text-white text-lg font-bold">{teacher.nickname}</Text>
+            {teacher.one_line_intro && (
+              <Text className="block text-gray-200 text-sm mt-1">{teacher.one_line_intro}</Text>
+            )}
+          </View>
         </View>
-      </View>
 
       {/* 牛师基本信息 */}
       <View className="p-4 bg-white">
@@ -514,6 +515,10 @@ export default function TeacherDetailPage() {
         </TabsContent>
       </Tabs>
 
+      {/* 底部占位 */}
+      <View className="h-20" />
+      </ScrollView>
+
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', zIndex: 50 }}>
         <Button
@@ -532,9 +537,6 @@ export default function TeacherDetailPage() {
           <Text className="text-base text-white">{teacher.wechat_unlocked ? '查看微信' : '解锁微信'}</Text>
         </Button>
       </View>
-
-      {/* 底部占位 */}
-      <View className="h-20" />
     </View>
   )
 }

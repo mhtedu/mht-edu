@@ -4,6 +4,7 @@ import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Network } from '@/network'
 import { useConfigStore } from '@/stores/config'
+import { useUserStore } from '@/stores/user'
 import { Bell, Megaphone, ShoppingCart, Heart, MessageCircle, ChevronRight, Phone, MessageSquare, Calendar, Clock, User, Check, X } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -69,6 +70,8 @@ const MessagePage: FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'order' | 'interact' | 'invitation'>('all')
 
   const { getSiteName } = useConfigStore()
+  const { userInfo } = useUserStore()
+  const userId = userInfo?.id
 
   useDidShow(() => {
     loadData()
@@ -89,10 +92,10 @@ const MessagePage: FC = () => {
   const loadMessages = async () => {
     const siteName = getSiteName()
     try {
-      // 调用消息提醒接口
+      // 调用消息提醒接口，传递用户ID
       const res = await Network.request({
         url: '/api/message/reminders',
-        data: { page: 1, pageSize: 50 }
+        data: { userId: userId || 401, page: 1, pageSize: 50 }
       })
       
       console.log('消息提醒响应:', res.data)
@@ -132,6 +135,7 @@ const MessagePage: FC = () => {
       }
     } catch (error) {
       console.error('加载消息失败:', error)
+      // 如果未登录或请求失败，使用演示数据
       setMessages([
         {
           id: 1,
