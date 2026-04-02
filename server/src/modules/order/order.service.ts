@@ -447,9 +447,7 @@ export class OrderService {
       sqlParams.push(params.subject);
     }
 
-    // 先获取所有符合条件的订单
-    console.log('查询参数:', { conditions, sqlParams, pageSize: params.pageSize, offset });
-    
+    // 获取符合条件的订单
     const orders = await executeQuery(`
       SELECT 
         o.id,
@@ -475,11 +473,6 @@ export class OrderService {
       params.pageSize,
       offset,
     ]);
-
-    console.log('查询到的订单数量:', orders.length);
-    if (orders.length > 0) {
-      console.log('第一个订单数据:', JSON.stringify(orders[0], null, 2));
-    }
 
     // 在代码中计算距离
     const processedOrders = orders.map((order: any) => {

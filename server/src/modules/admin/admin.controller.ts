@@ -1650,4 +1650,44 @@ export class AdminController {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * 添加数据库索引优化查询性能
+   */
+  @Post('add-indexes')
+  @Public()
+  async addIndexes() {
+    const results: string[] = [];
+    const errors: string[] = [];
+    
+    const indexSqls = [
+      { table: 'orders', name: 'idx_status_created', sql: 'ALTER TABLE orders ADD INDEX idx_status_created (status, created_at)' },
+      { table: 'orders', name: 'idx_parent_status', sql: 'ALTER TABLE orders ADD INDEX idx_parent_status (parent_id, status)' },
+      { table: 'orders', name: 'idx_subject', sql: 'ALTER TABLE orders ADD INDEX idx_subject (subject)' },
+      { table: 'users', name: 'idx_role_status', sql: 'ALTER TABLE users ADD INDEX idx_role_status (role, status)' },
+      { table: 'users', name: 'idx_membership', sql: 'ALTER TABLE users ADD INDEX idx_membership (membership_type, membership_expire_at)' },
+      { table: 'messages', name: 'idx_conversation_created', sql: 'ALTER TABLE messages ADD INDEX idx_conversation_created (conversation_id, created_at)' },
+      { table: 'teacher_profiles', name: 'idx_verify', sql: 'ALTER TABLE teacher_profiles ADD INDEX idx_verify (verify_status)' },
+    ];
+    
+    for (const item of indexSqls) {
+      try {
+        await db.update(item.sql);
+        results.push(`${item.table}.${item.name}`);
+      } catch (e: any) {
+        if (e.message && e.message.includes('Duplicate key name')) {
+          // 索引已存在，忽略
+        } else {
+          errors.push(`${item.table}.${item.name}: ${e.message}`);
+        }
+      }
+    }
+
+    return { 
+      success: true, 
+      message: `已添加 ${results.length} 个索引`,
+      added: results,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  }
 }

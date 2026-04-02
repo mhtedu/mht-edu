@@ -90,9 +90,16 @@ ALTER TABLE activity_signups ADD INDEX idx_activity_status (activity_id, status)
 grep -rn "console.log" server/src/modules --include="*.ts"
 ```
 
-建议：
-- 开发环境保留调试日志
-- 生产环境使用 NestJS Logger 或移除
+**当前状态**: ✅ 已清理调试日志，保留Mock/开发模式日志
+
+已清理的文件：
+- `order.service.ts` - 移除查询调试日志
+- `moment.controller.ts` - 移除上传、发布、点赞、评论等调试日志
+
+保留的日志（用于开发环境）：
+- `sms.service.ts` - Mock验证码日志
+- `user.service.ts` - 开发模式Mock日志
+- `elite-class.service.ts` - 业务日志
 
 ---
 
@@ -170,14 +177,15 @@ grep -rn "console.log" server/src/modules --include="*.ts"
 
 ## 七、优化优先级
 
-### P0 - 立即处理
-- [ ] 修复 teacher-profile.controller.ts 中的会员状态检查
-- [ ] 添加关键表的索引
+### P0 - 已完成 ✅
+- [x] 修复 teacher-profile.controller.ts 中的会员状态检查
+- [x] 添加关键表的索引（orders, users, messages, teacher_profiles）
+- [x] 清理调试日志
 
 ### P1 - 短期优化
-- [ ] 清理 console.log 调试代码
-- [ ] 移除或实现 TODO 注释
 - [ ] 添加 API 响应时间日志
+- [ ] 移除或实现剩余 TODO 注释
+- [ ] 添加性能监控
 
 ### P2 - 中期优化
 - [ ] 添加 Redis 缓存

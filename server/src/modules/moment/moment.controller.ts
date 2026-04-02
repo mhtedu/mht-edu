@@ -30,15 +30,12 @@ export class MomentController {
     })
   )
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    console.log('上传文件:', file?.originalname, file?.mimetype, file?.size);
-
     if (!file) {
       return { code: 400, msg: '请选择文件', data: null };
     }
 
     try {
       const result = await this.momentService.uploadFile(file);
-      console.log('上传成功:', result);
 
       return {
         code: 200,
@@ -64,9 +61,7 @@ export class MomentController {
     @Req() req: any,
     @Body() body: { content: string; media: { type: string; key: string }[] }
   ) {
-    console.log('发布动态:', body);
-
-    const userId = req.user?.id || 1; // TODO: 从 JWT 获取用户ID
+    const userId = req.user?.id || 1;
 
     try {
       const result = await this.momentService.createMoment(userId, body);
@@ -95,8 +90,6 @@ export class MomentController {
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 10
   ) {
-    console.log('获取动态列表:', { userId, page, pageSize });
-
     try {
       const moments = await this.momentService.getMoments(
         userId ? Number(userId) : undefined,
@@ -125,8 +118,6 @@ export class MomentController {
   @Post(':id/like')
   @HttpCode(200)
   async likeMoment(@Req() req: any, @Param('id') momentId: number) {
-    console.log('点赞动态:', momentId);
-
     const userId = req.user?.id || 1;
 
     try {
@@ -157,8 +148,6 @@ export class MomentController {
     @Param('id') momentId: number,
     @Body() body: { content: string }
   ) {
-    console.log('评论动态:', momentId, body.content);
-
     const userId = req.user?.id || 1;
 
     if (!body.content?.trim()) {
@@ -196,8 +185,6 @@ export class MomentController {
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20
   ) {
-    console.log('获取评论:', momentId);
-
     try {
       const comments = await this.momentService.getComments(
         Number(momentId),
