@@ -274,19 +274,19 @@ export default function TeacherDetailPage() {
 
       {/* 牛师基本信息 */}
       <View className="p-4 bg-white">
-        <View className="flex items-center gap-3 mb-4">
+        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }} className="mb-4">
           <Image
             src={teacher.avatar}
             className="w-16 h-16 rounded-full border-2 border-blue-500"
           />
-          <View className="flex-1">
-            <View className="flex items-center gap-2">
+          <View style={{ flex: 1 }}>
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
               <Text className="block text-lg font-bold">{teacher.real_name || teacher.nickname}</Text>
               {teacher.membership_type === 1 && (
                 <Badge className="bg-yellow-500">VIP</Badge>
               )}
             </View>
-            <View className="flex items-center gap-1 text-gray-500 mt-1">
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }} className="text-gray-500 mt-1">
               <MapPin size={14} color="#6B7280" />
               <Text className="text-base">{teacher.city_name || '未设置城市'}</Text>
             </View>
@@ -294,23 +294,23 @@ export default function TeacherDetailPage() {
         </View>
 
         {/* 统计数据 */}
-        <View className="flex justify-around py-3 bg-gray-50 rounded-lg mb-4">
-          <View className="flex flex-col items-center">
-            <View className="flex items-center gap-1 text-yellow-500">
+        <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around' }} className="py-3 bg-gray-50 rounded-lg mb-4">
+          <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }} className="text-yellow-500">
               <Star size={16} color="#EAB308" />
               <Text className="block text-base font-bold">{(teacher.rating && teacher.rating.toFixed(1)) || '5.0'}</Text>
             </View>
             <Text className="block text-xs text-gray-500 mt-1">评分</Text>
           </View>
-          <View className="flex flex-col items-center">
+          <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Text className="block text-base font-bold text-blue-600">{teacher.view_count || 0}</Text>
             <Text className="block text-xs text-gray-500 mt-1">浏览</Text>
           </View>
-          <View className="flex flex-col items-center">
+          <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Text className="block text-base font-bold text-blue-600">{teacher.success_count || 0}</Text>
             <Text className="block text-xs text-gray-500 mt-1">成功案例</Text>
           </View>
-          <View className="flex flex-col items-center">
+          <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Text className="block text-base font-bold text-blue-600">{teacher.review_count || 0}</Text>
             <Text className="block text-xs text-gray-500 mt-1">评价</Text>
           </View>
@@ -318,7 +318,7 @@ export default function TeacherDetailPage() {
 
         {/* 标签 */}
         {teacher.subjects && teacher.subjects.length > 0 && (
-          <View className="flex flex-wrap gap-2 mb-4">
+          <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px' }} className="mb-4">
             {teacher.subjects.map((subject, index) => (
               <Badge key={index} className="bg-blue-100 text-blue-600">
                 {subject}
@@ -328,7 +328,7 @@ export default function TeacherDetailPage() {
         )}
 
         {/* 时薪范围 */}
-        <View className="flex items-center justify-between p-3 bg-orange-50 rounded-lg mb-4">
+        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} className="p-3 bg-orange-50 rounded-lg mb-4">
           <Text className="text-base text-gray-600">时薪范围</Text>
           <Text className="text-base text-orange-600 font-bold">
             ¥{teacher.hourly_rate_min || 0} - ¥{teacher.hourly_rate_max || 0}/小时
@@ -350,15 +350,15 @@ export default function TeacherDetailPage() {
           {/* 基本信息 */}
           <View className="mb-4">
             <Text className="block text-base font-semibold text-gray-800 mb-2">基本信息</Text>
-            <View className="flex items-center gap-2 mb-2">
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }} className="mb-2">
               <GraduationCap size={16} color="#6B7280" />
               <Text className="text-base text-gray-600">学历：{teacher.education || '未填写'}</Text>
             </View>
-            <View className="flex items-center gap-2 mb-2">
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }} className="mb-2">
               <Clock size={16} color="#6B7280" />
               <Text className="text-base text-gray-600">教龄：{teacher.teaching_years || 0}年</Text>
             </View>
-            <View className="flex items-center gap-2">
+            <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
               <Award size={16} color="#6B7280" />
               <Text className="text-base text-gray-600">成功案例：{teacher.success_count || 0}个</Text>
             </View>
@@ -376,11 +376,11 @@ export default function TeacherDetailPage() {
           {teacher.videos && teacher.videos.length > 0 && (
             <View className="mb-4">
               <Text className="block text-base font-semibold text-gray-800 mb-2">教学视频</Text>
-              <ScrollView scrollX className="flex gap-2">
+              <ScrollView scrollX style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
                 {teacher.videos.map((video, index) => (
                   <View key={index} className="relative flex-shrink-0 w-40 h-28 rounded-lg overflow-hidden">
                     <Image src={video} className="w-full h-full object-cover" mode="aspectFill" />
-                    <View className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                    <View style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
                       <Video size={32} color="white" />
                     </View>
                   </View>
@@ -409,7 +409,7 @@ export default function TeacherDetailPage() {
               ))}
             </View>
           ) : (
-            <View className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-12 text-gray-400">
               <ImageIcon size={48} color="#9CA3AF" />
               <Text className="block text-base mt-2">暂无照片</Text>
             </View>
@@ -440,17 +440,17 @@ export default function TeacherDetailPage() {
                     ))}
                   </View>
                 )}
-                <View className="flex items-center justify-between text-gray-500 text-sm">
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} className="text-gray-500 text-sm">
                   <Text className="text-sm">{moment.created_at}</Text>
-                  <View className="flex items-center gap-4">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
                     <View
-                      className="flex items-center gap-1"
+                      style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }}
                       onClick={() => handleLikeMoment(moment.id)}
                     >
                       <ThumbsUp size={16} color="#6B7280" />
                       <Text className="text-sm">{moment.like_count}</Text>
                     </View>
-                    <View className="flex items-center gap-1">
+                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }}>
                       <MessageSquare size={16} color="#6B7280" />
                       <Text className="text-sm">{moment.comment_count}</Text>
                     </View>
@@ -459,7 +459,7 @@ export default function TeacherDetailPage() {
               </View>
             ))
           ) : (
-            <View className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-12 text-gray-400">
               <MessageSquare size={48} color="#9CA3AF" />
               <Text className="block text-base mt-2">暂无动态</Text>
             </View>
@@ -476,20 +476,20 @@ export default function TeacherDetailPage() {
           ) : reviews.length > 0 ? (
             reviews.map((review) => (
               <View key={review.id} className="p-4 border-b border-gray-100">
-                <View className="flex items-center gap-2 mb-2">
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }} className="mb-2">
                   <Image
                     src={review.parent_avatar || ''}
                     className="w-8 h-8 rounded-full"
                   />
                   <Text className="text-base font-medium">{review.parent_nickname}</Text>
-                  <View className="flex items-center gap-1 text-yellow-500">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '4px' }} className="text-yellow-500">
                     <Star size={14} color="#EAB308" />
                     <Text className="text-sm">{review.rating}</Text>
                   </View>
                 </View>
                 <Text className="block text-base text-gray-600 mb-2">{review.content}</Text>
                 {review.tags && review.tags.length > 0 && (
-                  <View className="flex flex-wrap gap-1 mb-2">
+                  <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '4px' }} className="mb-2">
                     {review.tags.map((tag, idx) => (
                       <Badge key={idx} className="bg-gray-100 text-gray-600 text-xs">
                         {tag}
@@ -507,7 +507,7 @@ export default function TeacherDetailPage() {
               </View>
             ))
           ) : (
-            <View className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="py-12 text-gray-400">
               <MessageSquare size={48} color="#9CA3AF" />
               <Text className="block text-base mt-2">暂无评价</Text>
             </View>
@@ -521,21 +521,24 @@ export default function TeacherDetailPage() {
 
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', zIndex: 50 }}>
-        <Button
-          className="flex-1"
-          variant="outline"
-          onClick={() => handleUnlockContact(1)}
-        >
-          <Phone size={16} color="#2563EB" />
-          <Text className="text-base">{teacher.contact_unlocked ? '查看手机' : '解锁手机'}</Text>
-        </Button>
-        <Button
-          className="flex-1 bg-blue-600"
-          onClick={() => handleUnlockContact(2)}
-        >
-          <MessageCircle size={16} color="white" />
-          <Text className="text-base text-white">{teacher.wechat_unlocked ? '查看微信' : '解锁微信'}</Text>
-        </Button>
+        <View style={{ flex: 1 }}>
+          <Button
+            variant="outline"
+            onClick={() => handleUnlockContact(1)}
+          >
+            <Phone size={16} color="#2563EB" />
+            <Text className="text-base">{teacher.contact_unlocked ? '查看手机' : '解锁手机'}</Text>
+          </Button>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            className="bg-blue-600"
+            onClick={() => handleUnlockContact(2)}
+          >
+            <MessageCircle size={16} color="white" />
+            <Text className="text-base text-white">{teacher.wechat_unlocked ? '查看微信' : '解锁微信'}</Text>
+          </Button>
+        </View>
       </View>
     </View>
   )

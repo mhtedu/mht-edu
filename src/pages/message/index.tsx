@@ -92,10 +92,11 @@ const MessagePage: FC = () => {
   const loadMessages = async () => {
     const siteName = getSiteName()
     try {
-      // 调用消息提醒接口，传递用户ID
+      // 调用消息提醒接口，传递用户ID（确保 userId 是数字类型）
+      const effectiveUserId = userId || 401
+      console.log('加载消息提醒，userId:', effectiveUserId)
       const res = await Network.request({
-        url: '/api/message/reminders',
-        data: { userId: userId || 401, page: 1, pageSize: 50 }
+        url: `/api/message/reminders?userId=${effectiveUserId}&page=1&pageSize=50`
       })
       
       console.log('消息提醒响应:', res.data)

@@ -119,18 +119,17 @@ const HomePage: FC = () => {
   const loadNearbyDemands = async (loc?: { latitude: number; longitude: number } | null) => {
     setListLoading(true)
     try {
-      const params: Record<string, any> = { page: 1, pageSize: 10, radius: 50 }
+      const params: string[] = [`page=1`, `pageSize=10`, `radius=50`]
       if (loc) {
-        params.latitude = loc.latitude
-        params.longitude = loc.longitude
+        params.push(`latitude=${loc.latitude}`)
+        params.push(`longitude=${loc.longitude}`)
       }
       if (selectedSubject !== '全部') {
-        params.subject = selectedSubject
+        params.push(`subject=${encodeURIComponent(selectedSubject)}`)
       }
-      console.log('加载附近需求请求:', { url: '/api/order/nearby', params })
+      console.log('加载附近需求请求:', { url: '/api/order/nearby', params: params.join('&') })
       const res = await Network.request({
-        url: '/api/order/nearby',
-        data: params
+        url: `/api/order/nearby?${params.join('&')}`
       })
       console.log('加载附近需求响应:', res.data)
       if (res.data) {
@@ -157,18 +156,17 @@ const HomePage: FC = () => {
   const loadNearbyTeachers = async (loc?: { latitude: number; longitude: number } | null) => {
     setListLoading(true)
     try {
-      const params: Record<string, any> = { page: 1, pageSize: 10, radius: 50 }
+      const params: string[] = [`page=1`, `pageSize=10`, `radius=50`]
       if (loc) {
-        params.latitude = loc.latitude
-        params.longitude = loc.longitude
+        params.push(`latitude=${loc.latitude}`)
+        params.push(`longitude=${loc.longitude}`)
       }
       if (selectedSubject !== '全部') {
-        params.subject = selectedSubject
+        params.push(`subject=${encodeURIComponent(selectedSubject)}`)
       }
-      console.log('加载附近牛师请求:', { url: '/api/teacher-profile/nearby', params })
+      console.log('加载附近牛师请求:', { url: '/api/teacher-profile/nearby', params: params.join('&') })
       const res = await Network.request({
-        url: '/api/teacher-profile/nearby',
-        data: params
+        url: `/api/teacher-profile/nearby?${params.join('&')}`
       })
       console.log('加载附近牛师响应:', res.data)
       if (res.data) {

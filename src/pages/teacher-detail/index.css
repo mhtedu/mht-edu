@@ -5,8 +5,23 @@
   box-sizing: border-box;
 }
 
-.teacher-detail-page > View,
-.teacher-detail-page > View > View {
+/* 修复 ScrollView 和所有子元素宽度 */
+.teacher-detail-page > taro-scroll-view-core,
+.teacher-detail-page > .taro-scroll-view,
+.teacher-detail-page > [class*="scroll-view"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 确保所有直接子元素都有正确宽度 */
+.teacher-detail-page > * {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 修复 ScrollView 内部内容宽度 */
+.teacher-detail-page .taro-scroll-view__container,
+.teacher-detail-page .scroll-view-container {
   width: 100%;
   box-sizing: border-box;
 }
