@@ -29,14 +29,18 @@ const MessagePage: FC = () => {
   const [messages, setMessages] = useState<MessageItem[]>([])
   const [systemMessages, setSystemMessages] = useState<MessageItem[]>([])
 
-  const { isLoggedIn } = useUserStore()
+  const { isLoggedIn, token } = useUserStore()
+  
+  // 使用 token 来判断是否登录
+  const isUserLoggedIn = isLoggedIn || !!token
 
   useLoad(() => {
     console.log('Message page loaded.')
+    console.log('登录状态:', { isLoggedIn, token: token ? '有' : '无' })
   })
 
   useDidShow(() => {
-    if (isLoggedIn) {
+    if (isUserLoggedIn) {
       loadMessages()
     } else {
       setLoading(false)
@@ -114,7 +118,7 @@ const MessagePage: FC = () => {
     Taro.navigateTo({ url: '/pages/login/index' })
   }
 
-  if (!isLoggedIn) {
+  if (!isUserLoggedIn) {
     return (
       <View className="message-page">
         <View className="not-logged-in">

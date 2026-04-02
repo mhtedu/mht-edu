@@ -1,7 +1,7 @@
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #DBEAFE 0%, #F3F4F6 100%);
-  padding: 60px 24px 40px;
+  background: linear-gradient(180deg, #DBEAFE 0%, #EFF6FF 50%, #F3F4F6 100%);
+  padding: 80px 32px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9,119 +9,49 @@
 
 .login-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 50px;
 }
 
 .login-title {
   display: block;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: bold;
   color: #1D4ED8;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .login-subtitle {
   display: block;
-  font-size: 14px;
+  font-size: 16px;
   color: #6B7280;
 }
 
 .login-card {
   width: 100%;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 24px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.1);
 }
 
-.login-form {
-  padding: 8px 4px;
-}
-
-/* 角色选择样式 */
-.role-section {
-  margin-bottom: 20px;
-}
-
-.role-label {
+.card-title {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 12px;
-}
-
-.role-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.role-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 12px 16px;
-  background: #F9FAFB;
-  border: 2px solid #E5E7EB;
-  border-radius: 12px;
-  transition: all 0.2s;
-}
-
-.role-item.selected {
-  border-color: #2563EB;
-  background: #EFF6FF;
-}
-
-.role-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-}
-
-.role-info {
-  flex: 1;
-}
-
-.role-name-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
-.role-name {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 600;
   color: #1F2937;
+  text-align: center;
+  margin-bottom: 32px;
 }
 
-.role-check {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.role-desc {
-  display: block;
-  font-size: 12px;
-  color: #6B7280;
-  margin-top: 2px;
-}
-
-.input-wrapper {
+.input-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: #F3F4F6;
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  background: #F9FAFB;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border: 1px solid #E5E7EB;
 }
 
 .input-icon {
@@ -132,6 +62,7 @@
   flex: 1;
   font-size: 16px;
   background: transparent;
+  color: #1F2937;
 }
 
 .code-input {
@@ -140,38 +71,42 @@
 
 .code-btn {
   flex-shrink: 0;
+  background: #2563EB;
+  padding: 10px 16px;
+  border-radius: 10px;
   margin-left: 12px;
-  padding: 8px 12px;
+}
+
+.code-btn.disabled {
+  background: #9CA3AF;
+}
+
+.code-btn-text {
   font-size: 14px;
+  color: #fff;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-.submit-btn {
+.login-btn {
   width: 100%;
-  height: 48px;
-  border-radius: 12px;
-  background: #2563EB;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.login-btn-text {
+  font-size: 18px;
+  font-weight: 600;
   color: #fff;
-  font-size: 16px;
-  font-weight: 500;
-  margin-top: 8px;
 }
 
-.mock-login-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid #D1D5DB;
-  background: #fff;
-  margin-top: 12px;
-}
-
-.mock-login-text {
-  font-size: 15px;
-  color: #6B7280;
-}
-
-.loading-wrapper {
+.loading-row {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -179,37 +114,36 @@
 }
 
 .loading-text {
+  font-size: 16px;
   color: #fff;
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
-.switch-mode {
+.quick-login-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
   display: flex;
-  flex-direction: row;
-  justify-content: center;
   align-items: center;
-  margin-top: 24px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
-.switch-text {
-  font-size: 14px;
+.quick-login-text {
+  font-size: 16px;
   color: #6B7280;
-}
-
-.switch-link {
-  font-size: 14px;
-  color: #2563EB;
-  margin-left: 4px;
 }
 
 .login-footer {
   margin-top: auto;
-  padding-top: 40px;
+  padding-top: 50px;
   text-align: center;
 }
 
 .footer-text {
-  font-size: 12px;
+  font-size: 13px;
   color: #9CA3AF;
 }
 
