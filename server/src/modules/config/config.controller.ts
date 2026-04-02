@@ -13,6 +13,13 @@ export class ConfigController {
   async getPublicSiteConfig() {
     return this.configService.getPublicSiteConfig();
   }
+
+  // 获取广告位列表（不需要登录）
+  @Public()
+  @Get('ads/:positionKey')
+  async getAds(@Param('positionKey') positionKey: string) {
+    return this.configService.getAdsByPosition(positionKey);
+  }
 }
 
 @Controller('admin/config')

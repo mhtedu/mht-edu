@@ -8,6 +8,153 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
 
 @Injectable()
 export class TeacherProfileService {
+  // ==================== 教师列表 ====================
+
+  /**
+   * 获取附近教师列表
+   */
+  async getNearbyTeachers(params: {
+    latitude?: number;
+    longitude?: number;
+    radius: number;
+    subject?: string;
+    page: number;
+    pageSize: number;
+  }) {
+    const { latitude, longitude, radius, subject, page, pageSize } = params;
+    const offset = (page - 1) * pageSize;
+
+    // 构建SQL查询
+    let sql = `
+      SELECT 
+        u.id,
+        u.nickname as name,
+        u.avatar,
+        tp.real_name,
+        tp.education,
+        tp.hourly_rate_min,
+        tp.hourly_rate_max,
+        tp.rating,
+        tp.success_count as order_count,
+        tp.teaching_years,
+        tp.intro,
+        tp.one_line_intro,
+        tp.subjects,
+        u.city_name,
+        u.latitude,
+        u.longitude
+      FROM users u
+      LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+      WHERE u.role = 1 AND u.status = 1
+    `;
+
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    // 按科目筛选
+    if (subject) {
+      conditions.push(`(JSON_CONTAINS(tp.subjects, ?) OR tp.subjects LIKE ?)`);
+      values.push(`"${subject}"`, `%"${subject}"%`);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` AND ${conditions.join(' AND ')}`;
+    }
+
+    // 计算距离（如果提供了经纬度）
+    if (latitude && longitude) {
+      sql += `
+        ORDER BY 
+          CASE WHEN u.latitude IS NOT NULL AND u.longitude IS NOT NULL THEN 0 ELSE 1 END,
+          (
+            6371 * acos(
+              cos(radians(?)) * cos(radians(u.latitude)) * 
+              cos(radians(u.longitude) - radians(?)) + 
+              sin(radians(?)) * sin(radians(u.latitude))
+            )
+          ) ASC
+      `;
+      values.push(latitude, longitude, latitude);
+    } else {
+      sql += ` ORDER BY tp.rating DESC, tp.success_count DESC`;
+    }
+
+    sql += ` LIMIT ? OFFSET ?`;
+    values.push(pageSize, offset);
+
+    const teachers = await executeQuery(sql, values);
+
+    // 处理返回数据
+    const list = teachers.map((teacher: any) => {
+      // 解析subjects
+      let subjects = [];
+      try {
+        subjects = typeof teacher.subjects === 'string' ? JSON.parse(teacher.subjects) : (teacher.subjects || []);
+      } catch (e) {
+        subjects = [];
+      }
+
+      // 计算距离
+      let distanceText = '';
+      let distance = 0;
+      if (latitude && longitude && teacher.latitude && teacher.longitude) {
+        const R = 6371; // 地球半径（公里）
+        const dLat = (teacher.latitude - latitude) * Math.PI / 180;
+        const dLon = (teacher.longitude - longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(latitude * Math.PI / 180) * Math.cos(teacher.latitude * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        distance = R * c;
+        
+        if (distance < 1) {
+          distanceText = `${Math.round(distance * 1000)}m`;
+        } else {
+          distanceText = `${distance.toFixed(1)}km`;
+        }
+      }
+
+      return {
+        id: teacher.id,
+        name: teacher.real_name || teacher.name,
+        avatar: teacher.avatar,
+        subjects: subjects,
+        hourly_rate: teacher.hourly_rate_min || 100,
+        rating: teacher.rating || 5.0,
+        order_count: teacher.order_count || 0,
+        education: teacher.education || '',
+        experience: teacher.teaching_years ? `${teacher.teaching_years}年教学经验` : '',
+        distance_text: distanceText,
+        distance: distance,
+        tags: ['耐心细致', '提分快'],
+      };
+    });
+
+    // 获取总数
+    let countSql = `
+      SELECT COUNT(*) as total 
+      FROM users u
+      LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+      WHERE u.role = 1 AND u.status = 1
+    `;
+    const countValues: any[] = [];
+    
+    if (subject) {
+      countSql += ` AND (JSON_CONTAINS(tp.subjects, ?) OR tp.subjects LIKE ?)`;
+      countValues.push(`"${subject}"`, `%"${subject}"%`);
+    }
+
+    const countResult = await executeQuery(countSql, countValues);
+    const total = countResult[0]?.total || 0;
+
+    return {
+      list,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   // ==================== 教师主页 ====================
 
   /**

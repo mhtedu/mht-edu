@@ -21,6 +21,7 @@ import { DistributionModule } from '@/modules/distribution/distribution.module';
 import { ShareModule } from '@/modules/share/share.module';
 import { ReferralLockModule } from '@/modules/referral-lock/referral-lock.module';
 import { TeacherProfileModule } from '@/modules/teacher-profile/teacher-profile.module';
+import { TeachersModule } from '@/modules/teachers/teachers.module';
 import { CityModule } from '@/modules/city/city.module';
 import { PoolModule } from '@/modules/pool/pool.module';
 import { AgentModule } from '@/modules/agent/agent.module';
@@ -42,6 +43,7 @@ import { DocumentModule } from '@/modules/document/document.module';
     AuthModule,
     TeacherModule,
     TeacherProfileModule,
+    TeachersModule,
     OrgModule,
     MessageModule,
     // 业务模块

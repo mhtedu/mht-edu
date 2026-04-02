@@ -157,6 +157,58 @@ export class ConfigService {
     };
   }
 
+  // 获取广告位列表
+  async getAdsByPosition(positionKey: string) {
+    try {
+      const [rows]: any = await db.query(
+        'SELECT * FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
+        [positionKey]
+      );
+      return rows;
+    } catch (error: any) {
+      // 如果表不存在，创建表并插入示例数据
+      if (error.code === 'ER_NO_SUCH_TABLE') {
+        await this.createAdPositionsTable();
+        await this.insertDefaultAds();
+        const [rows]: any = await db.query(
+          'SELECT * FROM ad_positions WHERE position_key = ? AND is_active = 1 ORDER BY sort_order ASC',
+          [positionKey]
+        );
+        return rows;
+      }
+      throw error;
+    }
+  }
+
+  // 创建广告位表
+  private async createAdPositionsTable() {
+    await db.update(`
+      CREATE TABLE IF NOT EXISTS ad_positions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        position_key VARCHAR(50) NOT NULL COMMENT '广告位标识',
+        title VARCHAR(100) COMMENT '广告标题',
+        image_url VARCHAR(255) NOT NULL COMMENT '图片URL',
+        link_url VARCHAR(255) COMMENT '跳转链接',
+        sort_order INT DEFAULT 0 COMMENT '排序',
+        is_active TINYINT DEFAULT 1 COMMENT '是否启用',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_position_key (position_key)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='广告位表'
+    `);
+  }
+
+  // 插入默认广告数据
+  private async insertDefaultAds() {
+    await db.update(`
+      INSERT INTO ad_positions (position_key, title, image_url, link_url, sort_order, is_active) VALUES
+      ('home_top', '新人专享福利', 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=400&fit=crop', '/pages/member/index', 1, 1),
+      ('home_top', '会员日特惠', 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=400&fit=crop', '/pages/membership/index', 2, 1),
+      ('home_top', '名师一对一定制课程', 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&h=400&fit=crop', '/pages/teacher/list', 3, 1),
+      ('home_top', '暑期集训营火热报名', 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&h=400&fit=crop', '/pages/activities/index', 4, 1)
+    `);
+  }
+
   // 清除缓存
   clearCache() {
     this.configCache.clear();

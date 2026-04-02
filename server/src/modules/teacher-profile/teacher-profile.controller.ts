@@ -1,9 +1,36 @@
 import { Controller, Get, Post, Put, Delete, Body, Query, Param, Request } from '@nestjs/common';
 import { TeacherProfileService } from './teacher-profile.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('teacher-profile')
 export class TeacherProfileController {
   constructor(private readonly teacherProfileService: TeacherProfileService) {}
+
+  // ==================== 教师列表 ====================
+
+  /**
+   * 获取附近教师列表
+   * 注意：此路由必须放在 :id 路由之前，否则 'nearby' 会被当成 id 参数
+   */
+  @Public()
+  @Get('nearby')
+  async getNearbyTeachers(
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    @Query('radius') radius?: string,
+    @Query('subject') subject?: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '10',
+  ) {
+    return this.teacherProfileService.getNearbyTeachers({
+      latitude: latitude ? parseFloat(latitude) : undefined,
+      longitude: longitude ? parseFloat(longitude) : undefined,
+      radius: radius ? parseFloat(radius) : 50,
+      subject,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+    });
+  }
 
   // ==================== 教师主页 ====================
 

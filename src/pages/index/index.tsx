@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
@@ -7,6 +7,17 @@ import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
 import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2, BookOpen, Users } from 'lucide-react-taro'
+import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
+
+// 广告数据类型
+interface AdItem {
+  id: number
+  position_key: string
+  title: string
+  image_url: string
+  link_url: string
+  sort_order: number
+}
 
 // 需求/订单数据类型
 interface DemandItem {
@@ -47,6 +58,7 @@ const HomePage: FC = () => {
   const [demands, setDemands] = useState<DemandItem[]>([])
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [listLoading, setListLoading] = useState(false)
+  const [ads, setAds] = useState<AdItem[]>([])
 
   const { isLoggedIn, setLocation: setUserLocation, currentView, setCurrentView } = useUserStore()
   const { getSiteName } = useConfigStore()
@@ -75,6 +87,8 @@ const HomePage: FC = () => {
         setLocation(loc)
         setUserLocation(loc)
       }
+      // 加载广告
+      loadAds()
       if (currentView === 'teacher') {
         await loadNearbyDemands(loc)
       } else {
@@ -84,6 +98,21 @@ const HomePage: FC = () => {
       console.error('加载数据失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAds = async () => {
+    try {
+      console.log('加载广告请求:', { url: '/api/config/ads/home_top' })
+      const res = await Network.request({
+        url: '/api/config/ads/home_top'
+      })
+      console.log('加载广告响应:', res.data)
+      if (res.data && Array.isArray(res.data)) {
+        setAds(res.data)
+      }
+    } catch (error) {
+      console.error('加载广告失败:', error)
     }
   }
 
@@ -345,15 +374,43 @@ const HomePage: FC = () => {
 
       <ScrollView scrollY className="h-screen box-border">
         {/* 轮播图区域 */}
-        <View className="relative h-36 bg-white">
-          <View className="w-[calc(100%-24px)] h-30 mx-auto my-3 rounded-xl flex items-center justify-center bg-gradient-to-br from-green-500 to-green-400">
-            <Text className="block text-5xl font-light text-white opacity-80">?</Text>
-          </View>
-          <View className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-row gap-1">
-            <View className="w-1 h-1 rounded-full bg-gray-300" />
-            <View className="w-4 h-1 rounded-full bg-blue-600" />
-            <View className="w-1 h-1 rounded-full bg-gray-300" />
-          </View>
+        <View className="bg-white pb-2">
+          {ads.length > 0 ? (
+            <Carousel 
+              className="w-full"
+              opts={{
+                loop: true,
+                autoplay: true,
+                interval: 4000,
+                duration: 500
+              }}
+            >
+              <CarouselContent className="h-32">
+                {ads.map((ad) => (
+                  <CarouselItem key={ad.id} className="px-3">
+                    <View 
+                      className="w-full h-full rounded-xl overflow-hidden"
+                      onClick={() => {
+                        if (ad.link_url) {
+                          Taro.navigateTo({ url: ad.link_url })
+                        }
+                      }}
+                    >
+                      <Image 
+                        src={ad.image_url} 
+                        mode="aspectFill"
+                        className="w-full h-full"
+                      />
+                    </View>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          ) : (
+            <View className="h-32 mx-3 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <Text className="block text-white text-lg font-medium">欢迎使用牛师很忙</Text>
+            </View>
+          )}
         </View>
 
         {/* 快捷入口 */}
