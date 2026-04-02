@@ -549,19 +549,19 @@ const TeacherDetailPage: FC = () => {
       </ScrollView>
 
       {/* 底部操作栏 */}
-      <View className="bottom-bar">
-        <View className="price-section">
-          <Text className="price-label">课时费</Text>
-          <Text className="price-value">{formatPrice(teacher.hourly_rate_min, teacher.hourly_rate_max)}</Text>
+      <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #E5E7EB', boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)', zIndex: 100, width: '100%', boxSizing: 'border-box' }}>
+        <View className="flex-1">
+          <Text className="text-xs text-gray-500">课时费</Text>
+          <Text className="text-lg font-semibold text-red-500">{formatPrice(teacher.hourly_rate_min, teacher.hourly_rate_max)}</Text>
         </View>
-        <View className="action-buttons">
-          <Button variant="outline" className="action-btn message" onClick={handleSendMessage}>
+        <View className="flex flex-row gap-3">
+          <Button variant="outline" className="flex flex-row items-center py-2 px-4 rounded-full border border-blue-600" onClick={handleSendMessage}>
             <MessageCircle size={18} color="#2563EB" />
-            <Text className="btn-text">咨询</Text>
+            <Text className="text-sm text-blue-600 ml-2">咨询</Text>
           </Button>
-          <Button className="action-btn contact" onClick={handleContact}>
+          <Button className="flex flex-row items-center py-2 px-4 rounded-full bg-blue-600" onClick={handleContact}>
             <Phone size={18} color="#fff" />
-            <Text className="btn-text-light">联系老师</Text>
+            <Text className="text-sm text-white ml-2">联系老师</Text>
           </Button>
         </View>
       </View>
