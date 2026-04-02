@@ -1,14 +1,15 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useDidShow, useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import { autoLockOnPageLoad } from '@/utils/referral-lock'
+import { getInviteCode, generateSharePath, recordShareAction, DEFAULT_SHARE_IMAGES } from '@/utils/share'
 import { useSiteConfig } from '@/store'
 import { 
-  Calendar, Clock, MapPin, Users, Phone, CircleCheck
+  Calendar, Clock, MapPin, Users, Phone, CircleCheck, Share2
 } from 'lucide-react-taro'
 
 interface Activity {
@@ -45,14 +46,48 @@ export default function ActivityDetailPage() {
   const [activity, setActivity] = useState<Activity | null>(null)
   const [isRegistered, setIsRegistered] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [inviteCode, setInviteCode] = useState('')
 
   useDidShow(() => {
+    // 获取邀请码
+    getInviteCode().then(code => setInviteCode(code))
     // 尝试通过分享链接锁定分销关系
     autoLockOnPageLoad(router.params).then(() => {
       console.log('[活动详情] 分销锁定处理完成')
     })
     loadActivity()
     checkRegistration()
+  })
+
+  // 配置分享给好友
+  useShareAppMessage(() => {
+    let path = `/pages/activity-detail/index?id=${activityId}`
+    if (inviteCode) {
+      path = generateSharePath(path, inviteCode) + `&from=share&type=activity&source_id=${activityId}`
+    }
+    
+    // 记录分享行为
+    recordShareAction('activity', activityId)
+    
+    return {
+      title: `【${activity?.title || '活动报名'}】${siteName}`,
+      path,
+      imageUrl: activity?.cover_image || DEFAULT_SHARE_IMAGES.activity,
+    }
+  })
+
+  // 配置分享到朋友圈
+  useShareTimeline(() => {
+    let query = `id=${activityId}`
+    if (inviteCode) {
+      query += `&invite_code=${inviteCode}&from=share&type=activity&source_id=${activityId}`
+    }
+    
+    return {
+      title: `【${activity?.title || '活动报名'}】${siteName}`,
+      query,
+      imageUrl: activity?.cover_image || DEFAULT_SHARE_IMAGES.activity,
+    }
   })
 
   const loadActivity = async () => {
@@ -366,6 +401,13 @@ export default function ActivityDetailPage() {
 
       {/* 底部报名按钮 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px', backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', zIndex: 50 }}>
+        <Button 
+          variant="outline"
+          size="lg"
+          onClick={() => Taro.showShareMenu({ withShareTicket: true } as any)}
+        >
+          <Share2 size={18} color="#6B7280" />
+        </Button>
         <View className="flex-1">
           <Text className="text-sm text-gray-500">费用</Text>
           <Text className="text-xl font-bold text-orange-500">

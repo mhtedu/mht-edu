@@ -1,5 +1,5 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useDidShow, useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
@@ -7,9 +7,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { autoLockOnPageLoad } from '@/utils/referral-lock'
+import { getInviteCode, generateSharePath, recordShareAction, DEFAULT_SHARE_IMAGES } from '@/utils/share'
+import { useSiteConfig } from '@/store'
 import {
   MapPin, Star, MessageSquare, ThumbsUp, Video, Image as ImageIcon,
-  Phone, MessageCircle, Award, Clock, GraduationCap,
+  Phone, MessageCircle, Award, Clock, GraduationCap, Share2,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -73,12 +75,48 @@ export default function TeacherDetailPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false)
 
   // 获取牛师信息
+  const siteName = useSiteConfig(state => state.getSiteName)()
+  const [inviteCode, setInviteCode] = useState('')
+
   useDidShow(() => {
+    // 获取邀请码
+    getInviteCode().then(code => setInviteCode(code))
     // 尝试通过分享链接锁定分销关系
     autoLockOnPageLoad(router.params).then(() => {
       console.log('[牛师详情] 分销锁定处理完成')
     })
     fetchTeacherInfo()
+  })
+
+  // 配置分享给好友
+  useShareAppMessage(() => {
+    let path = `/pages/teacher-detail/index?id=${teacherId}`
+    if (inviteCode) {
+      path = generateSharePath(path, inviteCode) + `&from=share&type=teacher&source_id=${teacherId}`
+    }
+    
+    // 记录分享行为
+    recordShareAction('teacher', teacherId)
+    
+    return {
+      title: `【${teacher?.nickname || '名师推荐'}】${teacher?.subjects?.[0] || ''}老师 - ${siteName}`,
+      path,
+      imageUrl: teacher?.avatar || DEFAULT_SHARE_IMAGES.teacher,
+    }
+  })
+
+  // 配置分享到朋友圈
+  useShareTimeline(() => {
+    let query = `id=${teacherId}`
+    if (inviteCode) {
+      query += `&invite_code=${inviteCode}&from=share&type=teacher&source_id=${teacherId}`
+    }
+    
+    return {
+      title: `【${teacher?.nickname || '名师推荐'}】${teacher?.subjects?.[0] || ''}老师 - ${siteName}`,
+      query,
+      imageUrl: teacher?.avatar || DEFAULT_SHARE_IMAGES.teacher,
+    }
   })
 
   const fetchTeacherInfo = async () => {
@@ -521,9 +559,17 @@ export default function TeacherDetailPage() {
 
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #e5e7eb', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', zIndex: 50 }}>
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => Taro.showShareMenu({ withShareTicket: true } as any)}
+        >
+          <Share2 size={18} color="#6B7280" />
+        </Button>
         <View style={{ flex: 1 }}>
           <Button
             variant="outline"
+            className="w-full"
             onClick={() => handleUnlockContact(1)}
           >
             <Phone size={16} color="#2563EB" />
@@ -532,7 +578,7 @@ export default function TeacherDetailPage() {
         </View>
         <View style={{ flex: 1 }}>
           <Button
-            className="bg-blue-600"
+            className="w-full bg-blue-600"
             onClick={() => handleUnlockContact(2)}
           >
             <MessageCircle size={16} color="white" />

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSiteConfig } from '@/store';
+import { useUserStore } from '@/stores/user';
+import { Network } from '@/network';
 import { 
   Share2, Gift, Users, Copy, ChevronRight,
   DollarSign, Award, Send, Link
@@ -29,11 +31,25 @@ interface ShareStats {
   settled_commission: number;
 }
 
+interface InviteInfo {
+  invite_code: string;
+  invite_link: string;
+  statistics: {
+    level1_count: number;
+    level2_count: number;
+    total_commission: string;
+    settled_commission: string;
+    withdrawn_commission: string;
+    available_commission: string;
+  };
+}
+
 /**
  * 分享中心 - 转发需求赚佣金
  */
 const ShareCenterPage = () => {
   const siteName = useSiteConfig(state => state.getSiteName)();
+  const getUserId = useUserStore(state => state.getUserId);
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<ShareStats>({
     total_shared: 0,
@@ -41,40 +57,87 @@ const ShareCenterPage = () => {
     total_commission: 0,
     settled_commission: 0,
   });
-  const [inviteCode] = useState('P1ABC23');
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [inviteCode, setInviteCode] = useState('');
 
   useDidShow(() => {
     loadData();
   });
 
   // 配置分享
-  useShareAppMessage(() => ({
-    title: '这里有家长正在找老师，快来看看！',
-    path: '/pages/index/index?from=share_center',
-    imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
-  }));
+  useShareAppMessage(() => {
+    let path = '/pages/index/index?from=share_center';
+    if (inviteCode) {
+      path += `&invite_code=${inviteCode}`;
+    }
+    return {
+      title: '这里有家长正在找老师，快来看看！',
+      path,
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
+    };
+  });
 
-  useShareTimeline(() => ({
-    title: `${siteName} - 找好老师，上${siteName}`,
-    query: 'from=share_center',
-    imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
-  }));
+  useShareTimeline(() => {
+    let query = 'from=share_center';
+    if (inviteCode) {
+      query += `&invite_code=${inviteCode}`;
+    }
+    return {
+      title: `${siteName} - 找好老师，上${siteName}`,
+      query,
+      imageUrl: 'https://placehold.co/500x400/2563EB/white?text=找老师',
+    };
+  });
 
-  const loadData = () => {
-    // 模拟数据
-    setOrders([
-      { id: 1, subject: '高中数学', grade: '高二', hourly_rate: 200, address: '朝阳区望京', share_count: 15, view_count: 86, created_at: '刚刚' },
-      { id: 2, subject: '初中英语', grade: '初三', hourly_rate: 150, address: '海淀区中关村', share_count: 23, view_count: 124, created_at: '10分钟前' },
-      { id: 3, subject: '小学语文', grade: '五年级', hourly_rate: 120, address: '西城区金融街', share_count: 8, view_count: 45, created_at: '30分钟前' },
-      { id: 4, subject: '高中物理', grade: '高三', hourly_rate: 250, address: '东城区王府井', share_count: 31, view_count: 156, created_at: '1小时前' },
-    ]);
-
-    setStats({
-      total_shared: 77,
-      total_views: 411,
-      total_commission: 2580,
-      settled_commission: 1260,
-    });
+  const loadData = async () => {
+    try {
+      // 获取邀请信息
+      const uid = getUserId();
+      if (uid) {
+        const inviteRes = await Network.request({
+          url: `/api/distribution/invite-info/${uid}`,
+          method: 'GET',
+        });
+        if (inviteRes.data) {
+          setInviteInfo(inviteRes.data as InviteInfo);
+          setInviteCode((inviteRes.data as InviteInfo).invite_code || '');
+        }
+      }
+      
+      // 获取热门需求订单
+      const ordersRes = await Network.request({
+        url: '/api/orders?status=0&page=1&pageSize=4',
+        method: 'GET',
+      });
+      if (ordersRes.data && ordersRes.data.list) {
+        setOrders(ordersRes.data.list);
+      } else {
+        // 使用模拟数据
+        setOrders([
+          { id: 1, subject: '高中数学', grade: '高二', hourly_rate: 200, address: '朝阳区望京', share_count: 15, view_count: 86, created_at: '刚刚' },
+          { id: 2, subject: '初中英语', grade: '初三', hourly_rate: 150, address: '海淀区中关村', share_count: 23, view_count: 124, created_at: '10分钟前' },
+          { id: 3, subject: '小学语文', grade: '五年级', hourly_rate: 120, address: '西城区金融街', share_count: 8, view_count: 45, created_at: '30分钟前' },
+          { id: 4, subject: '高中物理', grade: '高三', hourly_rate: 250, address: '东城区王府井', share_count: 31, view_count: 156, created_at: '1小时前' },
+        ]);
+      }
+      
+      // 设置统计数据
+      if (inviteInfo?.statistics) {
+        setStats({
+          total_shared: (inviteInfo.statistics.level1_count || 0) + (inviteInfo.statistics.level2_count || 0),
+          total_views: 0,
+          total_commission: parseFloat(inviteInfo.statistics.total_commission || '0'),
+          settled_commission: parseFloat(inviteInfo.statistics.settled_commission || '0'),
+        });
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      // 使用模拟数据
+      setOrders([
+        { id: 1, subject: '高中数学', grade: '高二', hourly_rate: 200, address: '朝阳区望京', share_count: 15, view_count: 86, created_at: '刚刚' },
+        { id: 2, subject: '初中英语', grade: '初三', hourly_rate: 150, address: '海淀区中关村', share_count: 23, view_count: 124, created_at: '10分钟前' },
+      ]);
+    }
   };
 
   const handleShareOrder = (order: Order) => {
@@ -94,8 +157,13 @@ const ShareCenterPage = () => {
   };
 
   const handleCopyInviteCode = () => {
+    const code = inviteInfo?.invite_code || '';
+    if (!code) {
+      Taro.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
     Taro.setClipboardData({
-      data: inviteCode,
+      data: code,
       success: () => {
         Taro.showToast({ title: '已复制邀请码', icon: 'success' });
       },
@@ -103,8 +171,9 @@ const ShareCenterPage = () => {
   };
 
   const handleCopyLink = (orderId: number) => {
+    const code = inviteInfo?.invite_code || '';
     Taro.setClipboardData({
-      data: `https://edu.example.com/order/${orderId}?share_code=${inviteCode}`,
+      data: `https://edu.example.com/order/${orderId}?share_code=${code}`,
       success: () => {
         Taro.showToast({ title: '链接已复制', icon: 'success' });
       },
@@ -152,7 +221,7 @@ const ShareCenterPage = () => {
             <View className="flex items-center justify-between">
               <View>
                 <Text className="text-gray-500 text-sm">我的邀请码</Text>
-                <Text className="text-2xl font-bold text-orange-500 mt-1">{inviteCode}</Text>
+                <Text className="text-2xl font-bold text-orange-500 mt-1">{inviteInfo?.invite_code || '登录后查看'}</Text>
               </View>
               <Button size="sm" onClick={handleCopyInviteCode}>
                 <Copy size={14} color="white" className="mr-1" />

@@ -1,9 +1,12 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import Taro, { useLoad, useRouter } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { autoLockOnPageLoad } from '@/utils/referral-lock'
+import { getInviteCode, generateSharePath, recordShareAction, DEFAULT_SHARE_IMAGES } from '@/utils/share'
+import { useSiteConfig } from '@/store'
 import { FileText, Video, Music, Image as ImageIcon, Download, Eye, Star, Share2, User, Calendar, Tag, File, Coins } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './detail.css'
@@ -53,9 +56,49 @@ const ResourceDetailPage: FC = () => {
   const router = useRouter()
   const { id } = router.params
   const { isLoggedIn } = useUserStore()
+  const siteName = useSiteConfig(state => state.getSiteName)()
+  const resourceId = id ? parseInt(id) : 0
+  const [inviteCode, setInviteCode] = useState('')
 
   useLoad(() => {
     console.log('Resource detail page loaded, id:', id)
+    // 获取邀请码
+    getInviteCode().then(code => setInviteCode(code))
+    // 尝试通过分享链接锁定分销关系
+    autoLockOnPageLoad(router.params).then(() => {
+      console.log('[资源详情] 分销锁定处理完成')
+    })
+  })
+
+  // 配置分享给好友
+  useShareAppMessage(() => {
+    let path = `/pages/resource/detail?id=${resourceId}`
+    if (inviteCode) {
+      path = generateSharePath(path, inviteCode) + `&from=share&type=resource&source_id=${resourceId}`
+    }
+    
+    // 记录分享行为
+    recordShareAction('resource', resourceId)
+    
+    return {
+      title: `【${resource?.title || '学习资料'}】${resource?.is_free ? '免费' : `¥${resource?.price}`} - ${siteName}`,
+      path,
+      imageUrl: resource?.cover_image || DEFAULT_SHARE_IMAGES.resource,
+    }
+  })
+
+  // 配置分享到朋友圈
+  useShareTimeline(() => {
+    let query = `id=${resourceId}`
+    if (inviteCode) {
+      query += `&invite_code=${inviteCode}&from=share&type=resource&source_id=${resourceId}`
+    }
+    
+    return {
+      title: `【${resource?.title || '学习资料'}】${resource?.is_free ? '免费' : `¥${resource?.price}`} - ${siteName}`,
+      query,
+      imageUrl: resource?.cover_image || DEFAULT_SHARE_IMAGES.resource,
+    }
   })
 
   useEffect(() => {

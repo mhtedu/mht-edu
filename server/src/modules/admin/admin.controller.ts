@@ -1564,6 +1564,45 @@ export class AdminController {
   }
 
   /**
+   * 创建分销配置表
+   */
+  @Post('create-distribution-configs-table')
+  @Public()
+  async createDistributionConfigsTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS distribution_configs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          config_key VARCHAR(50) NOT NULL UNIQUE COMMENT '配置键',
+          config_value VARCHAR(20) NOT NULL COMMENT '配置值',
+          description VARCHAR(255) COMMENT '描述',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分销配置表'
+      `);
+      
+      // 插入默认配置
+      await db.update(`
+        INSERT INTO distribution_configs (config_key, config_value, description) VALUES
+        ('level1_member_rate', '0.20', '一级分销会员佣金比例'),
+        ('level2_member_rate', '0.10', '二级分销会员佣金比例'),
+        ('level1_order_rate', '0.05', '一级分销订单佣金比例'),
+        ('level2_order_rate', '0.03', '二级分销订单佣金比例'),
+        ('level1_activity_rate', '0.05', '一级分销活动佣金比例'),
+        ('level2_activity_rate', '0.03', '二级分销活动佣金比例'),
+        ('level1_resource_rate', '0.10', '一级分销资源佣金比例'),
+        ('level2_resource_rate', '0.05', '二级分销资源佣金比例')
+        ON DUPLICATE KEY UPDATE updated_at = NOW()
+      `);
+      
+      return { success: true, message: '分销配置表创建成功' };
+    } catch (error) {
+      console.error('创建分销配置表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 创建活动报名表
    */
   @Post('create-activity-registrations-table')
@@ -2557,6 +2596,139 @@ export class AdminController {
       return { success: true, message: '佣金比例设置成功', rate };
     } catch (error) {
       return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取分销比例配置
+   */
+  @Get('distribution-configs')
+  @Public()
+  async getDistributionConfigs() {
+    try {
+      const [configs] = await db.query(`
+        SELECT config_key, config_value, description FROM distribution_configs
+      `);
+      
+      const result: Record<string, any> = {
+        level1_member_rate: 0.2,
+        level2_member_rate: 0.1,
+        level1_order_rate: 0.05,
+        level2_order_rate: 0.03,
+        level1_activity_rate: 0.05,
+        level2_activity_rate: 0.03,
+        level1_resource_rate: 0.1,
+        level2_resource_rate: 0.05,
+      };
+      
+      (configs as any[]).forEach((c: any) => {
+        result[c.config_key] = parseFloat(c.config_value);
+      });
+      
+      return result;
+    } catch (error) {
+      return {
+        level1_member_rate: 0.2,
+        level2_member_rate: 0.1,
+        level1_order_rate: 0.05,
+        level2_order_rate: 0.03,
+        level1_activity_rate: 0.05,
+        level2_activity_rate: 0.03,
+        level1_resource_rate: 0.1,
+        level2_resource_rate: 0.05,
+      };
+    }
+  }
+
+  /**
+   * 设置分销比例配置
+   */
+  @Post('distribution-configs')
+  @Public()
+  async setDistributionConfigs(@Body() body: Record<string, number>) {
+    try {
+      const allowedKeys = [
+        'level1_member_rate', 'level2_member_rate',
+        'level1_order_rate', 'level2_order_rate',
+        'level1_activity_rate', 'level2_activity_rate',
+        'level1_resource_rate', 'level2_resource_rate',
+      ];
+      
+      for (const [key, value] of Object.entries(body)) {
+        if (allowedKeys.includes(key)) {
+          const rate = Math.max(0, Math.min(0.5, value)); // 限制在 0-50% 之间
+          
+          await db.update(`
+            INSERT INTO distribution_configs (config_key, config_value, description, created_at, updated_at)
+            VALUES (?, ?, '', NOW(), NOW())
+            ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()
+          `, [key, rate.toString(), rate.toString()]);
+        }
+      }
+      
+      return { success: true, message: '分销比例设置成功' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取分销统计
+   */
+  @Get('distribution-stats')
+  @Public()
+  async getDistributionStats() {
+    try {
+      // 统计邀请关系
+      const [level1Count] = await db.query(`
+        SELECT COUNT(*) as count FROM users WHERE inviter_id IS NOT NULL
+      `);
+      const [level2Count] = await db.query(`
+        SELECT COUNT(*) as count FROM users WHERE inviter_2nd_id IS NOT NULL
+      `);
+      
+      // 统计佣金
+      const [commissionStats] = await db.query(`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total,
+          COALESCE(SUM(CASE WHEN status = 0 THEN amount ELSE 0 END), 0) as pending,
+          COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as settled,
+          COALESCE(SUM(CASE WHEN status = 2 THEN amount ELSE 0 END), 0) as withdrawn
+        FROM commissions
+      `);
+      
+      // 统计提现
+      const [withdrawStats] = await db.query(`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total,
+          COALESCE(SUM(CASE WHEN status = 0 THEN amount ELSE 0 END), 0) as pending,
+          COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as approved
+        FROM withdraw_records
+      `);
+      
+      return {
+        invites: {
+          level1: level1Count[0]?.count || 0,
+          level2: level2Count[0]?.count || 0,
+        },
+        commissions: {
+          total: parseFloat(commissionStats[0]?.total || 0),
+          pending: parseFloat(commissionStats[0]?.pending || 0),
+          settled: parseFloat(commissionStats[0]?.settled || 0),
+          withdrawn: parseFloat(commissionStats[0]?.withdrawn || 0),
+        },
+        withdraws: {
+          total: parseFloat(withdrawStats[0]?.total || 0),
+          pending: parseFloat(withdrawStats[0]?.pending || 0),
+          approved: parseFloat(withdrawStats[0]?.approved || 0),
+        },
+      };
+    } catch (error) {
+      return {
+        invites: { level1: 0, level2: 0 },
+        commissions: { total: 0, pending: 0, settled: 0, withdrawn: 0 },
+        withdraws: { total: 0, pending: 0, approved: 0 },
+      };
     }
   }
 }
