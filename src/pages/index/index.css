@@ -48,7 +48,8 @@
 }
 
 .home-scroll {
-  height: calc(100vh - 44px);
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 /* 轮播图区域 */
@@ -466,7 +467,7 @@
 
 .activity-card {
   display: inline-block;
-  width: 200px;
+  width: 260px;
   padding: 16px;
   border-radius: 12px;
   margin-right: 12px;
