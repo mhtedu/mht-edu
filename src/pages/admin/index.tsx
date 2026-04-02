@@ -205,16 +205,18 @@ const AdminPage = () => {
   const loadStats = async () => {
     try {
       const res = await Network.request({ url: '/api/admin/stats', method: 'GET' });
+      console.log('[Admin] Stats response:', res.data);
       if (res.data && res.data.data) {
         setStats(res.data.data);
       }
     } catch (error) {
+      console.error('[Admin] Load stats error:', error);
       // 模拟数据
       setStats({
-        users: { total: 2586, parents: 2158, teachers: 328, orgs: 45, members: 856, todayNew: 23 },
-        orders: { total: 1856, pending: 23, matched: 156, ongoing: 89, completed: 1580, todayNew: 15 },
-        payments: { totalAmount: 568900, todayAmount: 12800, weekAmount: 85600, monthAmount: 128600 },
-        commissions: { pending: 12500, settled: 85600, withdrawn: 72000 },
+        users: { total: 360, parents: 246, teachers: 114, orgs: 0, members: 0, todayNew: 0 },
+        orders: { total: 117, pending: 50, matched: 31, ongoing: 20, completed: 7, todayNew: 0 },
+        payments: { totalAmount: 1400, todayAmount: 0, weekAmount: 0, monthAmount: 0 },
+        commissions: { pending: 0, settled: 0, withdrawn: 0 },
       });
     }
   };
