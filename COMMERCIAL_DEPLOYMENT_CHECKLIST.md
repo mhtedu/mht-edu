@@ -162,7 +162,7 @@ deploy_package/
 - [ ] Node.js: v18+ 环境
 - [ ] PM2: 进程管理
 
-### 6.2 环境变量配置
+### 6.2 环境变量配置（仅需配置以下内容）
 ```env
 # 数据库配置
 DB_HOST=119.91.193.179
@@ -173,17 +173,31 @@ DB_DATABASE=mht_edu
 
 # JWT密钥 (请修改)
 JWT_SECRET=mht-edu-jwt-secret-2026-change-this
-
-# 微信小程序 (必须配置)
-WECHAT_APPID=[你的AppID]
-WECHAT_SECRET=[你的Secret]
-
-# 微信支付 (必须配置)
-WECHAT_MCH_ID=[你的商户号]
-WECHAT_PAY_KEY=[你的API密钥]
 ```
 
-### 6.3 微信小程序配置
+### 6.3 管理后台配置（部署后在后台填写）
+部署完成后，登录管理后台配置以下内容：
+
+**路径**: 管理后台 → 系统配置
+
+| 配置分组 | 配置项 | 说明 |
+|---------|-------|------|
+| **微信小程序** | wechat_appid | 小程序AppID |
+| | wechat_secret | 小程序Secret |
+| **微信支付** | wechat_pay_mch_id | 商户号 |
+| | wechat_pay_api_key | API密钥(V2) |
+| | wechat_pay_api_v3_key | APIv3密钥 |
+| | wechat_pay_serial_no | 证书序列号 |
+| | wechat_pay_private_key | 商户私钥 |
+| | wechat_pay_notify_url | 支付回调地址 |
+| **短信配置** | sms_access_key_id | 阿里云AccessKey |
+| | sms_access_key_secret | 阿里云Secret |
+| | sms_sign_name | 短信签名 |
+| | sms_template_code_login | 登录验证码模板ID |
+| **地图配置** | map_key | 腾讯地图Key |
+| | map_secret_key | 地图Secret |
+
+### 6.4 微信小程序配置
 - [ ] 服务器域名: `https://wx.dajiaopei.com`
 - [ ] 业务域名配置
 - [ ] 上传代码并提交审核

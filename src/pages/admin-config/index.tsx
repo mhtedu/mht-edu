@@ -115,7 +115,12 @@ export default function AdminConfigPage() {
   const tabs = [
     { key: 'basic', label: '基础配置' },
     { key: 'wechat', label: '微信小程序' },
-    { key: 'payment', label: '支付配置' },
+    { key: 'payment', label: '微信支付' },
+    { key: 'sms', label: '短信配置' },
+    { key: 'map', label: '地图配置' },
+    { key: 'member', label: '会员配置' },
+    { key: 'commission', label: '分佣配置' },
+    { key: 'order', label: '订单配置' },
   ];
 
   if (loading) {
