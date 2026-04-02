@@ -236,6 +236,12 @@
   background: #fff;
   padding: 12px 16px;
   border-top: 1px solid #E5E7EB;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+/* H5端适配 */
+bottom-bar {
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 

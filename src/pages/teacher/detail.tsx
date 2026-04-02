@@ -80,7 +80,33 @@ const TeacherDetailPage: FC = () => {
       console.log('加载牛师详情响应:', res.data)
       
       if (res.data) {
-        setTeacher(res.data)
+        const data = res.data
+        // 字段映射：后端字段 -> 前端字段
+        setTeacher({
+          id: data.id,
+          nickname: data.nickname,
+          avatar: data.avatar,
+          real_name: data.real_name,
+          gender: data.gender,
+          education: data.education,
+          school: data.school || '未填写',
+          subjects: data.subjects || [],
+          grades: data.grades || [],
+          teaching_years: data.teaching_years || 0,
+          hourly_rate_min: data.hourly_rate_min || 100,
+          hourly_rate_max: data.hourly_rate_max || 300,
+          bio: data.intro || data.bio || '暂无简介',
+          one_line_intro: data.one_line_intro || `${data.education || ''} · ${data.teaching_years || 0}年教学经验`,
+          rating: parseFloat(data.rating) || 5.0,
+          review_count: data.review_count || data.rating_count || 0,
+          view_count: data.view_count || 0,
+          success_count: data.success_count || data.order_count || 0,
+          distance_text: data.distance_text || '',
+          address: data.address || '未填写授课地点',
+          teaching_mode: data.teaching_mode || '线上/线下',
+          available_time: data.available_time || '请咨询老师',
+          certificates: data.certificates || []
+        })
       }
     } catch (error) {
       console.error('加载牛师详情失败:', error)

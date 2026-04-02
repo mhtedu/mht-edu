@@ -777,6 +777,39 @@ export class AdminController {
   }
 
   /**
+   * 创建缺失的数据库表
+   */
+  @Public()
+  @Post('create-tables')
+  async createTables() {
+    try {
+      // 创建评价表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS reviews (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          teacher_id INT NOT NULL COMMENT '教师ID',
+          parent_id INT NOT NULL COMMENT '家长ID',
+          order_id INT COMMENT '订单ID',
+          rating TINYINT NOT NULL COMMENT '评分1-5',
+          content TEXT COMMENT '评价内容',
+          tags JSON COMMENT '评价标签',
+          is_anonymous TINYINT DEFAULT 0 COMMENT '是否匿名',
+          status TINYINT DEFAULT 1 COMMENT '状态: 0=隐藏, 1=显示',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_teacher_id (teacher_id),
+          INDEX idx_parent_id (parent_id),
+          INDEX idx_order_id (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教师评价表'
+      `);
+      
+      return { success: true, message: '数据库表创建成功' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 初始化演示数据（牛师坐标、广告位、家长需求等）
    */
   @Public()
