@@ -631,7 +631,7 @@ export class UserService {
     const formattedTeachers = teachers.map((t: any) => ({
       ...t,
       distance_text: t.distance ? (t.distance < 1 ? `${Math.round(t.distance * 1000)}m` : `${t.distance.toFixed(1)}km`) : '',
-      subjects: t.subjects ? t.subjects.split(',').filter((s: string) => s) : [],
+      subjects: Array.isArray(t.subjects) ? t.subjects : (t.subjects ? t.subjects.split(',').filter((s: string) => s) : []),
     }));
 
     // 获取总数

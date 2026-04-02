@@ -22,18 +22,18 @@ interface MembershipInfo {
 
 // 家长端菜单
 const parentMenuItems = [
-  { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
-  { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
+  { icon: Star, title: '我的收藏', path: '/pages/favorites/index', color: '#F59E0B' },
+  { icon: FileText, title: '我的需求', path: '/pages/demand/list', color: '#10B981' },
   { icon: Calendar, title: '我的活动', path: '/pages/my-activities/index', color: '#EC4899' },
-  { icon: CreditCard, title: '我的订单', path: '/pages/profile/orders', color: '#2563EB' },
+  { icon: CreditCard, title: '我的订单', path: '/pages/orders/index', color: '#2563EB' },
 ]
 
 const parentSettingItems = [
   { icon: Award, title: '牛师认证', path: '/pages/teacher-auth/index', color: '#10B981' },
   { icon: Building2, title: '机构认证', path: '/pages/org-auth/index', color: '#8B5CF6' },
-  { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
-  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
-  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+  { icon: Settings, title: '账号设置', path: '/pages/settings/index', color: '#6B7280' },
+  { icon: Bell, title: '消息设置', path: '/pages/settings/index', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/settings/index', color: '#3B82F6' },
 ]
 
 // 牛师端菜单
@@ -47,9 +47,9 @@ const teacherMenuItems = [
 const teacherSettingItems = [
   { icon: ClipboardList, title: '抢单记录', path: '/pages/orders/index', color: '#EC4899' },
   { icon: Award, title: '认证信息', path: '/pages/teacher-auth/index', color: '#10B981' },
-  { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
-  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
-  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+  { icon: Settings, title: '账号设置', path: '/pages/settings/index', color: '#6B7280' },
+  { icon: Bell, title: '消息设置', path: '/pages/settings/index', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/settings/index', color: '#3B82F6' },
 ]
 
 // 机构端菜单
@@ -61,12 +61,12 @@ const orgMenuItems = [
 ]
 
 const orgSettingItems = [
-  { icon: ClipboardList, title: '订单管理', path: '/pages/profile/orders', color: '#2563EB' },
+  { icon: ClipboardList, title: '订单管理', path: '/pages/orders/index', color: '#2563EB' },
   { icon: Plus, title: '创建活动', path: '/pages/create-activity/index', color: '#10B981' },
   { icon: GraduationCap, title: '创建牛师班', path: '/pages/create-elite-class/index', color: '#8B5CF6' },
   { icon: Settings, title: '机构设置', path: '/pages/org-settings/index', color: '#6B7280' },
-  { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
-  { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
+  { icon: Bell, title: '消息设置', path: '/pages/settings/index', color: '#F59E0B' },
+  { icon: Info, title: '帮助中心', path: '/pages/settings/index', color: '#3B82F6' },
 ]
 
 const ProfilePage: FC = () => {
@@ -171,7 +171,7 @@ const ProfilePage: FC = () => {
         {/* 用户信息卡片 */}
         <View className="bg-gradient-to-b from-blue-600 to-blue-500 pt-8 px-4 pb-5">
           {isLoggedIn ? (
-            <View className="flex flex-row items-center" onClick={() => goToPage('/pages/profile/edit')}>
+            <View className="flex flex-row items-center" onClick={() => goToPage('/pages/settings/index')}>
               <View className="w-16 h-16 rounded-full bg-white overflow-hidden flex items-center justify-center">
                 {userInfo?.avatar ? (
                   <Image src={userInfo.avatar} className="w-16 h-16" mode="aspectFill" />
