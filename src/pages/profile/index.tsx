@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useUserStore } from '@/stores/user'
+import { useUserStore, CurrentView } from '@/stores/user'
 import { Network } from '@/network'
 import {
   User, Settings, Star, CreditCard,
@@ -45,7 +45,7 @@ const teacherMenuItems = [
 ]
 
 const teacherSettingItems = [
-  { icon: ClipboardList, title: '抢单记录', path: '/pages/profile/orders', color: '#EC4899' },
+  { icon: ClipboardList, title: '抢单记录', path: '/pages/orders/index', color: '#EC4899' },
   { icon: Award, title: '认证信息', path: '/pages/teacher-auth/index', color: '#10B981' },
   { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
   { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
@@ -72,7 +72,7 @@ const orgSettingItems = [
 const ProfilePage: FC = () => {
   const [membershipInfo, setMembershipInfo] = useState<MembershipInfo | null>(null)
 
-  const { isLoggedIn, userInfo, logout } = useUserStore()
+  const { isLoggedIn, userInfo, logout, currentView } = useUserStore()
 
   useLoad(() => {
     console.log('Profile page loaded.')
@@ -128,28 +128,40 @@ const ProfilePage: FC = () => {
 
   const goToRoleSwitch = () => Taro.navigateTo({ url: '/pages/role-switch/index' })
 
-  // 根据角色获取菜单项
+  // 根据当前视角获取菜单项
   const menuItems = useMemo(() => {
-    const role = userInfo?.role
-    if (role === 'teacher') return teacherMenuItems
-    if (role === 'org') return orgMenuItems
-    return parentMenuItems
-  }, [userInfo?.role])
+    switch (currentView) {
+      case 'teacher':
+        return teacherMenuItems
+      case 'org':
+        return orgMenuItems
+      default:
+        return parentMenuItems
+    }
+  }, [currentView])
 
   const settingItems = useMemo(() => {
-    const role = userInfo?.role
-    if (role === 'teacher') return teacherSettingItems
-    if (role === 'org') return orgSettingItems
-    return parentSettingItems
-  }, [userInfo?.role])
+    switch (currentView) {
+      case 'teacher':
+        return teacherSettingItems
+      case 'org':
+        return orgSettingItems
+      default:
+        return parentSettingItems
+    }
+  }, [currentView])
 
-  const getRoleName = (role?: string) => {
-    switch (role) {
-      case 'parent': return '家长'
-      case 'teacher': return '牛师'
-      case 'org': return '机构'
-      case 'admin': return '管理员'
-      default: return '用户'
+  // 获取视角名称（用于显示）
+  const getViewName = (view?: CurrentView) => {
+    switch (view) {
+      case 'parent':
+        return '家长'
+      case 'teacher':
+        return '牛师'
+      case 'org':
+        return '机构'
+      default:
+        return '用户'
     }
   }
 
@@ -173,7 +185,7 @@ const ProfilePage: FC = () => {
                 <Text className="block text-lg font-semibold text-white">{userInfo?.nickname || '用户'}</Text>
                 <View className="mt-2 flex flex-row items-center gap-2">
                   <Badge variant="outline">
-                    {getRoleName(userInfo?.role)}
+                    {getViewName(currentView)}
                   </Badge>
                   <Text className="text-xs text-white opacity-80" onClick={(e) => { e.stopPropagation(); goToRoleSwitch(); }}>
                     切换角色 ›
@@ -196,8 +208,8 @@ const ProfilePage: FC = () => {
           )}
         </View>
 
-        {/* 会员卡片 */}
-        {isLoggedIn && userInfo?.role !== 'org' && (
+        {/* 会员卡片 - 家长端和牛师端显示 */}
+        {isLoggedIn && currentView !== 'org' && (
           <Card className="-mt-5 mx-3 mb-3 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200">
             <CardContent className="flex flex-row items-center justify-between p-4">
               <View className="flex flex-row items-center">

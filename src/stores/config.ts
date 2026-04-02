@@ -22,7 +22,7 @@ interface ConfigState {
 
 // 默认配置
 const defaultConfig: SiteConfig = {
-  site_name: '棉花糖教育',
+  site_name: '牛师很忙',
   site_domain: '',
   site_logo: '',
   site_description: '连接优质教育资源，助力孩子成长',

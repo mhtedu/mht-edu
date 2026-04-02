@@ -2,11 +2,11 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
-import { useUserStore } from '@/stores/user'
+import { useUserStore, CurrentView } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
-import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2 } from 'lucide-react-taro'
+import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2, BookOpen, Users } from 'lucide-react-taro'
 
 // 需求/订单数据类型
 interface DemandItem {
@@ -43,13 +43,12 @@ const subjectOptions = ['全部', '语文', '数学', '英语', '物理', '化�
 const HomePage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [location, setLocation] = useState<{ address: string; latitude: number; longitude: number } | null>(null)
-  const [currentRole, setCurrentRole] = useState(1) // 0: 家长端, 1: 牛师端
   const [selectedSubject, setSelectedSubject] = useState('全部')
   const [demands, setDemands] = useState<DemandItem[]>([])
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [listLoading, setListLoading] = useState(false)
 
-  const { isLoggedIn, setLocation: setUserLocation } = useUserStore()
+  const { isLoggedIn, setLocation: setUserLocation, currentView, setCurrentView } = useUserStore()
   const { getSiteName } = useConfigStore()
 
   useLoad(() => {
@@ -76,7 +75,7 @@ const HomePage: FC = () => {
         setLocation(loc)
         setUserLocation(loc)
       }
-      if (currentRole === 1) {
+      if (currentView === 'teacher') {
         await loadNearbyDemands(loc)
       } else {
         await loadNearbyTeachers(loc)
@@ -171,7 +170,7 @@ const HomePage: FC = () => {
     if (loc) {
       setLocation(loc)
       setUserLocation(loc)
-      if (currentRole === 1) {
+      if (currentView === 'teacher') {
         loadNearbyDemands(loc)
       } else {
         loadNearbyTeachers(loc)
@@ -183,10 +182,13 @@ const HomePage: FC = () => {
   }
 
   const handleSwitchRole = () => {
-    const newRole = currentRole === 0 ? 1 : 0
-    setCurrentRole(newRole)
+    // 循环切换: parent -> teacher -> org -> parent
+    const viewOrder: CurrentView[] = ['parent', 'teacher', 'org']
+    const currentIndex = viewOrder.indexOf(currentView)
+    const newView = viewOrder[(currentIndex + 1) % viewOrder.length]
+    setCurrentView(newView)
     setSelectedSubject('全部')
-    if (newRole === 1) {
+    if (newView === 'teacher') {
       loadNearbyDemands(location)
     } else {
       loadNearbyTeachers(location)
@@ -195,7 +197,7 @@ const HomePage: FC = () => {
 
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject)
-    if (currentRole === 1) {
+    if (currentView === 'teacher') {
       loadNearbyDemands(location)
     } else {
       loadNearbyTeachers(location)
@@ -306,7 +308,24 @@ const HomePage: FC = () => {
     { icon: <Crown size={22} color="#8B5CF6" />, text: '会员中心', bgColor: 'bg-purple-100', action: goToMember },
   ]
 
-  const entries = currentRole === 1 ? teacherEntries : parentEntries
+  // 机构端快捷入口
+  const orgEntries = [
+    { icon: <Building2 size={22} color="#8B5CF6" />, text: '机构管理', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/org-dashboard/index' }) },
+    { icon: <BookOpen size={22} color="#10B981" />, text: '课程管理', bgColor: 'bg-green-100', action: () => Taro.navigateTo({ url: '/pages/course-manage/index' }) },
+    { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
+    { icon: <Users size={22} color="#2563EB" />, text: '牛师管理', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/org-teachers/index' }) },
+  ]
+
+  const entries = currentView === 'teacher' ? teacherEntries : currentView === 'org' ? orgEntries : parentEntries
+
+  // 获取当前视角名称
+  const getViewName = () => {
+    switch (currentView) {
+      case 'teacher': return '牛师端'
+      case 'org': return '机构端'
+      default: return '家长端'
+    }
+  }
 
   return (
     <View className="min-h-screen bg-gray-100">
@@ -319,7 +338,7 @@ const HomePage: FC = () => {
         </View>
         <Text className="block text-base font-semibold text-gray-900">首页</Text>
         <View className="flex flex-row items-center bg-blue-50 px-2 py-1 rounded-full" onClick={handleSwitchRole}>
-          <Text className="block text-sm text-blue-600 mr-1">{currentRole === 0 ? '家长端' : '牛师端'}</Text>
+          <Text className="block text-sm text-blue-600 mr-1">{getViewName()}</Text>
           <ChevronDown size={14} color="#2563EB" />
         </View>
       </View>
@@ -352,7 +371,7 @@ const HomePage: FC = () => {
         {/* 内容区域 */}
         <View className="bg-white mb-2">
           <View className="flex flex-row items-center justify-between px-4 py-3">
-            <Text className="block text-base font-semibold text-gray-900">{currentRole === 1 ? '附近需求' : '附近牛师'}</Text>
+            <Text className="block text-base font-semibold text-gray-900">{currentView === 'teacher' ? '附近需求' : '附近牛师'}</Text>
             <View className="flex flex-row items-center">
               <Text className="block text-sm text-gray-400">更多</Text>
               <ChevronRight size={16} color="#9CA3AF" />
@@ -381,7 +400,7 @@ const HomePage: FC = () => {
           </View>
 
           {/* 牛师端 - 需求列表 */}
-          {currentRole === 1 && (loading || listLoading ? (
+          {currentView === 'teacher' && (loading || listLoading ? (
             <View className="py-10 text-center">
               <Text className="block text-sm text-gray-400">加载中...</Text>
             </View>
@@ -427,8 +446,8 @@ const HomePage: FC = () => {
             </View>
           ))}
 
-          {/* 家长端 - 牛师列表 */}
-          {currentRole === 0 && (loading || listLoading ? (
+          {/* 家长端/机构端 - 牛师列表 */}
+          {currentView !== 'teacher' && (loading || listLoading ? (
             <View className="py-10 text-center">
               <Text className="block text-sm text-gray-400">加载中...</Text>
             </View>
@@ -484,8 +503,8 @@ const HomePage: FC = () => {
             </View>
           ))}
 
-          {/* 推荐卡片 */}
-          {currentRole === 1 && (
+          {/* 推荐卡片 - 牛师端 */}
+          {currentView === 'teacher' && (
             <>
               <View className="flex flex-row items-center justify-between mx-4 mb-2 p-3 bg-blue-50 rounded-xl" onClick={goToOrgList}>
                 <View className="flex flex-col">
@@ -510,7 +529,8 @@ const HomePage: FC = () => {
             </>
           )}
 
-          {currentRole === 0 && (
+          {/* 推荐卡片 - 家长端/机构端 */}
+          {currentView !== 'teacher' && (
             <>
               <View className="flex flex-row items-center justify-between mx-4 mb-2 p-3 bg-blue-50 rounded-xl" onClick={goToPublishDemand}>
                 <View className="flex flex-col">

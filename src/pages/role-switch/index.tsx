@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useUserStore, CurrentView } from '@/stores/user';
 import { 
   GraduationCap, BookOpen, Building2, Crown,
   ChevronRight, Check, Sparkles, Gift, Users, TrendingUp
@@ -12,6 +13,7 @@ import './index.css';
 
 interface RoleConfig {
   id: number;
+  view: CurrentView;
   name: string;
   icon: typeof GraduationCap;
   color: string;
@@ -24,6 +26,7 @@ interface RoleConfig {
 const roles: RoleConfig[] = [
   {
     id: 0,
+    view: 'parent',
     name: '家长端',
     icon: GraduationCap,
     color: '#2563EB',
@@ -34,6 +37,7 @@ const roles: RoleConfig[] = [
   },
   {
     id: 1,
+    view: 'teacher',
     name: '牛师端',
     icon: BookOpen,
     color: '#22C55E',
@@ -44,6 +48,7 @@ const roles: RoleConfig[] = [
   },
   {
     id: 2,
+    view: 'org',
     name: '机构端',
     icon: Building2,
     color: '#9333EA',
@@ -58,43 +63,42 @@ const roles: RoleConfig[] = [
  * 角色切换中心页面
  */
 const RoleSwitchPage = () => {
-  const [currentRole, setCurrentRole] = useState(0);
+  const { currentView, setCurrentView } = useUserStore();
   const [isMember, setIsMember] = useState(false);
   const [memberExpire, setMemberExpire] = useState<string | null>(null);
 
+  // 当前选中的角色ID
+  const currentRoleId = roles.find(r => r.view === currentView)?.id ?? 0;
+
   useEffect(() => {
-    const savedRole = Taro.getStorageSync('userRole') || 0;
-    setCurrentRole(typeof savedRole === 'string' ? parseInt(savedRole, 10) : savedRole);
     checkMemberStatus();
-  }, []);
+  }, [currentView]);
 
   const checkMemberStatus = () => {
-    const role = Taro.getStorageSync('userRole') || 0;
-    const memberKey = `member_expire_role_${role}`;
+    const memberKey = `member_expire_role_${currentRoleId}`;
     const expire = Taro.getStorageSync(memberKey);
     setMemberExpire(expire);
     setIsMember(!!expire && new Date(expire) > new Date());
   };
 
-  const handleSelectRole = (roleId: number) => {
-    if (roleId === currentRole) {
+  const handleSelectRole = (role: RoleConfig) => {
+    if (role.view === currentView) {
       // 已经是当前角色，返回首页
       Taro.switchTab({ url: '/pages/index/index' });
       return;
     }
 
-    const role = roles.find(r => r.id === roleId);
     Taro.showModal({
       title: '切换身份',
-      content: `确定切换到${role?.name}吗？每个身份的会员权益独立生效。`,
+      content: `确定切换到${role.name}吗？每个身份的会员权益独立生效。`,
       confirmText: '立即切换',
       success: (res) => {
         if (res.confirm) {
-          Taro.setStorageSync('userRole', roleId);
-          setCurrentRole(roleId);
+          // 更新 store 中的当前视角
+          setCurrentView(role.view);
           
           // 更新会员状态
-          const memberKey = `member_expire_role_${roleId}`;
+          const memberKey = `member_expire_role_${role.id}`;
           const expire = Taro.getStorageSync(memberKey);
           setMemberExpire(expire);
           setIsMember(!!expire && new Date(expire) > new Date());
@@ -126,13 +130,13 @@ const RoleSwitchPage = () => {
       <View className="px-4 -mt-6">
         {roles.map((role) => {
           const RoleIcon = role.icon;
-          const isActive = currentRole === role.id;
+          const isActive = currentView === role.view;
           
           return (
             <Card 
               key={role.id} 
               className={`mb-4 ${isActive ? 'border-2 border-blue-500' : ''}`}
-              onClick={() => handleSelectRole(role.id)}
+              onClick={() => handleSelectRole(role)}
             >
               <CardContent className="p-4">
                 <View className="flex items-start justify-between">
@@ -221,7 +225,7 @@ const RoleSwitchPage = () => {
               </View>
               <View className="text-center">
                 <Gift size={20} color="white" className="mx-auto" />
-                <Text className="text-white text-opacity-80 text-xs mt-1">5%流水分润</Text>
+                <Text className="text-white text-opacity-80 text-xs mt-1">5%流水分成</Text>
               </View>
               <View className="text-center">
                 <TrendingUp size={20} color="white" className="mx-auto" />
