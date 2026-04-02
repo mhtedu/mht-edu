@@ -203,7 +203,7 @@ export default function AdminEliteClass() {
             <Search size={16} color="#999" />
             <Input
               className="flex-1 bg-transparent text-sm ml-2"
-              placeholder="搜索班级名称、教师"
+              placeholder="搜索班级名称、牛师"
               value={keyword}
               onInput={(e) => setKeyword(e.detail.value)}
             />
@@ -257,7 +257,7 @@ export default function AdminEliteClass() {
                     </View>
                   </View>
 
-                  {/* 教师和机构信息 */}
+                  {/* 牛师和机构信息 */}
                   <View className="flex flex-row items-center justify-between mb-3 py-2 border-y border-gray-100">
                     <View className="flex flex-row items-center gap-2">
                       <View className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">

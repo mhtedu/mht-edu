@@ -31,7 +31,7 @@ interface Teacher {
 }
 
 /**
- * 机构端 - 教师管理页面
+ * 机构端 - 牛师管理页面
  */
 export default function OrgTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -61,13 +61,13 @@ export default function OrgTeachersPage() {
         },
       })
 
-      console.log('教师列表:', res.data)
+      console.log('牛师列表:', res.data)
       if (res.data?.data) {
         setTeachers(res.data.data.list || [])
         setStats(res.data.data.stats || stats)
       }
     } catch (error) {
-      console.error('加载教师列表失败:', error)
+      console.error('加载牛师列表失败:', error)
       // 使用模拟数据
       setTeachers(getMockTeachers())
       setStats({ total: 12, active: 8, pending: 2, disabled: 2 })
@@ -123,7 +123,7 @@ export default function OrgTeachersPage() {
   const handleReject = async (teacherId: number) => {
     Taro.showModal({
       title: '确认拒绝',
-      content: '确定要拒绝该教师的入驻申请吗？',
+      content: '确定要拒绝该牛师的入驻申请吗？',
       success: async (res) => {
         if (res.confirm) {
           try {
@@ -145,7 +145,7 @@ export default function OrgTeachersPage() {
     const action = currentStatus === 1 ? '禁用' : '启用'
     Taro.showModal({
       title: `确认${action}`,
-      content: `确定要${action}该教师吗？`,
+      content: `确定要${action}该牛师吗？`,
       success: async (res) => {
         if (res.confirm) {
           try {
@@ -217,7 +217,7 @@ export default function OrgTeachersPage() {
           <View className="flex-1 relative">
             <Input
               className="pl-8"
-              placeholder="搜索教师姓名/手机号"
+              placeholder="搜索牛师姓名/手机号"
               value={searchKeyword}
               onInput={(e) => setSearchKeyword(e.detail.value)}
             />
@@ -236,7 +236,7 @@ export default function OrgTeachersPage() {
         </View>
       </View>
 
-      {/* 教师列表 */}
+      {/* 牛师列表 */}
       <ScrollView scrollY className="teacher-list">
         {loading ? (
           <View className="flex items-center justify-center py-8">
@@ -245,7 +245,7 @@ export default function OrgTeachersPage() {
         ) : filteredTeachers.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-12">
             <Users size={48} color="#9CA3AF" />
-            <Text className="text-gray-400 mt-2">暂无教师数据</Text>
+            <Text className="text-gray-400 mt-2">暂无牛师数据</Text>
           </View>
         ) : (
           filteredTeachers.map((teacher) => (

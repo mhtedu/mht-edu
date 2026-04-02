@@ -183,7 +183,7 @@ export default function OrgCoursesPage() {
           <View className="flex-1 relative">
             <Input
               className="pl-8"
-              placeholder="搜索课程名称/教师"
+              placeholder="搜索课程名称/牛师"
               value={searchKeyword}
               onInput={(e) => setSearchKeyword(e.detail.value)}
             />

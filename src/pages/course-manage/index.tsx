@@ -30,7 +30,7 @@ interface Stats {
 }
 
 /**
- * 教师端课时管理工具页面
+ * 牛师端课时管理工具页面
  */
 export default function CourseManagePage() {
   const [courses, setCourses] = useState<Course[]>([])

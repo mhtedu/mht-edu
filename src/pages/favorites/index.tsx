@@ -26,7 +26,7 @@ interface FavoriteTeacher {
 }
 
 /**
- * 收藏教师页面（家长端）
+ * 收藏牛师页面（家长端）
  */
 export default function FavoritesPage() {
   const [teachers, setTeachers] = useState<FavoriteTeacher[]>([])
@@ -81,7 +81,7 @@ export default function FavoritesPage() {
         distance: 3.8,
         price_range: '180-250',
         education: '清华大学硕士',
-        labels: ['重点高中教师', '竞赛指导'],
+        labels: ['重点高中牛师', '竞赛指导'],
         is_member: false,
         favorited_at: '2024-03-08'
       }
@@ -117,7 +117,7 @@ export default function FavoritesPage() {
     if (!isMember) {
       Taro.showModal({
         title: '会员特权',
-        content: '开通会员后可查看教师联系方式',
+        content: '开通会员后可查看牛师联系方式',
         confirmText: '去开通',
         success: (res) => {
           if (res.confirm) {
@@ -145,22 +145,22 @@ export default function FavoritesPage() {
         <View className="flex items-center justify-between">
           <View className="flex items-center">
             <Heart size={18} color="#EF4444" filled />
-            <Text className="text-gray-600 ml-2">已收藏 {teachers.length} 位教师</Text>
+            <Text className="text-gray-600 ml-2">已收藏 {teachers.length} 位牛师</Text>
           </View>
         </View>
       </View>
 
-      {/* 教师列表 */}
+      {/* 牛师列表 */}
       <ScrollView scrollY className="p-4" style={{ height: 'calc(100vh - 60px)' }}>
         {teachers.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-20">
             <Heart size={64} color="#D1D5DB" />
-            <Text className="text-gray-400 mt-4">暂无收藏的教师</Text>
+            <Text className="text-gray-400 mt-4">暂无收藏的牛师</Text>
             <Button 
               className="mt-4"
               onClick={() => Taro.switchTab({ url: '/pages/index/index' })}
             >
-              <Text className="text-white">去发现教师</Text>
+              <Text className="text-white">去发现牛师</Text>
             </Button>
           </View>
         ) : (
@@ -168,7 +168,7 @@ export default function FavoritesPage() {
             {teachers.map((teacher) => (
               <Card key={teacher.id} className="bg-white">
                 <CardContent className="p-4">
-                  {/* 教师基本信息 */}
+                  {/* 牛师基本信息 */}
                   <View className="flex">
                     {/* 头像 */}
                     <View className="relative">

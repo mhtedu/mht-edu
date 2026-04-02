@@ -115,7 +115,7 @@ const PublishPage = () => {
         title: isOrgMode ? '代录成功' : '发布成功',
         content: isOrgMode 
           ? '需求已代录成功，对话将由机构承接。' + (formData.share_to_parent ? '已发送分享链接给家长。' : '')
-          : '需求已发布，等待教师抢单',
+          : '需求已发布，等待牛师抢单',
         showCancel: false,
         success: () => {
           Taro.navigateBack();

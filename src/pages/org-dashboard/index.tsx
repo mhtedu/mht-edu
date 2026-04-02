@@ -35,9 +35,9 @@ const OrgDashboardPage = () => {
   ];
 
   const quickActions = [
-    { icon: Plus, title: '邀请教师', desc: '邀请教师入驻', url: '/pages/org-invite/index' },
+    { icon: Plus, title: '邀请牛师', desc: '邀请牛师入驻', url: '/pages/org-invite/index' },
     { icon: FileText, title: '课程管理', desc: '管理课程列表', url: '/pages/org-courses/index' },
-    { icon: DollarSign, title: '教师管理', desc: '管理旗下教师', url: '/pages/org-teachers/index' },
+    { icon: DollarSign, title: '牛师管理', desc: '管理旗下牛师', url: '/pages/org-teachers/index' },
     { icon: Settings, title: '机构设置', desc: '编辑机构信息', url: '/pages/org-settings/index' },
   ];
 
@@ -94,11 +94,11 @@ const OrgDashboardPage = () => {
             <View className="flex flex-row justify-around">
               <View className="flex flex-col items-center">
                 <Text className="text-2xl font-bold text-purple-500">{stats.totalTeachers}</Text>
-                <Text className="text-gray-500 text-xs">入驻教师</Text>
+                <Text className="text-gray-500 text-xs">入驻牛师</Text>
               </View>
               <View className="flex flex-col items-center">
                 <Text className="text-2xl font-bold text-green-500">{stats.activeTeachers}</Text>
-                <Text className="text-gray-500 text-xs">活跃教师</Text>
+                <Text className="text-gray-500 text-xs">活跃牛师</Text>
               </View>
               <View className="flex flex-col items-center">
                 <Text className="text-2xl font-bold text-blue-500">{stats.totalOrders}</Text>
@@ -112,11 +112,11 @@ const OrgDashboardPage = () => {
           </CardContent>
         </Card>
 
-        {/* 教师列表 */}
+        {/* 牛师列表 */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
             <View className="flex flex-row items-center justify-between">
-              <CardTitle>旗下教师</CardTitle>
+              <CardTitle>旗下牛师</CardTitle>
               <View className="flex flex-row items-center" onClick={() => Taro.navigateTo({ url: '/pages/org-teachers/index' })}>
                 <Text className="text-gray-400 text-sm">全部 {stats.totalTeachers} 人</Text>
                 <ChevronRight size={16} color="#9CA3AF" />

@@ -14,6 +14,9 @@ export default defineAppConfig({
     'pages/publish-demand/index',
     'pages/publish-moment/index',
     'pages/member/index',
+    'pages/activities/index',
+    'pages/activity-detail/index',
+    'pages/my-activities/index',
   ],
   window: {
     backgroundTextStyle: 'light',

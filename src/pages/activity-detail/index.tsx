@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Network } from '@/network'
 import { autoLockOnPageLoad } from '@/utils/referral-lock'
 import { useSiteConfig } from '@/store'
 import { 
-  Calendar, Clock, MapPin, Users, Phone
+  Calendar, Clock, MapPin, Users, Phone, CircleCheck
 } from 'lucide-react-taro'
 
 interface Activity {
@@ -29,6 +30,8 @@ interface Activity {
   contact_phone: string
   organizer: string
   schedule: string[]
+  location_type: 'online' | 'offline'
+  verification_code?: string
 }
 
 /**
@@ -41,6 +44,7 @@ export default function ActivityDetailPage() {
   
   const [activity, setActivity] = useState<Activity | null>(null)
   const [isRegistered, setIsRegistered] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useDidShow(() => {
     // 尝试通过分享链接锁定分销关系
@@ -52,33 +56,157 @@ export default function ActivityDetailPage() {
   })
 
   const loadActivity = async () => {
-    // 模拟数据
-    const mockActivity: Activity = {
-      id: activityId,
-      title: '北京四中探校活动',
-      type: 'visit',
-      cover_image: 'https://placehold.co/750x400/2563EB/white?text=探校活动',
-      start_time: '2024-04-15 09:00',
-      end_time: '2024-04-15 12:00',
-      address: '北京市西城区北京四中',
-      is_online: false,
-      online_price: 0,
-      offline_price: 99,
-      max_participants: 50,
-      current_participants: 32,
-      target_roles: [0],
-      description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
-      status: 'upcoming',
-      contact_phone: '400-888-8888',
-      organizer: siteName,
-      schedule: ['09:00-09:15 签到入场', '09:15-10:15 校园参观', '10:15-10:45 学校介绍', '10:45-11:15 招生解读', '11:15-12:00 互动答疑']
+    setLoading(true)
+    try {
+      console.log('加载活动详情请求:', { url: `/api/activities/${activityId}` })
+      const res = await Network.request({
+        url: `/api/activities/${activityId}`
+      })
+      console.log('加载活动详情响应:', res.data)
+      if (res.data) {
+        setActivity(res.data)
+      } else {
+        // 使用模拟数据
+        setActivity({
+          id: activityId,
+          title: '北京四中探校活动',
+          type: 'visit',
+          cover_image: 'https://placehold.co/750x400/2563EB/white?text=探校活动',
+          start_time: '2024-04-15 09:00',
+          end_time: '2024-04-15 12:00',
+          address: '北京市西城区北京四中',
+          is_online: false,
+          online_price: 0,
+          offline_price: 99,
+          max_participants: 50,
+          current_participants: 32,
+          target_roles: [0],
+          description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
+          status: 'upcoming',
+          contact_phone: '400-888-8888',
+          organizer: siteName,
+          schedule: ['09:00-09:15 签到入场', '09:15-10:15 校园参观', '10:15-10:45 学校介绍', '10:45-11:15 招生解读', '11:15-12:00 互动答疑'],
+          location_type: 'offline'
+        })
+      }
+    } catch (error) {
+      console.error('加载活动详情失败:', error)
+      // 使用模拟数据
+      setActivity({
+        id: activityId,
+        title: '北京四中探校活动',
+        type: 'visit',
+        cover_image: 'https://placehold.co/750x400/2563EB/white?text=探校活动',
+        start_time: '2024-04-15 09:00',
+        end_time: '2024-04-15 12:00',
+        address: '北京市西城区北京四中',
+        is_online: false,
+        online_price: 0,
+        offline_price: 99,
+        max_participants: 50,
+        current_participants: 32,
+        target_roles: [0],
+        description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
+        status: 'upcoming',
+        contact_phone: '400-888-8888',
+        organizer: siteName,
+        schedule: ['09:00-09:15 签到入场', '09:15-10:15 校园参观', '10:15-10:45 学校介绍', '10:45-11:15 招生解读', '11:15-12:00 互动答疑'],
+        location_type: 'offline'
+      })
+    } finally {
+      setLoading(false)
     }
-    setActivity(mockActivity)
   }
 
   const checkRegistration = async () => {
-    // 检查是否已报名
-    setIsRegistered(false)
+    try {
+      const res = await Network.request({
+        url: `/api/activities/${activityId}/registration`
+      })
+      if (res.data && res.data.is_registered) {
+        setIsRegistered(true)
+        if (activity) {
+          setActivity({ ...activity, verification_code: res.data.verification_code })
+        }
+      }
+    } catch (error) {
+      console.log('检查报名状态失败:', error)
+      setIsRegistered(false)
+    }
+  }
+
+  const handleRegister = async () => {
+    if (!activity) return
+    
+    const price = activity.location_type === 'online' ? activity.online_price : activity.offline_price
+    
+    Taro.showModal({
+      title: '确认报名',
+      content: `活动：${activity.title}\n时间：${activity.start_time}\n地点：${activity.address}\n费用：${price === 0 ? '免费' : `¥${price}`}`,
+      confirmText: price > 0 ? '去支付' : '确认报名',
+      success: async (res) => {
+        if (res.confirm) {
+          if (price > 0) {
+            // 付费活动 - 跳转支付
+            Taro.showLoading({ title: '创建订单...' })
+            try {
+              const orderRes = await Network.request({
+                url: '/api/activity-orders',
+                method: 'POST',
+                data: {
+                  activity_id: activityId,
+                  amount: price,
+                  location_type: activity.location_type
+                }
+              })
+              Taro.hideLoading()
+              
+              if (orderRes.data && orderRes.data.order_id) {
+                // 跳转到支付页面
+                Taro.navigateTo({ 
+                  url: `/pages/pay/index?order_id=${orderRes.data.order_id}&type=activity`
+                })
+              }
+            } catch (error) {
+              Taro.hideLoading()
+              Taro.showToast({ title: '创建订单失败', icon: 'none' })
+            }
+          } else {
+            // 免费活动 - 直接报名
+            Taro.showLoading({ title: '报名中...' })
+            try {
+              await Network.request({
+                url: `/api/activities/${activityId}/register`,
+                method: 'POST',
+                data: { location_type: activity.location_type }
+              })
+              Taro.hideLoading()
+              setIsRegistered(true)
+              Taro.showToast({ title: '报名成功', icon: 'success' })
+              
+              // 如果是线下活动，提示查看核销码
+              if (activity.location_type === 'offline') {
+                setTimeout(() => {
+                  Taro.showModal({
+                    title: '报名成功',
+                    content: '您已成功报名！请保存核销码，活动当天出示核销。',
+                    confirmText: '查看核销码',
+                    success: (modalRes) => {
+                      if (modalRes.confirm) {
+                        Taro.navigateTo({ url: '/pages/my-activities/index' })
+                      }
+                    }
+                  })
+                }, 1500)
+              }
+            } catch (error) {
+              Taro.hideLoading()
+              Taro.showToast({ title: '报名失败', icon: 'none' })
+            }
+          }
+        }
+      }
+    })
   }
 
   const getTypeTag = (type: Activity['type']) => {
@@ -91,7 +219,7 @@ export default function ActivityDetailPage() {
     return typeMap[type]
   }
 
-  if (!activity) {
+  if (loading || !activity) {
     return (
       <View className="flex items-center justify-center h-screen">
         <Text className="text-gray-400">加载中...</Text>
@@ -117,9 +245,14 @@ export default function ActivityDetailPage() {
           <Badge className={typeTag.color}>
             <Text className="text-xs">{typeTag.label}</Text>
           </Badge>
-          {activity.is_online && (
+          {activity.location_type === 'online' && (
             <Badge className="bg-blue-100 text-blue-600">
               <Text className="text-xs">线上</Text>
+            </Badge>
+          )}
+          {activity.location_type === 'offline' && (
+            <Badge className="bg-orange-100 text-orange-600">
+              <Text className="text-xs">线下</Text>
             </Badge>
           )}
           <Badge className={activity.status === 'upcoming' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}>
@@ -145,6 +278,26 @@ export default function ActivityDetailPage() {
           <Text className="text-sm text-gray-600">{activity.address}</Text>
         </View>
       </View>
+
+      {/* 已报名提示（线下活动显示核销码入口） */}
+      {isRegistered && activity.location_type === 'offline' && (
+        <Card className="mx-4 mt-4 bg-green-50">
+          <CardContent className="p-4">
+            <View className="flex flex-row items-center justify-between">
+              <View className="flex flex-row items-center gap-2">
+                <CircleCheck size={20} color="#10B981" />
+                <Text className="font-semibold text-green-700">已报名成功</Text>
+              </View>
+              <Button 
+                size="sm" 
+                onClick={() => Taro.navigateTo({ url: '/pages/my-activities/index' })}
+              >
+                <Text className="text-white text-sm">查看核销码</Text>
+              </Button>
+            </View>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 报名信息 */}
       <Card className="mx-4 mt-4">
@@ -181,7 +334,7 @@ export default function ActivityDetailPage() {
             <Text className="font-semibold mb-3">活动流程</Text>
             {activity.schedule.map((item, idx) => (
               <View key={idx} className="flex flex-row items-start gap-3 py-2">
-                <View className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <View className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                   <Text className="text-xs text-blue-600">{idx + 1}</Text>
                 </View>
                 <Text className="text-sm text-gray-600 flex-1">{item}</Text>
@@ -216,38 +369,16 @@ export default function ActivityDetailPage() {
         <View className="flex-1">
           <Text className="text-sm text-gray-500">费用</Text>
           <Text className="text-xl font-bold text-orange-500">
-            {activity.is_online && activity.online_price === 0 ? '免费' : 
-             !activity.is_online && activity.offline_price === 0 ? '免费' : 
-             `¥${activity.is_online ? activity.online_price : activity.offline_price}`}
+            {activity.location_type === 'online' && activity.online_price === 0 ? '免费' : 
+             activity.location_type === 'offline' && activity.offline_price === 0 ? '免费' : 
+             `¥${activity.location_type === 'online' ? activity.online_price : activity.offline_price}`}
           </Text>
         </View>
         <View className="flex-1">
           <Button 
             className="w-full" 
             disabled={isRegistered || activity.status !== 'upcoming'}
-            onClick={() => {
-              if (!activity) return
-              const p = activity.is_online ? activity.online_price : activity.offline_price
-              Taro.showModal({
-                title: '确认报名',
-                content: `活动：${activity.title}\n时间：${activity.start_time}\n费用：${p === 0 ? '免费' : `¥${p}`}`,
-                confirmText: p > 0 ? '去支付' : '确认报名',
-                success: (res) => {
-                  if (res.confirm) {
-                    if (p > 0) {
-                      Taro.showToast({ title: '跳转支付...', icon: 'loading' })
-                      setTimeout(() => {
-                        setIsRegistered(true)
-                        Taro.showToast({ title: '报名成功', icon: 'success' })
-                      }, 1500)
-                    } else {
-                      setIsRegistered(true)
-                      Taro.showToast({ title: '报名成功', icon: 'success' })
-                    }
-                  }
-                }
-              })
-            }}
+            onClick={handleRegister}
           >
             <Text className="text-white">
               {isRegistered ? '已报名' : activity.status !== 'upcoming' ? '活动已结束' : '立即报名'}

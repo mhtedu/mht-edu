@@ -33,10 +33,10 @@ const statusConfig: Record<number, { text: string; variant: 'default' | 'seconda
 };
 
 /**
- * 订单管理页面 - 家长/教师不同视图
+ * 订单管理页面 - 家长/牛师不同视图
  */
 const OrdersPage = () => {
-  const [currentRole, setCurrentRole] = useState(0); // 0: 家长, 1: 教师
+  const [currentRole, setCurrentRole] = useState(0); // 0: 家长, 1: 牛师
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'ongoing' | 'completed'>('all');
@@ -49,7 +49,7 @@ const OrdersPage = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      // 家长视角调用 /api/order/list，教师视角调用 /api/order/nearby
+      // 家长视角调用 /api/order/list，牛师视角调用 /api/order/nearby
       const url = currentRole === 0 
         ? '/api/order/list' 
         : '/api/order/nearby';
@@ -62,7 +62,7 @@ const OrdersPage = () => {
       if (currentRole === 0) {
         params.parentId = 1;
       } else {
-        // 教师视角：获取附近的待抢单订单
+        // 牛师视角：获取附近的待抢单订单
         let lat = userLocation?.latitude;
         let lng = userLocation?.longitude;
 
@@ -142,7 +142,7 @@ const OrdersPage = () => {
             className={`px-4 py-2 rounded-full ${currentRole === 1 ? 'bg-blue-500' : 'bg-gray-100'}`}
             onClick={() => setCurrentRole(1)}
           >
-            <Text className={currentRole === 1 ? 'text-white' : 'text-gray-600'}>教师端</Text>
+            <Text className={currentRole === 1 ? 'text-white' : 'text-gray-600'}>牛师端</Text>
           </View>
         </View>
       </View>

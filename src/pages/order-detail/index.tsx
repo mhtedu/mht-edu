@@ -161,7 +161,7 @@ const OrderDetailPage = () => {
     
     Taro.showModal({
       title: '确认抢单',
-      content: '抢单后家长将选择合适的教师匹配，确认抢单吗？',
+      content: '抢单后家长将选择合适的牛师匹配，确认抢单吗？',
       success: (res) => {
         if (res.confirm) {
           Taro.showToast({ title: '抢单成功', icon: 'success' });

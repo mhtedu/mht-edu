@@ -11,7 +11,7 @@ import {
 import './index.css'
 
 /**
- * 机构端 - 邀请教师页面
+ * 机构端 - 邀请牛师页面
  */
 export default function OrgInvitePage() {
   const [inviteLink] = useState('https://edu.example.com/invite/org123')
@@ -72,7 +72,7 @@ export default function OrgInvitePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus size={20} color="#7C3AED" />
-            <Text>邀请教师入驻</Text>
+            <Text>邀请牛师入驻</Text>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -119,7 +119,7 @@ export default function OrgInvitePage() {
                 </Button>
               </View>
               <Text className="text-xs text-gray-500 mt-2 text-center">
-                教师注册时填写此邀请码即可加入您的机构
+                牛师注册时填写此邀请码即可加入您的机构
               </Text>
             </View>
 
@@ -133,7 +133,7 @@ export default function OrgInvitePage() {
                 <View className="flex-1">
                   <Input
                     type="number"
-                    placeholder="输入教师手机号"
+                    placeholder="输入牛师手机号"
                     value={phone}
                     onInput={(e) => setPhone(e.detail.value)}
                     maxlength={11}
@@ -144,7 +144,7 @@ export default function OrgInvitePage() {
                 </Button>
               </View>
               <Text className="text-xs text-gray-500 mt-2">
-                系统将发送邀请短信，教师点击链接即可注册
+                系统将发送邀请短信，牛师点击链接即可注册
               </Text>
             </View>
           </View>
@@ -163,9 +163,9 @@ export default function OrgInvitePage() {
                 <Text className="text-white text-xs">1</Text>
               </View>
               <View className="flex-1">
-                <Text className="font-semibold">教师接收邀请</Text>
+                <Text className="font-semibold">牛师接收邀请</Text>
                 <Text className="text-sm text-gray-500 mt-1">
-                  通过分享链接、邀请码或短信邀请教师
+                  通过分享链接、邀请码或短信邀请牛师
                 </Text>
               </View>
             </View>
@@ -174,9 +174,9 @@ export default function OrgInvitePage() {
                 <Text className="text-white text-xs">2</Text>
               </View>
               <View className="flex-1">
-                <Text className="font-semibold">教师注册认证</Text>
+                <Text className="font-semibold">牛师注册认证</Text>
                 <Text className="text-sm text-gray-500 mt-1">
-                  教师完成注册并提交资质认证材料
+                  牛师完成注册并提交资质认证材料
                 </Text>
               </View>
             </View>
@@ -187,7 +187,7 @@ export default function OrgInvitePage() {
               <View className="flex-1">
                 <Text className="font-semibold">机构审核</Text>
                 <Text className="text-sm text-gray-500 mt-1">
-                  您在教师管理中审核教师入驻申请
+                  您在牛师管理中审核牛师入驻申请
                 </Text>
               </View>
             </View>
@@ -198,7 +198,7 @@ export default function OrgInvitePage() {
               <View className="flex-1">
                 <Text className="font-semibold">入驻成功</Text>
                 <Text className="text-sm text-gray-500 mt-1">
-                  教师正式成为机构成员，可开始接单
+                  牛师正式成为机构成员，可开始接单
                 </Text>
               </View>
             </View>

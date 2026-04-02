@@ -76,7 +76,7 @@ const AgentDashboardPage = () => {
               <View className="flex flex-col items-center">
                 <Users size={24} color="#22C55E" />
                 <Text className="text-xl font-bold mt-1">{stats.totalTeachers}</Text>
-                <Text className="text-gray-500 text-xs">教师数</Text>
+                <Text className="text-gray-500 text-xs">牛师数</Text>
               </View>
               <View className="flex flex-col items-center">
                 <Users size={24} color="#3B82F6" />
@@ -137,7 +137,7 @@ const AgentDashboardPage = () => {
                     <Timer size={16} color="#F59E0B" className="mr-2" />
                     <View>
                       <Text className="text-gray-700">{audit.name}</Text>
-                      <Text className="text-gray-400 text-xs">{audit.type === 'teacher' ? '教师入驻' : '机构入驻'}</Text>
+                      <Text className="text-gray-400 text-xs">{audit.type === 'teacher' ? '牛师入驻' : '机构入驻'}</Text>
                     </View>
                   </View>
                   <View className="flex flex-row items-center">

@@ -82,12 +82,12 @@ const TeacherListPage: FC = () => {
         params.longitude = location.longitude
       }
 
-      console.log('加载教师列表请求:', { url: '/api/user/teachers/list', params })
+      console.log('加载牛师列表请求:', { url: '/api/user/teachers/list', params })
       const res = await Network.request({
         url: '/api/user/teachers/list',
         data: params
       })
-      console.log('加载教师列表响应:', res.data)
+      console.log('加载牛师列表响应:', res.data)
 
       const list = Array.isArray(res.data) ? res.data : res.data.list || []
       
@@ -101,7 +101,7 @@ const TeacherListPage: FC = () => {
 
       setHasMore(list.length >= 20)
     } catch (error) {
-      console.error('加载教师列表失败:', error)
+      console.error('加载牛师列表失败:', error)
       // 使用模拟数据
       const mockTeachers: TeacherItem[] = [
         {
@@ -148,7 +148,7 @@ const TeacherListPage: FC = () => {
           hourly_rate_max: 130,
           rating: 4.7,
           review_count: 156,
-          one_line_intro: '语文高级教师，作文辅导专家',
+          one_line_intro: '语文高级牛师，作文辅导专家',
           distance_text: '4.1km',
           education: '北京师范大学'
         },
@@ -209,7 +209,7 @@ const TeacherListPage: FC = () => {
         </ScrollView>
       </View>
 
-      {/* 教师列表 */}
+      {/* 牛师列表 */}
       <ScrollView scrollY className="teacher-scroll">
         {teachers.map((teacher) => (
           <Card key={teacher.id} className="teacher-card" onClick={() => goToDetail(teacher.id)}>

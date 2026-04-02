@@ -10,7 +10,7 @@ import { Network } from '@/network'
  * 锁定类型
  */
 export type LockType = 
-  | 'teacher_profile'  // 教师主页
+  | 'teacher_profile'  // 牛师主页
   | 'order'           // 订单
   | 'activity'        // 活动
   | 'elite_class'     // 牛师班

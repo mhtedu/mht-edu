@@ -28,7 +28,7 @@ interface User {
   nickname: string;
   phone: string;
   avatar: string;
-  role: number; // 0-家长 1-教师 2-机构
+  role: number; // 0-家长 1-牛师 2-机构
   status: number;
   is_member: number;
   member_expire: string;
@@ -113,7 +113,7 @@ interface SiteConfig {
 const MENUS = [
   { id: 'dashboard', label: '数据概览', icon: LayoutDashboard },
   { id: 'users', label: '用户管理', icon: Users },
-  { id: 'teachers', label: '教师管理', icon: UserPlus },
+  { id: 'teachers', label: '牛师管理', icon: UserPlus },
   { id: 'orgs', label: '机构管理', icon: Building },
   { id: 'orders', label: '订单管理', icon: FileText },
   { id: 'elite-class', label: '牛师班管理', icon: Award },
@@ -318,8 +318,8 @@ const AdminPage = () => {
       setMembershipPlans([
         { id: 1, name: '家长月卡', role: 0, price: 29.9, original_price: 59, duration_days: 30, features: ['查看联系方式', '无限发布需求'], is_active: 1 },
         { id: 2, name: '家长年卡', role: 0, price: 199, original_price: 708, duration_days: 365, features: ['查看联系方式', '无限发布需求', '专属客服'], is_active: 1 },
-        { id: 3, name: '教师月卡', role: 1, price: 39.9, original_price: 79, duration_days: 30, features: ['查看联系方式', '无限抢单'], is_active: 1 },
-        { id: 4, name: '机构年卡', role: 2, price: 999, original_price: 2388, duration_days: 365, features: ['无限发布教师', '优先展示'], is_active: 1 },
+        { id: 3, name: '牛师月卡', role: 1, price: 39.9, original_price: 79, duration_days: 30, features: ['查看联系方式', '无限抢单'], is_active: 1 },
+        { id: 4, name: '机构年卡', role: 2, price: 999, original_price: 2388, duration_days: 365, features: ['无限发布牛师', '优先展示'], is_active: 1 },
       ]);
     }
   };
@@ -482,7 +482,7 @@ const AdminPage = () => {
           <CardContent className="p-4">
             <View className="flex items-center justify-between">
               <View>
-                <Text className="text-gray-500 text-sm">教师数量</Text>
+                <Text className="text-gray-500 text-sm">牛师数量</Text>
                 <Text className="text-2xl font-bold mt-1">{(stats && stats.users && stats.users.teachers) || 0}</Text>
                 <Text className="text-xs text-gray-400 mt-1">会员{(stats && stats.users && stats.users.members) || 0}</Text>
               </View>
@@ -529,7 +529,7 @@ const AdminPage = () => {
                 <Text className="font-semibold">{(stats && stats.users && stats.users.parents) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
-                <Text className="text-gray-600">教师用户</Text>
+                <Text className="text-gray-600">牛师用户</Text>
                 <Text className="font-semibold">{(stats && stats.users && stats.users.teachers) || 0}</Text>
               </View>
               <View className="flex justify-between items-center">
@@ -609,7 +609,7 @@ const AdminPage = () => {
           <View className="flex gap-2">
             <Button size="sm" variant={roleFilter === '' ? 'default' : 'outline'} onClick={() => setRoleFilter('')}>全部</Button>
             <Button size="sm" variant={roleFilter === '0' ? 'default' : 'outline'} onClick={() => setRoleFilter('0')}>家长</Button>
-            <Button size="sm" variant={roleFilter === '1' ? 'default' : 'outline'} onClick={() => setRoleFilter('1')}>教师</Button>
+            <Button size="sm" variant={roleFilter === '1' ? 'default' : 'outline'} onClick={() => setRoleFilter('1')}>牛师</Button>
             <Button size="sm" variant={roleFilter === '2' ? 'default' : 'outline'} onClick={() => setRoleFilter('2')}>机构</Button>
           </View>
         </View>
@@ -638,7 +638,7 @@ const AdminPage = () => {
                     <Text className="text-xs text-gray-500">{user.phone}</Text>
                   </View>
                 </View>
-                <Text className="w-20">{user.role === 0 ? '家长' : user.role === 1 ? '教师' : '机构'}</Text>
+                <Text className="w-20">{user.role === 0 ? '家长' : user.role === 1 ? '牛师' : '机构'}</Text>
                 <Text className="w-20">{user.is_member ? '是' : '否'}</Text>
                 <View className="w-20">
                   <Badge variant={user.status === 1 ? 'default' : 'secondary'}>
@@ -676,7 +676,7 @@ const AdminPage = () => {
           <Search size={16} color="#999" />
           <Input
             className="flex-1"
-            placeholder="搜索教师姓名/手机号"
+            placeholder="搜索牛师姓名/手机号"
             value={keyword}
             onInput={(e) => setKeyword(e.detail.value)}
           />
@@ -696,7 +696,7 @@ const AdminPage = () => {
           <View className="admin-table">
             <View className="admin-table-header">
               <Text className="w-16">ID</Text>
-              <Text className="flex-1">教师信息</Text>
+              <Text className="flex-1">牛师信息</Text>
               <Text className="w-32">科目</Text>
               <Text className="w-20">评分</Text>
               <Text className="w-20">订单</Text>
@@ -757,7 +757,7 @@ const AdminPage = () => {
             <View className="admin-table-header">
               <Text className="w-16">ID</Text>
               <Text className="flex-1">机构信息</Text>
-              <Text className="w-24">教师数</Text>
+              <Text className="w-24">牛师数</Text>
               <Text className="w-20">状态</Text>
               <Text className="w-32">注册时间</Text>
               <Text className="w-32">操作</Text>
@@ -823,7 +823,7 @@ const AdminPage = () => {
             <View className="admin-table-header">
               <Text className="w-40">订单号</Text>
               <Text className="flex-1">家长</Text>
-              <Text className="flex-1">教师</Text>
+              <Text className="flex-1">牛师</Text>
               <Text className="w-24">科目</Text>
               <Text className="w-24">金额</Text>
               <Text className="w-20">状态</Text>
@@ -894,11 +894,11 @@ const AdminPage = () => {
           </CardContent>
         </Card>
 
-        {/* 教师套餐 */}
+        {/* 牛师套餐 */}
         <Card>
           <CardHeader>
             <View className="flex justify-between items-center">
-              <CardTitle>教师套餐</CardTitle>
+              <CardTitle>牛师套餐</CardTitle>
               <Badge><Text className="text-xs">{membershipPlans.filter(p => p.role === 1).length}个</Text></Badge>
             </View>
           </CardHeader>
@@ -1210,7 +1210,7 @@ const AdminPage = () => {
           <View className="flex flex-col items-center justify-center text-gray-400">
             <Award size={48} color="#9ca3af" />
             <Text className="mt-4">暂无牛师班数据</Text>
-            <Text className="text-sm mt-2">教师创建的牛师班将在此显示</Text>
+            <Text className="text-sm mt-2">牛师创建的牛师班将在此显示</Text>
           </View>
         </CardContent>
       </Card>

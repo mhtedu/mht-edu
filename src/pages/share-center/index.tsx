@@ -277,7 +277,7 @@ const ShareCenterPage = () => {
                 <View className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
                   <Text className="text-orange-600 text-xs font-bold">1</Text>
                 </View>
-                <Text className="text-gray-600 text-sm ml-2">分享到家长群、教师群，覆盖更多潜在客户</Text>
+                <Text className="text-gray-600 text-sm ml-2">分享到家长群、牛师群，覆盖更多潜在客户</Text>
               </View>
               <View className="flex items-start">
                 <View className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">

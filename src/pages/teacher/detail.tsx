@@ -73,17 +73,17 @@ const TeacherDetailPage: FC = () => {
   const loadTeacherDetail = async (id: number) => {
     setLoading(true)
     try {
-      console.log('加载教师详情请求:', { url: `/api/teacher/${id}` })
+      console.log('加载牛师详情请求:', { url: `/api/teacher/${id}` })
       const res = await Network.request({
         url: `/api/teacher/${id}`
       })
-      console.log('加载教师详情响应:', res.data)
+      console.log('加载牛师详情响应:', res.data)
       
       if (res.data) {
         setTeacher(res.data)
       }
     } catch (error) {
-      console.error('加载教师详情失败:', error)
+      console.error('加载牛师详情失败:', error)
       // 使用模拟数据
       setTeacher({
         id: id,
@@ -108,7 +108,7 @@ const TeacherDetailPage: FC = () => {
         address: '北京市海淀区中关村',
         teaching_mode: '线上/线下',
         available_time: '工作日晚间、周末全天',
-        certificates: ['教师资格证', '高级教师职称']
+        certificates: ['牛师资格证', '高级牛师职称']
       })
     } finally {
       setLoading(false)
@@ -242,7 +242,7 @@ const TeacherDetailPage: FC = () => {
     return `${Math.floor(days / 30)}个月前`
   }
 
-  // 判断是否是教师本人
+  // 判断是否是牛师本人
   const isSelf = userInfo?.id === teacher?.id
 
   if (loading) {
@@ -261,7 +261,7 @@ const TeacherDetailPage: FC = () => {
   if (!teacher) {
     return (
       <View className="teacher-detail-page empty-state">
-        <Text className="empty-text">教师不存在或已下架</Text>
+        <Text className="empty-text">牛师不存在或已下架</Text>
         <Button onClick={() => Taro.navigateBack()}>返回</Button>
       </View>
     )
@@ -415,7 +415,7 @@ const TeacherDetailPage: FC = () => {
         {/* 个人动态Tab */}
         {activeTab === 'moments' && (
           <View className="moments-section">
-            {/* 发布入口（仅教师本人可见） */}
+            {/* 发布入口（仅牛师本人可见） */}
             {isSelf && (
               <View className="publish-entry" onClick={() => Taro.navigateTo({ url: '/pages/publish-moment/index' })}>
                 <View className="publish-icons">

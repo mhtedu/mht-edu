@@ -35,7 +35,7 @@ interface Stats {
 }
 
 /**
- * 学员管理页面（教师端）
+ * 学员管理页面（牛师端）
  */
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([])

@@ -66,7 +66,7 @@ export default function ChatPage() {
   const loadTargetInfo = () => {
     // 根据角色设置目标信息
     if (userRole === 1) {
-      // 教师端 - 目标是家长
+      // 牛师端 - 目标是家长
       setTargetInfo({
         id: targetId,
         nickname: '王家长',
@@ -74,7 +74,7 @@ export default function ChatPage() {
         online: true
       })
     } else {
-      // 家长端 - 目标是教师
+      // 家长端 - 目标是牛师
       setTargetInfo({
         id: targetId,
         nickname: '张老师',

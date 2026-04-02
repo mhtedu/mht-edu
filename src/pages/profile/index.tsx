@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import {
-  User, Settings, Star, CreditCard, Users,
-  ChevronRight, LogOut, Award, FileText, Bell, Info
+  User, Settings, Star, CreditCard,
+  ChevronRight, LogOut, Award, FileText, Bell, Info, Calendar
 } from 'lucide-react-taro'
 
 interface MembershipInfo {
@@ -78,12 +78,12 @@ const ProfilePage: FC = () => {
   const menuItems = [
     { icon: Star, title: '我的收藏', path: '/pages/profile/favorites', color: '#F59E0B' },
     { icon: FileText, title: '我的需求', path: '/pages/profile/demands', color: '#10B981' },
+    { icon: Calendar, title: '我的活动', path: '/pages/my-activities/index', color: '#EC4899' },
     { icon: CreditCard, title: '我的订单', path: '/pages/profile/orders', color: '#2563EB' },
-    { icon: Users, title: '我的邀请', path: '/pages/profile/invite', color: '#8B5CF6' },
   ]
 
   const settingItems = [
-    { icon: Award, title: '教师认证', path: '/pages/profile/teacher-auth', color: '#10B981' },
+    { icon: Award, title: '牛师认证', path: '/pages/profile/teacher-auth', color: '#10B981' },
     { icon: Settings, title: '账号设置', path: '/pages/profile/settings', color: '#6B7280' },
     { icon: Bell, title: '消息设置', path: '/pages/profile/notification', color: '#F59E0B' },
     { icon: Info, title: '帮助中心', path: '/pages/profile/help', color: '#3B82F6' },
@@ -109,7 +109,7 @@ const ProfilePage: FC = () => {
                 <Text className="block text-lg font-semibold text-white">{userInfo?.nickname || '用户'}</Text>
                 <View className="mt-2">
                   <Badge variant="outline">
-                    {userInfo?.role === 'parent' ? '家长' : userInfo?.role === 'teacher' ? '教师' : userInfo?.role === 'org' ? '机构' : '用户'}
+                    {userInfo?.role === 'parent' ? '家长' : userInfo?.role === 'teacher' ? '牛师' : userInfo?.role === 'org' ? '机构' : '用户'}
                   </Badge>
                 </View>
               </View>

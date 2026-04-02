@@ -32,7 +32,7 @@ interface RecentOrder {
 }
 
 /**
- * 教师工作台 - 教师端核心功能入口
+ * 牛师工作台 - 牛师端核心功能入口
  */
 const TeacherWorkbenchPage = () => {
   const siteName = useSiteConfig(state => state.getSiteName)();
@@ -101,7 +101,7 @@ const TeacherWorkbenchPage = () => {
     { icon: Wallet, title: '收益中心', desc: '查看收益明细', url: '/pages/earnings/index', badge: '' },
     { icon: Gift, title: '推广中心', desc: '邀请赚佣金', url: '/pages/distribution/index', badge: '赚钱' },
     { icon: Clock, title: '课程安排', desc: '管理日程', url: '/pages/course-manage/index', badge: '' },
-    { icon: BookOpen, title: '我的主页', desc: '教师展示页', url: '/pages/teacher-detail/index?id=1', badge: '' },
+    { icon: BookOpen, title: '我的主页', desc: '牛师展示页', url: '/pages/teacher-detail/index?id=1', badge: '' },
     { icon: Award, title: '会员特权', desc: isMember ? '已开通' : '立即开通', url: '/pages/membership/index', badge: isMember ? '' : '热门' },
     { icon: MessageCircle, title: '消息中心', desc: '沟通记录', url: '/pages/message/index', badge: '' },
   ];
@@ -146,12 +146,12 @@ const TeacherWorkbenchPage = () => {
               <BookOpen size={24} color="white" />
             </View>
             <View className="ml-3">
-              <Text className="text-white font-semibold">教师工作台</Text>
+              <Text className="text-white font-semibold">牛师工作台</Text>
               <View className="flex items-center mt-1">
                 {isMember ? (
                   <Badge className="bg-yellow-400">
                     <Star size={12} color="#92400E" className="mr-1" />
-                    <Text className="text-yellow-900 text-xs">会员教师</Text>
+                    <Text className="text-yellow-900 text-xs">会员牛师</Text>
                   </Badge>
                 ) : (
                   <Text className="text-white text-opacity-80 text-sm">开通会员享更多权益</Text>

@@ -20,7 +20,7 @@ export default function OrgSettingsPage() {
   const [orgInfo, setOrgInfo] = useState({
     name: '阳光教育研修中心',
     logo: 'https://placehold.co/200/7C3AED/white?text=阳光',
-    description: '专注中小学全科辅导，拥有资深教师团队，累计服务学生超过1000人。',
+    description: '专注中小学全科辅导，拥有资深牛师团队，累计服务学生超过1000人。',
     address: '北京市朝阳区望京SOHO T1-1001',
     contactPhone: '010-12345678',
     contactEmail: 'contact@sunshine-edu.com',
@@ -244,7 +244,7 @@ export default function OrgSettingsPage() {
       <Card className="mx-4 mt-4">
         <CardContent className="p-0">
           <View className="setting-item" onClick={() => Taro.navigateTo({ url: '/pages/org-teachers/index' })}>
-            <Text>教师管理</Text>
+            <Text>牛师管理</Text>
             <ChevronRight size={16} color="#9CA3AF" />
           </View>
           <View className="setting-item" onClick={() => Taro.navigateTo({ url: '/pages/org-courses/index' })}>
@@ -252,7 +252,7 @@ export default function OrgSettingsPage() {
             <ChevronRight size={16} color="#9CA3AF" />
           </View>
           <View className="setting-item" onClick={() => Taro.navigateTo({ url: '/pages/org-invite/index' })}>
-            <Text>邀请教师</Text>
+            <Text>邀请牛师</Text>
             <ChevronRight size={16} color="#9CA3AF" />
           </View>
         </CardContent>

@@ -160,7 +160,7 @@ export default function CreateEliteClass() {
                 立即开通超级会员
               </Button>
               <Text className="text-xs text-gray-400">
-                或邀请10名教师或10名家长入驻后自动获得
+                或邀请10名牛师或10名家长入驻后自动获得
               </Text>
             </View>
           </CardContent>
@@ -306,7 +306,7 @@ export default function CreateEliteClass() {
             <View className="mt-4 bg-blue-50 rounded-lg p-3">
               <Text className="text-sm text-blue-600 font-medium mb-2">课时分成说明</Text>
               <View className="flex flex-col gap-1">
-                <Text className="text-xs text-blue-500">• 教师收入：85%</Text>
+                <Text className="text-xs text-blue-500">• 牛师收入：85%</Text>
                 <Text className="text-xs text-blue-500">• 平台服务费：5%</Text>
                 <Text className="text-xs text-blue-500">• 推荐人佣金：10%（通过分享链接报名）</Text>
               </View>

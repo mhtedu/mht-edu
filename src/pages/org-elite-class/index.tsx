@@ -172,7 +172,7 @@ export default function OrgEliteClass() {
             <Search size={16} color="#999" />
             <Input
               className="flex-1 bg-transparent text-sm ml-2"
-              placeholder="搜索班级名称、教师"
+              placeholder="搜索班级名称、牛师"
               value={keyword}
               onInput={(e) => setKeyword(e.detail.value)}
             />
@@ -229,7 +229,7 @@ export default function OrgEliteClass() {
                     </View>
                   </View>
 
-                  {/* 教师信息 */}
+                  {/* 牛师信息 */}
                   <View className="flex flex-row items-center gap-2 mb-3 py-2 border-y border-gray-100">
                     <View className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                       <Text className="text-blue-600 text-sm">{item.teacher_real_name && item.teacher_real_name.charAt(0) || '师'}</Text>

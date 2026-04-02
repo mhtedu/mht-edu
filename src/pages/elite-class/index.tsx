@@ -111,7 +111,7 @@ export default function EliteClassList() {
           distance_text: '4.1km',
           remaining_seats: 8,
           status: 0,
-          description: '高校教师主讲，深入浅出讲解高中物理重点难点。'
+          description: '高校牛师主讲，深入浅出讲解高中物理重点难点。'
         }
       ])
     } finally {
@@ -146,7 +146,7 @@ export default function EliteClassList() {
             <Search size={18} color="#999" />
             <Input
               className="flex-1 bg-transparent text-sm"
-              placeholder="搜索班级名称、教师"
+              placeholder="搜索班级名称、牛师"
               value={keyword}
               onInput={(e) => setKeyword(e.detail.value)}
             />
@@ -212,7 +212,7 @@ export default function EliteClassList() {
                     </View>
                   </View>
 
-                  {/* 教师信息 */}
+                  {/* 牛师信息 */}
                   <View className="flex flex-row items-center gap-3 mb-3 pb-3 border-b border-gray-100">
                     <View className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                       <Text className="text-blue-600 font-semibold text-sm">

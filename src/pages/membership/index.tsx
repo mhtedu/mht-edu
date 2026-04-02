@@ -54,7 +54,7 @@ const MembershipPage = () => {
         price: 99,
         original_price: 129,
         duration_days: 30,
-        features: ['无限发布需求', '查看教师联系方式', '主动搜索教师', '分销返佣'],
+        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣'],
       },
       {
         id: 2,
@@ -63,7 +63,7 @@ const MembershipPage = () => {
         price: 269,
         original_price: 387,
         duration_days: 90,
-        features: ['无限发布需求', '查看教师联系方式', '主动搜索教师', '分销返佣', '优先客服'],
+        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服'],
       },
       {
         id: 3,
@@ -72,12 +72,12 @@ const MembershipPage = () => {
         price: 899,
         original_price: 1548,
         duration_days: 365,
-        features: ['无限发布需求', '查看教师联系方式', '主动搜索教师', '分销返佣', '优先客服', '专属顾问'],
+        features: ['无限发布需求', '查看牛师联系方式', '主动搜索牛师', '分销返佣', '优先客服', '专属顾问'],
       },
     ] : [
       {
         id: 4,
-        name: '教师月卡',
+        name: '牛师月卡',
         role: 1,
         price: 99,
         original_price: 129,
@@ -86,7 +86,7 @@ const MembershipPage = () => {
       },
       {
         id: 5,
-        name: '教师季卡',
+        name: '牛师季卡',
         role: 1,
         price: 269,
         original_price: 387,
@@ -95,7 +95,7 @@ const MembershipPage = () => {
       },
       {
         id: 6,
-        name: '教师年卡',
+        name: '牛师年卡',
         role: 1,
         price: 899,
         original_price: 1548,
@@ -136,10 +136,10 @@ const MembershipPage = () => {
     });
   };
 
-  const roleText = currentRole === 0 ? '家长' : '教师';
+  const roleText = currentRole === 0 ? '家长' : '牛师';
   const memberBenefits = [
     { icon: Zap, title: currentRole === 0 ? '无限发布' : '无限抢单', desc: currentRole === 0 ? '不限次数发布需求' : '不限次数抢单' },
-    { icon: Star, title: currentRole === 0 ? '主动搜索' : '优先派单', desc: currentRole === 0 ? '搜索筛选教师' : '优先获得派单' },
+    { icon: Star, title: currentRole === 0 ? '主动搜索' : '优先派单', desc: currentRole === 0 ? '搜索筛选牛师' : '优先获得派单' },
     { icon: Lock, title: '联系方式', desc: '解锁查看联系方式' },
     { icon: Gift, title: '分销返佣', desc: '邀请好友赚佣金' },
   ];

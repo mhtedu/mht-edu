@@ -31,7 +31,7 @@ interface EarningStats {
 }
 
 /**
- * 收益中心页面（教师端）
+ * 收益中心页面（牛师端）
  */
 export default function EarningsPage() {
   const [stats, setStats] = useState<EarningStats>({

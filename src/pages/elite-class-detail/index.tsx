@@ -183,7 +183,7 @@ export default function EliteClassDetail() {
         </View>
       </View>
 
-      {/* 教师信息卡片 */}
+      {/* 牛师信息卡片 */}
       <Card className="mx-4 mt-4" onClick={() => Taro.navigateTo({ url: `/pages/teacher-detail/index?id=${classInfo.teacher_id}` })}>
         <CardContent className="p-4">
           <View className="flex flex-row items-center gap-3">
@@ -267,10 +267,10 @@ export default function EliteClassDetail() {
         </Card>
       </View>
 
-      {/* 教师简介 */}
+      {/* 牛师简介 */}
       {classInfo.teacher_intro && (
         <View className="mx-4 mt-4 mb-4">
-          <Text className="text-base font-semibold text-gray-800 mb-3">教师简介</Text>
+          <Text className="text-base font-semibold text-gray-800 mb-3">牛师简介</Text>
           <Card>
             <CardContent className="p-4">
               <Text className="text-sm text-gray-600 leading-relaxed">
@@ -289,7 +289,7 @@ export default function EliteClassDetail() {
               <View className="flex flex-row items-center gap-2">
                 <Award size={20} color="#16A34A" />
                 <Text className="text-green-700 font-medium">
-                  已报名 · {classInfo.enrollment_status === 0 ? '等待教师确认' : classInfo.enrollment_status === 1 ? '已确认' : '试课中'}
+                  已报名 · {classInfo.enrollment_status === 0 ? '等待牛师确认' : classInfo.enrollment_status === 1 ? '已确认' : '试课中'}
                 </Text>
               </View>
             </CardContent>

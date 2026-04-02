@@ -29,17 +29,17 @@ const roles: RoleConfig[] = [
     color: '#2563EB',
     bgClass: 'from-blue-500 to-blue-600',
     description: '发布需求，找到满意的老师',
-    features: ['发布家教需求', '浏览教师主页', '收藏心仪教师', '在线沟通预约'],
+    features: ['发布家教需求', '浏览牛师主页', '收藏心仪牛师', '在线沟通预约'],
     memberBenefit: '查看联系方式、无限沟通',
   },
   {
     id: 1,
-    name: '教师端',
+    name: '牛师端',
     icon: BookOpen,
     color: '#22C55E',
     bgClass: 'from-green-500 to-green-600',
     description: '抢单接课，展示教学实力',
-    features: ['浏览需求抢单', '展示教师主页', '管理学员课程', '转发需求赚佣金'],
+    features: ['浏览需求抢单', '展示牛师主页', '管理学员课程', '转发需求赚佣金'],
     memberBenefit: '无限抢单、优先展示',
   },
   {
@@ -49,8 +49,8 @@ const roles: RoleConfig[] = [
     color: '#9333EA',
     bgClass: 'from-purple-500 to-purple-600',
     description: '管理团队，扩展业务版图',
-    features: ['管理机构教师', '发布课程活动', '代录家长需求', '多渠道推广招生'],
-    memberBenefit: '更多教师名额、数据分析',
+    features: ['管理机构牛师', '发布课程活动', '代录家长需求', '多渠道推广招生'],
+    memberBenefit: '更多牛师名额、数据分析',
   },
 ];
 

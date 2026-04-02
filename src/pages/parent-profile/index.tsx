@@ -34,7 +34,7 @@ interface ParentInfo {
 }
 
 /**
- * 家长主页（教师端查看）
+ * 家长主页（牛师端查看）
  */
 export default function ParentProfilePage() {
   const router = useRouter()

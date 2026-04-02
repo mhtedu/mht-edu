@@ -8,7 +8,7 @@ export interface UserInfo {
   status: number
   created_at: string
   updated_at: string
-  // 教师扩展字段
+  // 牛师扩展字段
   teacher_profile?: TeacherProfile
   // 机构扩展字段
   org_profile?: OrgProfile

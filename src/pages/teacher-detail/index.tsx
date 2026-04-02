@@ -72,11 +72,11 @@ export default function TeacherDetailPage() {
   const [momentsLoading, setMomentsLoading] = useState(false)
   const [reviewsLoading, setReviewsLoading] = useState(false)
 
-  // 获取教师信息
+  // 获取牛师信息
   useDidShow(() => {
     // 尝试通过分享链接锁定分销关系
     autoLockOnPageLoad(router.params).then(() => {
-      console.log('[教师详情] 分销锁定处理完成')
+      console.log('[牛师详情] 分销锁定处理完成')
     })
     fetchTeacherInfo()
   })
@@ -91,12 +91,12 @@ export default function TeacherDetailPage() {
         method: 'GET',
       })
 
-      console.log('教师信息:', res.data)
+      console.log('牛师信息:', res.data)
       if (res.data && res.data.data) {
         setTeacher(res.data.data)
       }
     } catch (error) {
-      console.error('获取教师信息失败:', error)
+      console.error('获取牛师信息失败:', error)
     } finally {
       setLoading(false)
     }
@@ -112,7 +112,7 @@ export default function TeacherDetailPage() {
         method: 'GET',
       })
 
-      console.log('教师动态:', res.data)
+      console.log('牛师动态:', res.data)
       if (res.data && res.data.data && res.data.data.list) {
         setMoments(res.data.data.list)
       }
@@ -133,7 +133,7 @@ export default function TeacherDetailPage() {
         method: 'GET',
       })
 
-      console.log('教师评价:', res.data)
+      console.log('牛师评价:', res.data)
       if (res.data && res.data.data && res.data.data.list) {
         setReviews(res.data.data.list)
       }
@@ -194,7 +194,7 @@ export default function TeacherDetailPage() {
 
       console.log('解锁结果:', res.data)
       if (res.data && res.data.data) {
-        // 更新教师信息
+        // 更新牛师信息
         setTeacher({
           ...teacher,
           contact_unlocked: [1, 3].includes(unlockType),
@@ -249,7 +249,7 @@ export default function TeacherDetailPage() {
   if (!teacher) {
     return (
       <View className="flex items-center justify-center h-screen">
-        <Text className="text-gray-500">教师不存在</Text>
+        <Text className="text-gray-500">牛师不存在</Text>
       </View>
     )
   }
@@ -271,7 +271,7 @@ export default function TeacherDetailPage() {
         </View>
       </View>
 
-      {/* 教师基本信息 */}
+      {/* 牛师基本信息 */}
       <View className="p-4 bg-white">
         <View className="flex items-center gap-3 mb-4">
           <Image
@@ -498,7 +498,7 @@ export default function TeacherDetailPage() {
                 )}
                 {review.reply && (
                   <View className="bg-gray-50 p-2 rounded mt-2">
-                    <Text className="text-xs text-gray-500">教师回复：</Text>
+                    <Text className="text-xs text-gray-500">牛师回复：</Text>
                     <Text className="text-sm text-gray-700">{review.reply}</Text>
                   </View>
                 )}
