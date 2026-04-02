@@ -803,7 +803,86 @@ export class AdminController {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教师评价表'
       `);
       
+      // 创建邀约表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS invitations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          from_user_id INT NOT NULL COMMENT '发送方ID',
+          to_user_id INT NOT NULL COMMENT '接收方ID',
+          order_id INT COMMENT '关联订单ID',
+          invitation_type VARCHAR(20) NOT NULL COMMENT '邀约类型: exchange_contact=交换联系方式, exchange_wechat=交换微信, invite_trial=邀约试课, invite_course=邀约正式课程',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待处理, 1=已同意, 2=已拒绝, 3=已过期',
+          message TEXT COMMENT '邀约留言',
+          trial_time DATETIME COMMENT '试课时间',
+          trial_address VARCHAR(255) COMMENT '试课地点',
+          response_message TEXT COMMENT '回复留言',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          expired_at TIMESTAMP COMMENT '过期时间',
+          INDEX idx_from_user (from_user_id),
+          INDEX idx_to_user (to_user_id),
+          INDEX idx_status (status),
+          INDEX idx_type (invitation_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邀约表'
+      `);
+      
       return { success: true, message: '数据库表创建成功' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 插入邀约演示数据
+   */
+  @Public()
+  @Post('init-invitations')
+  async initInvitations() {
+    try {
+      // 清空现有数据
+      await db.update(`DELETE FROM invitations`);
+      
+      // 插入演示邀约数据
+      // 家长发给老师的邀约
+      await db.update(`
+        INSERT INTO invitations (from_user_id, to_user_id, order_id, invitation_type, status, message, trial_time, trial_address, created_at) VALUES
+        (401, 100, 6, 'exchange_contact', 0, '您好，我对您的教学很感兴趣，希望能获取您的联系方式进一步沟通。', NULL, NULL, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+        (402, 101, 7, 'exchange_wechat', 0, '方便加个微信详细聊聊孩子的学习情况吗？', NULL, NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (403, 103, 8, 'invite_trial', 0, '想约一节物理试听课，看下孩子是否适应您的教学风格。', DATE_ADD(NOW(), INTERVAL 3 DAY), '海淀区中关村图书大厦', DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+        (501, 100, 9, 'invite_course', 1, '孩子高三数学急需提高，希望能正式上课。', NULL, NULL, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+        (502, 104, 10, 'exchange_contact', 2, '希望获取您的联系方式。', NULL, NULL, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+        (601, 102, 12, 'exchange_wechat', 1, '方便加微信沟通孩子英语学习吗？', NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+        (602, 105, 13, 'invite_trial', 0, '希望安排一次数学试听课。', DATE_ADD(NOW(), INTERVAL 5 DAY), '线上授课', DATE_SUB(NOW(), INTERVAL 10 MINUTE))
+      `);
+      
+      return { success: true, message: '邀约演示数据初始化成功' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 查看邀约列表（测试用）
+   */
+  @Public()
+  @Get('invitations')
+  async getInvitations(@Query('userId') userId: string = '100') {
+    try {
+      const [invitations] = await db.query(`
+        SELECT i.*, 
+               u1.nickname as from_nickname, u1.avatar as from_avatar, u1.role as from_role,
+               u2.nickname as to_nickname, u2.avatar as to_avatar, u2.role as to_role,
+               o.subject as order_subject, o.student_grade as order_grade
+        FROM invitations i
+        LEFT JOIN users u1 ON i.from_user_id = u1.id
+        LEFT JOIN users u2 ON i.to_user_id = u2.id
+        LEFT JOIN orders o ON i.order_id = o.id
+        WHERE i.to_user_id = ? OR i.from_user_id = ?
+        ORDER BY i.created_at DESC
+        LIMIT 20
+      `, [parseInt(userId), parseInt(userId)]);
+      
+      return { success: true, list: invitations };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -816,6 +895,27 @@ export class AdminController {
   @Post('init-demo-data')
   async initDemoData() {
     try {
+      // 创建家长用户（如果不存在）
+      const parentIds = [
+        { id: 401, nickname: '北京家长A', city: '北京' },
+        { id: 402, nickname: '北京家长B', city: '北京' },
+        { id: 403, nickname: '北京家长C', city: '北京' },
+        { id: 501, nickname: '上海家长A', city: '上海' },
+        { id: 502, nickname: '上海家长B', city: '上海' },
+        { id: 503, nickname: '上海家长C', city: '上海' },
+        { id: 601, nickname: '广州家长A', city: '广州' },
+        { id: 602, nickname: '广州家长B', city: '广州' },
+        { id: 603, nickname: '广州家长C', city: '广州' },
+      ];
+      
+      for (const parent of parentIds) {
+        await db.update(`
+          INSERT INTO users (id, openid, nickname, avatar, role, status, city_name, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 0, 1, ?, NOW(), NOW())
+          ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), city_name = VALUES(city_name)
+        `, [parent.id, `parent_${parent.id}`, parent.nickname, `https://api.dicebear.com/7.x/avataaars/svg?seed=${parent.nickname}`, parent.city]);
+      }
+      
       // 更新北京牛师坐标
       await db.update(`UPDATE users SET latitude = 39.9042, longitude = 116.4074 WHERE id = 100`);
       await db.update(`UPDATE users SET latitude = 39.9042, longitude = 116.4074 WHERE id = 101`);

@@ -33,6 +33,7 @@ import { OrderCloseModule } from '@/modules/order-close/order-close.module';
 import { SmsModule } from '@/modules/sms/sms.module';
 import { RobotModule } from '@/modules/robot/robot.module';
 import { DocumentModule } from '@/modules/document/document.module';
+import { InvitationModule } from '@/modules/invitation/invitation.module';
 
 @Module({
   imports: [
@@ -74,6 +75,8 @@ import { DocumentModule } from '@/modules/document/document.module';
     RobotModule,
     DocumentModule,
     VisionModule,
+    // 邀约模块
+    InvitationModule,
     // 管理后台
     AdminModule,
   ],
