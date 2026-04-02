@@ -6,7 +6,7 @@ import { useUserStore, CurrentView } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
-import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2, BookOpen, Users } from 'lucide-react-taro'
+import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2, BookOpen, Users, UsersRound } from 'lucide-react-taro'
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 
 // 广告数据类型
@@ -48,6 +48,34 @@ interface TeacherItem {
   tags: string[]
 }
 
+// 活动数据类型
+interface ActivityItem {
+  id: number
+  title: string
+  cover_image: string
+  start_time: string
+  end_time: string
+  location: string
+  participant_count: number
+  max_participants: number
+  status: number
+}
+
+// 牛师班数据类型
+interface EliteClassItem {
+  id: number
+  title: string
+  subject: string
+  teacher_name: string
+  teacher_avatar?: string
+  total_lessons: number
+  current_students: number
+  max_students: number
+  price_per_lesson: number
+  distance_text?: string
+  status: number
+}
+
 // 学科选项
 const subjectOptions = ['全部', '语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
 
@@ -59,6 +87,9 @@ const HomePage: FC = () => {
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [listLoading, setListLoading] = useState(false)
   const [ads, setAds] = useState<AdItem[]>([])
+  const [bannerAds, setBannerAds] = useState<AdItem[]>([])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [eliteClasses, setEliteClasses] = useState<EliteClassItem[]>([])
 
   const { isLoggedIn, setLocation: setUserLocation, currentView, setCurrentView } = useUserStore()
   const { getSiteName } = useConfigStore()
@@ -87,13 +118,14 @@ const HomePage: FC = () => {
         setLocation(loc)
         setUserLocation(loc)
       }
-      // 加载广告
-      loadAds()
-      if (currentView === 'teacher') {
-        await loadNearbyDemands(loc)
-      } else {
-        await loadNearbyTeachers(loc)
-      }
+      // 并行加载所有数据
+      await Promise.all([
+        loadAds(),
+        loadBannerAds(),
+        loadActivities(),
+        currentView === 'teacher' ? loadNearbyDemands(loc) : loadNearbyTeachers(loc),
+        currentView === 'parent' ? loadEliteClasses(loc) : Promise.resolve(),
+      ])
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -116,10 +148,81 @@ const HomePage: FC = () => {
     }
   }
 
+  // 加载中间横幅广告
+  const loadBannerAds = async () => {
+    try {
+      console.log('加载横幅广告请求:', { url: '/api/config/ads/home_banner' })
+      const res = await Network.request({
+        url: '/api/config/ads/home_banner'
+      })
+      console.log('加载横幅广告响应:', res.data)
+      if (res.data && Array.isArray(res.data)) {
+        setBannerAds(res.data)
+      }
+    } catch (error) {
+      console.error('加载横幅广告失败:', error)
+    }
+  }
+
+  // 加载最新活动
+  const loadActivities = async () => {
+    try {
+      console.log('加载活动请求:', { url: '/api/activities/list', params: { pageSize: 4 } })
+      const res = await Network.request({
+        url: '/api/activities/list',
+        data: { pageSize: 4, status: 'active' }
+      })
+      console.log('加载活动响应:', res.data)
+      if (res.data) {
+        const list = Array.isArray(res.data) ? res.data : res.data.list || []
+        setActivities(list)
+      }
+    } catch (error) {
+      console.error('加载活动失败:', error)
+      // 模拟数据
+      setActivities([
+        { id: 1, title: '新人专属礼包', cover_image: '', start_time: '', end_time: '', location: '线上', participant_count: 128, max_participants: 500, status: 1 },
+        { id: 2, title: '会员日特惠', cover_image: '', start_time: '', end_time: '', location: '线上', participant_count: 256, max_participants: 300, status: 1 },
+        { id: 3, title: '名师公开课', cover_image: '', start_time: '', end_time: '', location: '海淀区中关村', participant_count: 45, max_participants: 100, status: 1 },
+        { id: 4, title: '暑期特训营', cover_image: '', start_time: '', end_time: '', location: '朝阳区望京', participant_count: 89, max_participants: 150, status: 1 },
+      ])
+    }
+  }
+
+  // 加载牛师班列表（家长端）
+  const loadEliteClasses = async (loc?: { latitude: number; longitude: number } | null) => {
+    try {
+      const params: Record<string, any> = { page: 1, pageSize: 4 }
+      if (loc) {
+        params.latitude = loc.latitude
+        params.longitude = loc.longitude
+      }
+      console.log('加载牛师班请求:', { url: '/api/elite-class/list', params })
+      const res = await Network.request({
+        url: '/api/elite-class/list',
+        data: params
+      })
+      console.log('加载牛师班响应:', res.data)
+      if (res.data) {
+        const list = Array.isArray(res.data) ? res.data : res.data.list || []
+        setEliteClasses(list)
+      }
+    } catch (error) {
+      console.error('加载牛师班失败:', error)
+      // 模拟数据
+      setEliteClasses([
+        { id: 1, title: '高考数学冲刺班', subject: '数学', teacher_name: '张老师', total_lessons: 20, current_students: 15, max_students: 20, price_per_lesson: 200, distance_text: '1.5km', status: 1 },
+        { id: 2, title: '英语口语提升班', subject: '英语', teacher_name: '李老师', total_lessons: 15, current_students: 8, max_students: 12, price_per_lesson: 180, distance_text: '2.3km', status: 1 },
+        { id: 3, title: '物理竞赛班', subject: '物理', teacher_name: '王老师', total_lessons: 25, current_students: 10, max_students: 15, price_per_lesson: 250, distance_text: '3.1km', status: 1 },
+        { id: 4, title: '作文写作班', subject: '语文', teacher_name: '赵老师', total_lessons: 12, current_students: 18, max_students: 25, price_per_lesson: 150, distance_text: '4.2km', status: 1 },
+      ])
+    }
+  }
+
   const loadNearbyDemands = async (loc?: { latitude: number; longitude: number } | null) => {
     setListLoading(true)
     try {
-      const params: string[] = [`page=1`, `pageSize=10`, `radius=50`]
+      const params: string[] = [`page=1`, `pageSize=20`, `radius=50`]
       if (loc) {
         params.push(`latitude=${loc.latitude}`)
         params.push(`longitude=${loc.longitude}`)
@@ -156,7 +259,7 @@ const HomePage: FC = () => {
   const loadNearbyTeachers = async (loc?: { latitude: number; longitude: number } | null) => {
     setListLoading(true)
     try {
-      const params: string[] = [`page=1`, `pageSize=10`, `radius=50`]
+      const params: string[] = [`page=1`, `pageSize=20`, `radius=50`]
       if (loc) {
         params.push(`latitude=${loc.latitude}`)
         params.push(`longitude=${loc.longitude}`)
@@ -219,6 +322,9 @@ const HomePage: FC = () => {
       loadNearbyDemands(location)
     } else {
       loadNearbyTeachers(location)
+      if (newView === 'parent') {
+        loadEliteClasses(location)
+      }
     }
   }
 
@@ -236,6 +342,12 @@ const HomePage: FC = () => {
   const goToTeacherDetail = (id: number) => Taro.navigateTo({ url: `/pages/teacher/detail?id=${id}` })
   const goToOrgList = () => Taro.navigateTo({ url: '/pages/org/list' })
   const goToPublishDemand = () => Taro.navigateTo({ url: '/pages/publish-demand/index' })
+  const goToTeacherList = () => Taro.navigateTo({ url: '/pages/teacher/list' })
+  const goToDemandList = () => Taro.navigateTo({ url: '/pages/demand/list' })
+  const goToActivityList = () => Taro.navigateTo({ url: '/pages/activities/index' })
+  const goToActivityDetail = (id: number) => Taro.navigateTo({ url: `/pages/activity-detail/index?id=${id}` })
+  const goToEliteClassList = () => Taro.navigateTo({ url: '/pages/elite-class/index' })
+  const goToEliteClassDetail = (id: number) => Taro.navigateTo({ url: `/pages/elite-class-detail/index?id=${id}` })
 
   const handleGrabOrder = (demand: DemandItem) => {
     if (!isLoggedIn) {
@@ -423,12 +535,37 @@ const HomePage: FC = () => {
           ))}
         </View>
 
+        {/* 中间横幅广告位 */}
+        {bannerAds.length > 0 && (
+          <View className="bg-white mb-2 px-4 py-3">
+            <ScrollView scrollX className="whitespace-nowrap">
+              {bannerAds.map((ad) => (
+                <View 
+                  key={ad.id} 
+                  className="inline-block w-full h-20 rounded-xl overflow-hidden mr-3"
+                  onClick={() => {
+                    if (ad.link_url) {
+                      Taro.navigateTo({ url: ad.link_url })
+                    }
+                  }}
+                >
+                  <Image 
+                    src={ad.image_url} 
+                    mode="aspectFill"
+                    className="w-full h-full"
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* 内容区域 */}
         <View className="bg-white mb-2">
-          <View className="flex flex-row items-center justify-between px-4 py-3">
+          <View className="flex flex-row items-center justify-between px-4 py-3" onClick={currentView === 'teacher' ? goToDemandList : goToTeacherList}>
             <Text className="block text-base font-semibold text-gray-900">{currentView === 'teacher' ? '附近需求' : '附近牛师'}</Text>
             <View className="flex flex-row items-center">
-              <Text className="block text-sm text-gray-400">更多</Text>
+              <Text className="block text-sm text-gray-400">{demands.length >= 20 || teachers.length >= 20 ? '点击更多' : '更多'}</Text>
               <ChevronRight size={16} color="#9CA3AF" />
             </View>
           </View>
@@ -611,37 +748,98 @@ const HomePage: FC = () => {
           )}
         </View>
 
-        {/* 热门活动区域 */}
+        {/* 家长端 - 最近牛师班 */}
+        {currentView === 'parent' && eliteClasses.length > 0 && (
+          <View className="bg-white mb-2">
+            <View className="flex flex-row items-center justify-between px-4 py-3" onClick={goToEliteClassList}>
+              <Text className="block text-base font-semibold text-gray-900">最近牛师班</Text>
+              <View className="flex flex-row items-center">
+                <Text className="block text-sm text-gray-400">点击更多</Text>
+                <ChevronRight size={16} color="#9CA3AF" />
+              </View>
+            </View>
+            <ScrollView scrollX className="whitespace-nowrap px-4">
+              {eliteClasses.map((eliteClass) => (
+                <View 
+                  key={eliteClass.id} 
+                  className="inline-block w-72 mr-3 p-3 bg-gray-50 rounded-xl"
+                  onClick={() => goToEliteClassDetail(eliteClass.id)}
+                >
+                  <View className="flex flex-row items-center mb-2">
+                    <View className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-2 shrink-0">
+                      <Text className="block text-lg font-semibold text-white">{eliteClass.teacher_name?.charAt(0) || '师'}</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="block text-sm font-semibold text-gray-900 mb-1">{eliteClass.title}</Text>
+                      <Text className="block text-xs text-gray-500">{eliteClass.teacher_name} · {eliteClass.subject}</Text>
+                    </View>
+                  </View>
+                  <View className="flex flex-row items-center justify-between mb-2">
+                    <View className="flex flex-row items-center">
+                      <BookOpen size={12} color="#6B7280" />
+                      <Text className="block text-xs text-gray-500 ml-1">{eliteClass.total_lessons}课时</Text>
+                    </View>
+                    <View className="flex flex-row items-center">
+                      <UsersRound size={12} color="#6B7280" />
+                      <Text className="block text-xs text-gray-500 ml-1">{eliteClass.current_students}/{eliteClass.max_students}人</Text>
+                    </View>
+                    {eliteClass.distance_text && (
+                      <View className="flex flex-row items-center">
+                        <MapPin size={12} color="#2563EB" />
+                        <Text className="block text-xs text-blue-600 ml-1">{eliteClass.distance_text}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View className="flex flex-row items-center justify-between">
+                    <Text className="block text-base font-semibold text-blue-600">¥{eliteClass.price_per_lesson}/课时</Text>
+                    <View className="bg-purple-100 px-2 py-1 rounded">
+                      <Text className="block text-xs text-purple-600">报名中</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 最新活动通知 */}
         <View className="bg-white pb-4">
-          <View className="flex flex-row items-center justify-between px-4 py-3">
-            <Text className="block text-base font-semibold text-gray-900">热门活动</Text>
+          <View className="flex flex-row items-center justify-between px-4 py-3" onClick={goToActivityList}>
+            <Text className="block text-base font-semibold text-gray-900">最新活动</Text>
             <View className="flex flex-row items-center">
               <Text className="block text-sm text-gray-400">更多</Text>
               <ChevronRight size={16} color="#9CA3AF" />
             </View>
           </View>
-          <ScrollView scrollX className="whitespace-nowrap px-4">
-            <View className="inline-block w-64 p-4 rounded-xl mr-3 bg-gradient-to-br from-green-500 to-green-600">
-              <View className="inline-block bg-white bg-opacity-30 px-2 py-1 rounded mb-2">
-                <Text className="block text-xs text-white">限时活动</Text>
-              </View>
-              <Text className="block text-base font-semibold text-white mb-2">新人专属礼包</Text>
-              <View className="flex flex-row items-center">
-                <Briefcase size={12} color="#fff" />
-                <Text className="block text-xs text-white ml-1">128人参与</Text>
-              </View>
+          {activities.length > 0 ? (
+            <View className="px-4">
+              {activities.map((activity) => (
+                <View 
+                  key={activity.id} 
+                  className="flex flex-row items-center py-3 border-b border-gray-100 last:border-b-0"
+                  onClick={() => goToActivityDetail(activity.id)}
+                >
+                  <View className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center mr-3 shrink-0">
+                    <Calendar size={20} color="#fff" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="block text-sm font-semibold text-gray-900 mb-1">{activity.title}</Text>
+                    <View className="flex flex-row items-center">
+                      <MapPin size={12} color="#9CA3AF" />
+                      <Text className="block text-xs text-gray-500 ml-1 mr-3">{activity.location}</Text>
+                      <Users size={12} color="#9CA3AF" />
+                      <Text className="block text-xs text-gray-500 ml-1">{activity.participant_count}/{activity.max_participants}人</Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={16} color="#9CA3AF" />
+                </View>
+              ))}
             </View>
-            <View className="inline-block w-64 p-4 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600">
-              <View className="inline-block bg-white bg-opacity-30 px-2 py-1 rounded mb-2">
-                <Text className="block text-xs text-white">会员专享</Text>
-              </View>
-              <Text className="block text-base font-semibold text-white mb-2">会员日特惠</Text>
-              <View className="flex flex-row items-center">
-                <Crown size={12} color="#fff" />
-                <Text className="block text-xs text-white ml-1">256人参与</Text>
-              </View>
+          ) : (
+            <View className="py-6 text-center">
+              <Text className="block text-sm text-gray-400">暂无活动</Text>
             </View>
-          </ScrollView>
+          )}
         </View>
 
         {/* 未登录提示 */}

@@ -54,6 +54,7 @@ export default defineAppConfig({
     'pages/admin-elite-class/index',
     'pages/org-membership/index',
     'pages/org-students/index',
+    'pages/demand/list',
   ],
   window: {
     backgroundTextStyle: 'light',
