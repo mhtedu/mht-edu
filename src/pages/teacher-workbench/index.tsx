@@ -10,7 +10,6 @@ import {
   TrendingUp, ChevronRight, Plus, MessageCircle,
   BookOpen, Award, Star, Send, Clock
 } from 'lucide-react-taro';
-import './index.css';
 
 interface Stats {
   today_earnings: number;

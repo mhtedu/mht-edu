@@ -21,6 +21,8 @@ export default defineAppConfig({
     'pages/pay-result/index',
     'pages/teacher-auth/index',
     'pages/org-auth/index',
+    'pages/create-activity/index',
+    'pages/activity-manage/index',
   ],
   window: {
     backgroundTextStyle: 'light',
