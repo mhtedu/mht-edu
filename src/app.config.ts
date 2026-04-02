@@ -17,6 +17,8 @@ export default defineAppConfig({
     'pages/activities/index',
     'pages/activity-detail/index',
     'pages/my-activities/index',
+    'pages/pay/index',
+    'pages/pay-result/index',
   ],
   window: {
     backgroundTextStyle: 'light',
