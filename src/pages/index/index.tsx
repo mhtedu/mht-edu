@@ -55,8 +55,8 @@ interface ActivityItem {
   cover_image: string
   start_time: string
   end_time: string
-  location: string
-  participant_count: number
+  address: string
+  current_participants: number
   max_participants: number
   status: number
 }
@@ -170,7 +170,7 @@ const HomePage: FC = () => {
       console.log('加载活动请求:', { url: '/api/activities/list', params: { pageSize: 4 } })
       const res = await Network.request({
         url: '/api/activities/list',
-        data: { pageSize: 4, status: 'active' }
+        data: { pageSize: 4 }
       })
       console.log('加载活动响应:', res.data)
       if (res.data) {
@@ -181,10 +181,10 @@ const HomePage: FC = () => {
       console.error('加载活动失败:', error)
       // 模拟数据
       setActivities([
-        { id: 1, title: '新人专属礼包', cover_image: '', start_time: '', end_time: '', location: '线上', participant_count: 128, max_participants: 500, status: 1 },
-        { id: 2, title: '会员日特惠', cover_image: '', start_time: '', end_time: '', location: '线上', participant_count: 256, max_participants: 300, status: 1 },
-        { id: 3, title: '名师公开课', cover_image: '', start_time: '', end_time: '', location: '海淀区中关村', participant_count: 45, max_participants: 100, status: 1 },
-        { id: 4, title: '暑期特训营', cover_image: '', start_time: '', end_time: '', location: '朝阳区望京', participant_count: 89, max_participants: 150, status: 1 },
+        { id: 1, title: '新人专属礼包', cover_image: '', start_time: '', end_time: '', address: '线上', current_participants: 128, max_participants: 500, status: 1 },
+        { id: 2, title: '会员日特惠', cover_image: '', start_time: '', end_time: '', address: '线上', current_participants: 256, max_participants: 300, status: 1 },
+        { id: 3, title: '名师公开课', cover_image: '', start_time: '', end_time: '', address: '海淀区中关村', current_participants: 45, max_participants: 100, status: 1 },
+        { id: 4, title: '暑期特训营', cover_image: '', start_time: '', end_time: '', address: '朝阳区望京', current_participants: 89, max_participants: 150, status: 1 },
       ])
     }
   }
@@ -826,9 +826,9 @@ const HomePage: FC = () => {
                     <Text className="block text-sm font-semibold text-gray-900 mb-1">{activity.title}</Text>
                     <View className="flex flex-row items-center">
                       <MapPin size={12} color="#9CA3AF" />
-                      <Text className="block text-xs text-gray-500 ml-1 mr-3">{activity.location}</Text>
+                      <Text className="block text-xs text-gray-500 ml-1 mr-3">{activity.address || '线上活动'}</Text>
                       <Users size={12} color="#9CA3AF" />
-                      <Text className="block text-xs text-gray-500 ml-1">{activity.participant_count}/{activity.max_participants}人</Text>
+                      <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants}/{activity.max_participants || '不限'}人</Text>
                     </View>
                   </View>
                   <ChevronRight size={16} color="#9CA3AF" />

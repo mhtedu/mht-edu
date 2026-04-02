@@ -881,13 +881,15 @@ export class AdminController {
       // 删除所有广告
       await db.update(`DELETE FROM ad_positions`);
       
-      // 重新插入4条广告
+      // 重新插入广告数据
       await db.update(`
         INSERT INTO ad_positions (position_key, title, image_url, link_url, sort_order, is_active) VALUES
         ('home_top', '新人专享福利', 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=400&fit=crop', '/pages/member/index', 1, 1),
         ('home_top', '会员日特惠', 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&h=400&fit=crop', '/pages/membership/index', 2, 1),
         ('home_top', '名师一对一定制课程', 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&h=400&fit=crop', '/pages/teacher/list', 3, 1),
-        ('home_top', '暑期集训营火热报名', 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&h=400&fit=crop', '/pages/activities/index', 4, 1)
+        ('home_top', '暑期集训营火热报名', 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&h=400&fit=crop', '/pages/activities/index', 4, 1),
+        ('home_banner', '牛师班招生中', 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=200&fit=crop', '/pages/elite-class/index', 1, 1),
+        ('home_banner', '优质机构推荐', 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&h=200&fit=crop', '/pages/org/list', 2, 1)
       `);
       
       return { success: true, message: '广告数据已清理' };

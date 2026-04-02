@@ -1,8 +1,8 @@
 {
-  "miniprogramRoot": "./dist",
-  "projectname": "coze-mini-program",
+  "miniprogramRoot": "./dist-weapp",
+  "projectname": "mht-edu",
   "description": "棉花糖教育成长平台",
-  "appid": "wx81e127cbb16df249",
+  "appid": "请替换为您的小程序AppID",
   "setting": {
     "urlCheck": false,
     "es6": false,
