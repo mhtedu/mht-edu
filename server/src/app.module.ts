@@ -40,6 +40,7 @@ import { NotificationModule } from '@/modules/notification/notification.module';
 import { DemoModule } from '@/modules/demo/demo.module';
 import { OrgMembershipModule } from '@/modules/org-membership/org-membership.module';
 import { OrgValueModule } from '@/modules/org-value/org-value.module';
+import { ResourceModule } from '@/modules/resource/resource.module';
 
 @Module({
   imports: [
@@ -92,6 +93,8 @@ import { OrgValueModule } from '@/modules/org-value/org-value.module';
     DemoModule,
     // 测试数据初始化模块
     SeedModule,
+    // 资源共享模块
+    ResourceModule,
     // 管理后台
     AdminModule,
   ],

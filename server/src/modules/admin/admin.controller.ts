@@ -2166,4 +2166,397 @@ export class AdminController {
       return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
     }
   }
+
+  // ==================== 资源管理 ====================
+
+  /**
+   * 创建资源相关表
+   */
+  @Post('create-resource-tables')
+  @Public()
+  async createResourceTables() {
+    try {
+      // 创建资源分类表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS resource_categories (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(50) NOT NULL COMMENT '分类名称',
+          icon VARCHAR(255) COMMENT '分类图标',
+          sort_order INT DEFAULT 0 COMMENT '排序',
+          is_active TINYINT DEFAULT 1 COMMENT '是否启用',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源分类表'
+      `);
+
+      // 创建资源表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS resources (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(200) NOT NULL COMMENT '资源标题',
+          description TEXT COMMENT '资源描述',
+          category_id INT NOT NULL COMMENT '分类ID',
+          type VARCHAR(20) DEFAULT 'document' COMMENT '类型: document/video/audio/other',
+          author_id INT NOT NULL COMMENT '作者ID',
+          file_url VARCHAR(500) NOT NULL COMMENT '文件URL',
+          file_name VARCHAR(200) COMMENT '原文件名',
+          file_size INT COMMENT '文件大小(字节)',
+          file_ext VARCHAR(20) COMMENT '文件扩展名',
+          cover_image VARCHAR(500) COMMENT '封面图',
+          price DECIMAL(10,2) DEFAULT 0 COMMENT '价格',
+          is_free TINYINT DEFAULT 1 COMMENT '是否免费',
+          tags JSON COMMENT '标签',
+          view_count INT DEFAULT 0 COMMENT '浏览量',
+          download_count INT DEFAULT 0 COMMENT '下载量',
+          commission_rate DECIMAL(5,4) DEFAULT 0.1000 COMMENT '佣金比例',
+          status TINYINT DEFAULT 1 COMMENT '状态: 0待审核 1已发布 2已下架',
+          is_active TINYINT DEFAULT 1 COMMENT '是否有效',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_category (category_id),
+          INDEX idx_author (author_id),
+          INDEX idx_status (status, is_active),
+          INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教学资源表'
+      `);
+
+      // 创建购买记录表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS resource_purchases (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_no VARCHAR(50) COMMENT '订单号',
+          resource_id INT NOT NULL COMMENT '资源ID',
+          user_id INT NOT NULL COMMENT '购买者ID',
+          price DECIMAL(10,2) DEFAULT 0 COMMENT '原价',
+          actual_amount DECIMAL(10,2) DEFAULT 0 COMMENT '实付金额',
+          author_income DECIMAL(10,2) DEFAULT 0 COMMENT '作者收益',
+          platform_commission DECIMAL(10,2) DEFAULT 0 COMMENT '平台佣金',
+          commission_rate DECIMAL(5,4) DEFAULT 0 COMMENT '佣金比例',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0待支付 1已支付 2已退款',
+          paid_at DATETIME COMMENT '支付时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_resource (resource_id),
+          INDEX idx_user (user_id),
+          INDEX idx_order_no (order_no),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源购买记录表'
+      `);
+
+      // 创建收益记录表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS resource_earnings (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          resource_id INT NOT NULL COMMENT '资源ID',
+          purchase_id INT NOT NULL COMMENT '购买记录ID',
+          amount DECIMAL(10,2) DEFAULT 0 COMMENT '收益金额',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0待结算 1已结算',
+          settled_at DATETIME COMMENT '结算时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_user (user_id),
+          INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源收益记录表'
+      `);
+
+      // 创建资源评价表
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS resource_reviews (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          resource_id INT NOT NULL COMMENT '资源ID',
+          user_id INT NOT NULL COMMENT '用户ID',
+          rating TINYINT NOT NULL COMMENT '评分1-5',
+          content TEXT COMMENT '评价内容',
+          status TINYINT DEFAULT 1 COMMENT '状态',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_resource (resource_id),
+          INDEX idx_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源评价表'
+      `);
+
+      // 插入默认分类
+      await db.update(`
+        INSERT IGNORE INTO resource_categories (id, name, icon, sort_order) VALUES
+        (1, '课件PPT', 'ppt', 1),
+        (2, '教案设计', 'file-text', 2),
+        (3, '习题试卷', 'file-question', 3),
+        (4, '教学视频', 'video', 4),
+        (5, '音频素材', 'audio', 5),
+        (6, '图片素材', 'image', 6),
+        (7, '教学工具', 'tool', 7),
+        (8, '其他资源', 'folder', 8)
+      `);
+
+      return { success: true, message: '资源相关表创建成功' };
+    } catch (error) {
+      console.error('创建资源表失败:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取资源列表（管理后台）
+   */
+  @Get('resources')
+  @Public()
+  async getResources(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    try {
+      const conditions: string[] = ['1=1'];
+      const params: any[] = [];
+
+      if (status !== undefined && status !== '') {
+        conditions.push('r.status = ?');
+        params.push(parseInt(status));
+      }
+      if (category) {
+        conditions.push('r.category_id = ?');
+        params.push(parseInt(category));
+      }
+      if (keyword) {
+        conditions.push('(r.title LIKE ? OR r.description LIKE ?)');
+        params.push(`%${keyword}%`, `%${keyword}%`);
+      }
+
+      const whereClause = conditions.join(' AND ');
+
+      const [list] = await db.query(`
+        SELECT r.*, c.name as category_name, u.nickname as author_name, u.avatar as author_avatar,
+          (SELECT COUNT(*) FROM resource_purchases WHERE resource_id = r.id AND status = 1) as sales_count
+        FROM resources r
+        LEFT JOIN resource_categories c ON r.category_id = c.id
+        LEFT JOIN users u ON r.author_id = u.id
+        WHERE ${whereClause}
+        ORDER BY r.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM resources r WHERE ${whereClause}
+      `, params);
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取资源列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 审核资源
+   */
+  @Post('resources/:id/audit')
+  @Public()
+  async auditResource(@Param('id') id: string, @Body() body: { status: number; reason?: string }) {
+    try {
+      await db.update(`
+        UPDATE resources SET status = ?, updated_at = NOW() WHERE id = ?
+      `, [body.status, parseInt(id)]);
+      
+      return { success: true, message: '审核成功' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 删除资源
+   */
+  @Post('resources/:id/delete')
+  @Public()
+  async deleteResource(@Param('id') id: string) {
+    try {
+      await db.update(`
+        UPDATE resources SET is_active = 0, updated_at = NOW() WHERE id = ?
+      `, [parseInt(id)]);
+      
+      return { success: true, message: '删除成功' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取资源分类列表
+   */
+  @Get('resource-categories')
+  @Public()
+  async getResourceCategories() {
+    try {
+      const [list] = await db.query(`
+        SELECT * FROM resource_categories ORDER BY sort_order ASC
+      `);
+      return list;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * 添加资源分类
+   */
+  @Post('resource-categories')
+  @Public()
+  async addResourceCategory(@Body() body: { name: string; icon?: string; sort_order?: number }) {
+    try {
+      const insertId = await db.insert(`
+        INSERT INTO resource_categories (name, icon, sort_order) VALUES (?, ?, ?)
+      `, [body.name, body.icon || '', body.sort_order || 0]);
+      
+      return { success: true, id: insertId };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取资源收益统计
+   */
+  @Get('resource-earnings')
+  @Public()
+  async getResourceEarnings(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    try {
+      const [list] = await db.query(`
+        SELECT re.*, r.title as resource_title, u.nickname as author_name
+        FROM resource_earnings re
+        LEFT JOIN resources r ON re.resource_id = r.id
+        LEFT JOIN users u ON re.user_id = u.id
+        ORDER BY re.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [pageSizeNum, offset]);
+      
+      const [stats] = await db.query(`
+        SELECT 
+          COALESCE(SUM(amount), 0) as total_earnings,
+          COALESCE(SUM(CASE WHEN status = 0 THEN amount ELSE 0 END), 0) as pending_earnings,
+          COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as settled_earnings,
+          COUNT(*) as total_count
+        FROM resource_earnings
+      `);
+      
+      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM resource_earnings`);
+      
+      return { 
+        list, 
+        total: countResult[0]?.total || 0, 
+        page: pageNum, 
+        pageSize: pageSizeNum,
+        stats: stats[0] || { total_earnings: 0, pending_earnings: 0, settled_earnings: 0, total_count: 0 }
+      };
+    } catch (error) {
+      console.error('获取资源收益失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum, stats: {} };
+    }
+  }
+
+  /**
+   * 结算收益
+   */
+  @Post('resource-earnings/:id/settle')
+  @Public()
+  async settleEarning(@Param('id') id: string) {
+    try {
+      await db.update(`
+        UPDATE resource_earnings SET status = 1, settled_at = NOW() WHERE id = ? AND status = 0
+      `, [parseInt(id)]);
+      
+      return { success: true, message: '结算成功' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 批量结算收益
+   */
+  @Post('resource-earnings/batch-settle')
+  @Public()
+  async batchSettleEarnings(@Body() body: { userId?: number }) {
+    try {
+      const conditions: string[] = ['status = 0'];
+      const params: any[] = [];
+      
+      if (body.userId) {
+        conditions.push('user_id = ?');
+        params.push(body.userId);
+      }
+      
+      const whereClause = conditions.join(' AND ');
+      
+      const affectedRows = await db.update(`
+        UPDATE resource_earnings SET status = 1, settled_at = NOW() WHERE ${whereClause}
+      `, params);
+      
+      return { success: true, message: `已结算 ${affectedRows} 条记录` };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * 获取/设置平台佣金比例
+   */
+  @Get('resource-commission-rate')
+  @Public()
+  async getCommissionRate() {
+    try {
+      const [configs] = await db.query(`
+        SELECT config_value FROM system_configs WHERE config_key = 'resource_commission_rate'
+      `);
+      
+      return { 
+        rate: configs.length > 0 ? parseFloat(configs[0].config_value) : 0.1,
+        defaultRate: 0.1
+      };
+    } catch (error) {
+      return { rate: 0.1, defaultRate: 0.1 };
+    }
+  }
+
+  /**
+   * 设置平台佣金比例
+   */
+  @Post('resource-commission-rate')
+  @Public()
+  async setCommissionRate(@Body() body: { rate: number }) {
+    try {
+      const rate = Math.max(0, Math.min(1, body.rate)); // 限制在 0-1 之间
+      
+      // 检查是否存在
+      const [existing] = await db.query(`
+        SELECT id FROM system_configs WHERE config_key = 'resource_commission_rate'
+      `);
+      
+      if (existing.length > 0) {
+        await db.update(`
+          UPDATE system_configs SET config_value = ?, updated_at = NOW() 
+          WHERE config_key = 'resource_commission_rate'
+        `, [rate.toString()]);
+      } else {
+        await db.update(`
+          INSERT INTO system_configs (config_key, config_value, description, created_at)
+          VALUES ('resource_commission_rate', ?, '资源销售平台佣金比例', NOW())
+        `, [rate.toString()]);
+      }
+      
+      return { success: true, message: '佣金比例设置成功', rate };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
 }

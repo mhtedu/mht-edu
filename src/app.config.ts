@@ -55,6 +55,10 @@ export default defineAppConfig({
     'pages/org-membership/index',
     'pages/org-students/index',
     'pages/demand/list',
+    'pages/resource/index',
+    'pages/resource/detail',
+    'pages/resource/upload',
+    'pages/resource/my',
   ],
   window: {
     backgroundTextStyle: 'light',
