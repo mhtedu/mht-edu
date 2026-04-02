@@ -889,6 +889,196 @@ export class AdminController {
   }
 
   /**
+   * 调试：查看消息提醒表数据
+   */
+  @Public()
+  @Get('debug/reminders')
+  async debugReminders() {
+    try {
+      const [reminders] = await db.query(`SELECT * FROM message_reminders LIMIT 10`);
+      const [conversations] = await db.query(`SELECT * FROM conversations LIMIT 10`);
+      const [messages] = await db.query(`SELECT * FROM messages LIMIT 10`);
+      return { reminders, conversations, messages };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  /**
+   * 调试：查看表结构
+   */
+  @Public()
+  @Get('debug/tables')
+  async debugTables() {
+    try {
+      const [orders] = await db.query(`DESCRIBE orders`);
+      const [orderMatches] = await db.query(`DESCRIBE order_matches`);
+      return { orders, orderMatches };
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
+
+  /**
+   * 初始化消息演示数据
+   */
+  @Public()
+  @Post('init-messages')
+  async initMessages() {
+    try {
+      // 先删除再重建表（确保结构正确）
+      await db.update(`DROP TABLE IF EXISTS message_reminders`);
+      await db.update(`DROP TABLE IF EXISTS messages`);
+      await db.update(`DROP TABLE IF EXISTS conversations`);
+
+      // 创建会话表
+      await db.update(`
+        CREATE TABLE conversations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_id INT COMMENT '关联订单ID',
+          user1_id INT NOT NULL COMMENT '用户1ID（较小ID）',
+          user2_id INT NOT NULL COMMENT '用户2ID（较大ID）',
+          last_message VARCHAR(500),
+          last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          user1_unread INT DEFAULT 0,
+          user2_unread INT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_users (user1_id, user2_id),
+          INDEX idx_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话表'
+      `);
+
+      // 创建消息表
+      await db.update(`
+        CREATE TABLE messages (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          conversation_id INT NOT NULL,
+          sender_id INT NOT NULL,
+          content TEXT NOT NULL,
+          msg_type TINYINT DEFAULT 0 COMMENT '0-文本 1-图片 2-系统',
+          is_robot TINYINT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_conversation (conversation_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表'
+      `);
+
+      // 创建消息提醒表
+      await db.update(`
+        CREATE TABLE message_reminders (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          from_user_id INT COMMENT '来源用户ID',
+          type TINYINT NOT NULL COMMENT '1-订单 2-评价 3-消息 4-系统',
+          target_id INT COMMENT '关联ID',
+          content VARCHAR(500),
+          is_read TINYINT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_user (user_id, is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息提醒表'
+      `);
+
+      // 插入会话数据
+      await db.update(`
+        INSERT INTO conversations (id, order_id, user1_id, user2_id, last_message, last_message_at, user1_unread, user2_unread) VALUES
+        (1, 6, 100, 401, '好的，明天下午3点可以试课', DATE_SUB(NOW(), INTERVAL 1 HOUR), 0, 1),
+        (2, 9, 100, 501, '请问您的教学方式是怎样的？', DATE_SUB(NOW(), INTERVAL 3 HOUR), 1, 0),
+        (3, 7, 101, 402, '孩子英语基础怎么样？', DATE_SUB(NOW(), INTERVAL 5 HOUR), 0, 2),
+        (4, NULL, 1, 401, '欢迎使用牛师很忙平台！', DATE_SUB(NOW(), INTERVAL 1 DAY), 0, 0)
+      `);
+
+      // 插入消息数据
+      await db.update(`
+        INSERT INTO messages (conversation_id, sender_id, content, msg_type, is_robot, created_at) VALUES
+        (1, 401, '张老师您好，我想了解一下您的授课方式', 0, 0, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (1, 100, '您好！我主要采用启发式教学，注重培养学生的思维能力', 0, 0, DATE_SUB(NOW(), INTERVAL 1.5 HOUR)),
+        (1, 401, '那可以安排一次试课吗？', 0, 0, DATE_SUB(NOW(), INTERVAL 1.2 HOUR)),
+        (1, 100, '好的，明天下午3点可以试课', 0, 0, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+        (2, 501, '张老师，您能帮孩子冲刺高考数学吗？', 0, 0, DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+        (2, 100, '可以的，我有丰富的高考辅导经验', 0, 0, DATE_SUB(NOW(), INTERVAL 3.5 HOUR)),
+        (2, 501, '请问您的教学方式是怎样的？', 0, 0, DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+        (3, 402, '王老师，孩子的英语口语比较弱', 0, 0, DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+        (3, 101, '别担心，我会有针对性地进行口语训练', 0, 0, DATE_SUB(NOW(), INTERVAL 5.5 HOUR)),
+        (3, 402, '孩子英语基础怎么样？', 0, 0, DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+        (4, 1, '欢迎使用牛师很忙平台！祝您找到满意的老师。', 0, 1, DATE_SUB(NOW(), INTERVAL 1 DAY))
+      `);
+
+      // 插入消息提醒数据
+      await db.update(`
+        INSERT INTO message_reminders (user_id, from_user_id, type, target_id, content, is_read, created_at) VALUES
+        (401, 100, 1, 6, '张老师接受了您的订单，请查看详情', 0, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+        (401, 100, 3, 1, '张老师回复了您的消息', 0, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+        (501, 100, 1, 9, '张老师接受了您的订单', 0, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (402, 101, 3, 3, '王老师回复了您的消息', 0, DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+        (100, 401, 1, 6, '您收到新的订单抢单请求', 1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+        (100, 501, 1, 9, '您收到新的订单抢单请求', 1, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+        (401, 0, 4, NULL, '系统将于今晚进行维护，请提前保存重要信息', 1, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+        (403, 103, 2, 8, '请对李老师的试课进行评价', 1, DATE_SUB(NOW(), INTERVAL 4 DAY))
+      `);
+
+      return { success: true, message: '消息演示数据初始化成功' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 初始化订单演示数据（含各种状态）
+   */
+  @Public()
+  @Post('init-order-demo')
+  async initOrderDemo() {
+    try {
+      // 删除并重建 order_matches 表
+      await db.update(`DROP TABLE IF EXISTS order_matches`);
+      await db.update(`
+        CREATE TABLE order_matches (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_id INT NOT NULL,
+          teacher_id INT NOT NULL,
+          user_id INT DEFAULT 0,
+          status TINYINT DEFAULT 0 COMMENT '0-待选择 1-已选中 2-已拒绝 3-已失效',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_order (order_id),
+          INDEX idx_teacher (teacher_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单匹配表'
+      `);
+
+      // 清空现有订单数据
+      await db.update(`DELETE FROM orders WHERE id >= 100`);
+
+      // 插入不同状态的订单
+      await db.update(`
+        INSERT INTO orders (id, order_no, user_id, parent_id, subject, student_grade, hourly_rate, description, address, latitude, longitude, status, matched_teacher_id, created_at) VALUES
+        (100, 'ORD20260401001', 401, 401, '数学', '高二', 180, '孩子数学基础薄弱，需要系统补习', '朝阳区望京', 39.9142, 116.4174, 0, NULL, NOW()),
+        (101, 'ORD20260401002', 402, 402, '英语', '初三', 150, '中考英语冲刺，需要提高阅读理解', '海淀区中关村', 39.9342, 116.4374, 0, NULL, NOW()),
+        (102, 'ORD20260401003', 403, 403, '物理', '高一', 200, '物理力学部分需要加强', '西城区金融街', 39.9542, 116.4574, 0, NULL, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+        (103, 'ORD20260401004', 501, 501, '数学', '高三', 250, '高考数学冲刺，目标130分以上', '浦东新区陆家嘴', 31.2404, 121.4837, 1, 100, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (104, 'ORD20260401005', 502, 502, '化学', '高二', 180, '化学实验原理理解困难', '徐汇区徐家汇', 31.2604, 121.5037, 2, 101, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+        (105, 'ORD20260401006', 601, 601, '英语', '高一', 160, '英语语法系统学习', '天河区珠江新城', 23.1391, 113.2744, 3, 102, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+        (106, 'ORD20260401007', 602, 602, '物理', '高二', 180, '物理电磁学专项训练', '越秀区东山口', 23.1591, 113.2944, 4, 103, DATE_SUB(NOW(), INTERVAL 7 DAY)),
+        (107, 'ORD20260401008', 401, 401, '数学', '高一', 150, '这个订单匹配失败，已退回', '朝阳区三里屯', 39.9242, 116.4474, 0, NULL, DATE_SUB(NOW(), INTERVAL 5 DAY))
+      `);
+
+      // 插入抢单记录
+      await db.update(`
+        INSERT INTO order_matches (order_id, teacher_id, user_id, status, created_at) VALUES
+        (102, 100, 100, 0, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+        (102, 101, 101, 0, DATE_SUB(NOW(), INTERVAL 25 MINUTE)),
+        (103, 100, 100, 1, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (103, 104, 104, 2, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+        (104, 101, 101, 1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+        (105, 102, 102, 1, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+        (106, 103, 103, 1, DATE_SUB(NOW(), INTERVAL 7 DAY))
+      `);
+
+      return { success: true, message: '订单演示数据初始化成功' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 初始化演示数据（牛师坐标、广告位、家长需求等）
    */
   @Public()

@@ -12,10 +12,11 @@ export class MessageController {
   @Get('conversations')
   async getConversations(
     @Request() req: any,
+    @Query('userId') userIdQuery: string,
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '20',
   ) {
-    const userId = req.user?.id || 1;
+    const userId = userIdQuery ? parseInt(userIdQuery) : (req.user?.id || 1);
     return this.messageService.getConversations(userId, parseInt(page), parseInt(pageSize));
   }
 
@@ -84,8 +85,11 @@ export class MessageController {
    * 获取未读消息数
    */
   @Get('unread-count')
-  async getUnreadCount(@Request() req: any) {
-    const userId = req.user?.id || 1;
+  async getUnreadCount(
+    @Request() req: any,
+    @Query('userId') userIdQuery: string,
+  ) {
+    const userId = userIdQuery ? parseInt(userIdQuery) : (req.user?.id || 1);
     return this.messageService.getUnreadCount(userId);
   }
 
@@ -95,10 +99,12 @@ export class MessageController {
   @Get('reminders')
   async getReminders(
     @Request() req: any,
+    @Query('userId') userIdQuery: string,
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '20',
   ) {
-    const userId = req.user?.id || 1;
+    // 支持从 query 参数获取 userId（用于测试），否则从 token 获取
+    const userId = userIdQuery ? parseInt(userIdQuery) : (req.user?.id || 1);
     return this.messageService.getReminders(userId, parseInt(page), parseInt(pageSize));
   }
 

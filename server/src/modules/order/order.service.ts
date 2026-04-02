@@ -367,6 +367,66 @@ export class OrderService {
   }
 
   /**
+   * 匹配失败，退回订单池
+   * 允许家长或老师在匹配不成功时将订单退回订单池
+   */
+  async reopenOrder(orderId: number, userId: number, reason?: string) {
+    const orders = await executeQuery(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    // 验证权限：只有家长或匹配的老师可以操作
+    if (order.parent_id !== userId && order.matched_teacher_id !== userId) {
+      throw new Error('无权限操作');
+    }
+
+    // 只有已匹配、试课中、进行中的订单可以退回
+    if (![1, 2, 3].includes(order.status)) {
+      throw new Error('当前订单状态不允许退回订单池');
+    }
+
+    // 通知原匹配老师（如果是家长发起的）
+    if (order.parent_id === userId && order.matched_teacher_id) {
+      await this.messageService.sendSystemMessage(
+        order.matched_teacher_id,
+        `订单 #${order.order_no} 已被家长取消匹配，原因：${reason || '无'}。订单已退回订单池。`,
+      );
+    }
+
+    // 通知家长（如果是老师发起的）
+    if (order.matched_teacher_id === userId) {
+      await this.messageService.sendSystemMessage(
+        order.parent_id,
+        `老师已取消订单 #${order.order_no} 的匹配，原因：${reason || '无'}。订单已退回订单池，其他老师可以继续抢单。`,
+      );
+    }
+
+    // 清除匹配记录，保留历史记录供参考
+    await executeQuery(`
+      UPDATE order_matches SET status = 3 WHERE order_id = ? AND status = 1
+    `, [orderId]);
+
+    // 重置订单状态
+    await executeQuery(`
+      UPDATE orders 
+      SET status = 0, 
+          matched_teacher_id = NULL
+      WHERE id = ?
+    `, [orderId]);
+
+    return { 
+      success: true, 
+      message: '订单已退回订单池，其他老师可以继续抢单' 
+    };
+  }
+
+  /**
    * 获取附近的订单
    */
   async getNearbyOrders(params: {

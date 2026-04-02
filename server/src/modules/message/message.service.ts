@@ -163,8 +163,8 @@ export class MessageService {
 
     // 创建新会话
     const result = await executeQuery(`
-      INSERT INTO conversations (type, order_id, user1_id, user2_id, last_message_at)
-      VALUES (0, ?, ?, ?, NOW())
+      INSERT INTO conversations (order_id, user1_id, user2_id, last_message_at)
+      VALUES (?, ?, ?, NOW())
     `, [orderId, Math.min(userId, targetUserId), Math.max(userId, targetUserId)]);
 
     return {
@@ -303,8 +303,8 @@ export class MessageService {
       conversationId = (conv[0] as any).id;
     } else {
       const result = await executeQuery(`
-        INSERT INTO conversations (type, user1_id, user2_id, last_message_at)
-        VALUES (1, 1, ?, NOW())
+        INSERT INTO conversations (user1_id, user2_id, last_message_at)
+        VALUES (1, ?, NOW())
       `, [userId]);
       conversationId = (result as any).insertId;
     }

@@ -146,6 +146,21 @@ export class OrderController {
   }
 
   /**
+   * 匹配失败，退回订单池
+   * 用于家长或老师确认匹配不成功时，将订单退回订单池供其他老师抢单
+   */
+  @Post(':id/reopen')
+  async reopenOrder(
+    @Param('id') id: string,
+    @Body() body: { reason?: string; userId?: number },
+    @Request() req: any,
+  ) {
+    // 支持从 body 获取 userId（用于测试），否则从 token 获取
+    const userId = body?.userId || req.user?.id || 1;
+    return this.orderService.reopenOrder(parseInt(id), userId, body?.reason);
+  }
+
+  /**
    * 获取订单推荐教师
    */
   @Get(':id/recommended-teachers')
