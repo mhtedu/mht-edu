@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import { formatPrice } from '@/utils'
-import { Star, MapPin, SlidersHorizontal } from 'lucide-react-taro'
+import { Star, MapPin, SlidersHorizontal, Eye } from 'lucide-react-taro'
 import './list.css'
 
 interface TeacherItem {
@@ -266,9 +266,15 @@ const TeacherListPage: FC = () => {
                 <View className="price-row">
                   <Text className="price">{formatPrice(teacher.hourly_rate_min, teacher.hourly_rate_max)}</Text>
                 </View>
-                <View className="distance-row">
-                  <MapPin size={14} color="#9CA3AF" />
-                  <Text className="distance">{teacher.distance_text}</Text>
+                <View className="action-row">
+                  <View className="distance-row">
+                    <MapPin size={14} color="#9CA3AF" />
+                    <Text className="distance">{teacher.distance_text}</Text>
+                  </View>
+                  <View className="detail-btn" onClick={(e) => { e.stopPropagation(); goToDetail(teacher.id) }}>
+                    <Eye size={14} color="#2563EB" />
+                    <Text className="detail-text">详情</Text>
+                  </View>
                 </View>
               </View>
             </CardContent>

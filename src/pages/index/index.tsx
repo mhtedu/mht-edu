@@ -658,6 +658,9 @@ const HomePage: FC = () => {
                   <Heart size={14} color="#6B7280" />
                   <Text className="block text-xs text-gray-500 ml-1">收藏</Text>
                 </View>
+                <View className="flex flex-row items-center px-3 py-1 border border-blue-600 rounded-full" onClick={(e) => { e.stopPropagation(); goToTeacherDetail(teacher.id) }}>
+                  <Text className="block text-xs text-blue-600">详情</Text>
+                </View>
                 <View className="flex flex-row items-center bg-blue-600 px-4 py-1 rounded-full" onClick={(e) => { e.stopPropagation(); handleContactTeacher(teacher) }}>
                   <Phone size={14} color="#fff" />
                   <Text className="block text-sm font-medium text-white ml-1">联系TA</Text>
