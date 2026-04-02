@@ -1477,4 +1477,37 @@ export class AdminController {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * 创建order_pool表（公海池）
+   */
+  @Public()
+  @Post('create-order-pool-table')
+  async createOrderPoolTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS order_pool (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_id INT NOT NULL COMMENT '订单ID',
+          original_parent_id INT NOT NULL COMMENT '原家长ID',
+          original_teacher_id INT COMMENT '原教师ID',
+          release_reason VARCHAR(500) COMMENT '释放原因',
+          release_type TINYINT NOT NULL COMMENT '释放类型: 1=家长取消, 2=教师解约, 3=系统回收',
+          pool_status TINYINT DEFAULT 0 COMMENT '公海池状态: 0=待分配, 1=已分配, 2=已过期',
+          assigned_teacher_id INT COMMENT '分配给的教师ID',
+          assigned_at TIMESTAMP NULL COMMENT '分配时间',
+          expire_at TIMESTAMP NOT NULL COMMENT '过期时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_order (order_id),
+          INDEX idx_pool_status (pool_status),
+          INDEX idx_expire (expire_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单公海池表'
+      `);
+      return { success: true, message: 'order_pool表创建成功' };
+    } catch (error) {
+      console.error('创建order_pool表失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }

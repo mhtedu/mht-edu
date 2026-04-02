@@ -20,12 +20,13 @@ export class OrderService {
 
     const result = await executeQuery(`
       INSERT INTO orders (
-        order_no, parent_id, subject, hourly_rate, student_grade, student_gender,
+        order_no, user_id, parent_id, subject, hourly_rate, student_grade, student_gender,
         address, latitude, longitude, description, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `, [
       orderNo,
       userId,
+      userId, // parent_id 也使用 userId
       data.subject,
       data.budget || data.hourly_rate || 0,
       data.grade || data.student_grade || '',
@@ -223,7 +224,7 @@ export class OrderService {
 
     // 更新订单状态
     await executeQuery(`
-      UPDATE orders SET status = 1, matched_teacher_id = ?, matched_at = NOW()
+      UPDATE orders SET status = 1, matched_teacher_id = ?
       WHERE id = ?
     `, [teacherId, orderId]);
 
