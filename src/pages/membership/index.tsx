@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, Check, Star, Gift, Zap, Lock, Info } from 'lucide-react-taro';
 import { useUserStore } from '@/stores/user';
 import { Network } from '@/network';
+import { isIOS, isWeapp } from '@/utils/device';
 import './index.css';
 
 interface Plan {
@@ -164,6 +165,33 @@ const MembershipPage = () => {
       return;
     }
 
+    // iOS 设备虚拟支付限制处理
+    if (isWeapp() && isIOS()) {
+      Taro.showModal({
+        title: '温馨提示',
+        content: '由于苹果公司政策限制，iOS设备暂不支持小程序内购买会员。请联系客服完成购买。',
+        confirmText: '联系客服',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            // 引导用户联系客服
+            Taro.setClipboardData({
+              data: 'mht_edu',
+              success: () => {
+                Taro.showToast({
+                  title: '已复制客服微信号：mht_edu',
+                  icon: 'success',
+                  duration: 2000
+                })
+              }
+            })
+          }
+        }
+      })
+      return
+    }
+
+    // 非iOS设备，正常支付流程
     setLoading(true);
     try {
       // 调用后端创建订单
@@ -363,21 +391,57 @@ const MembershipPage = () => {
 
       {/* 底部购买按钮 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
+        {/* iOS 设备提示 */}
+        {isWeapp() && isIOS() && (
+          <View className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-3">
+            <Text className="text-orange-700 text-xs">
+              iOS设备由于苹果政策限制，请点击下方按钮联系客服完成购买
+            </Text>
+          </View>
+        )}
+        
         <View className="flex flex-row items-center justify-between">
           <View>
             <Text className="text-gray-500 text-xs">应付金额</Text>
             <Text className="text-yellow-500 text-2xl font-bold">¥{(selectedPlan && selectedPlan.price) || 0}</Text>
           </View>
-          <Button 
-            className="flex-1 ml-4 bg-gradient-to-r from-yellow-400 to-orange-500"
-            size="lg"
-            disabled={loading}
-            onClick={handleBuy}
-          >
-            <Text className="text-white font-semibold">
-              {loading ? '处理中...' : isMember ? '立即续费' : '立即开通'}
-            </Text>
-          </Button>
+          
+          {/* iOS 设备显示客服按钮 */}
+          {isWeapp() && isIOS() ? (
+            <View className="flex-1 ml-4">
+              {/* 引导用户复制客服微信号 */}
+              <Button
+                className="bg-gradient-to-r from-yellow-400 to-orange-500"
+                size="lg"
+                onClick={() => {
+                  // 引导用户联系客服
+                  Taro.setClipboardData({
+                    data: 'mht_edu',
+                    success: () => {
+                      Taro.showToast({
+                        title: '已复制客服微信号：mht_edu',
+                        icon: 'success',
+                        duration: 2000
+                      })
+                    }
+                  })
+                }}
+              >
+                <Text className="text-white font-semibold text-center">联系客服购买</Text>
+              </Button>
+            </View>
+          ) : (
+            <Button 
+              className="flex-1 ml-4 bg-gradient-to-r from-yellow-400 to-orange-500"
+              size="lg"
+              disabled={loading}
+              onClick={handleBuy}
+            >
+              <Text className="text-white font-semibold">
+                {loading ? '处理中...' : isMember ? '立即续费' : '立即开通'}
+              </Text>
+            </Button>
+          )}
         </View>
       </View>
     </View>

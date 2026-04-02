@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Network } from '@/network'
 import { Crown, Check, Star, Phone, Eye, Zap } from 'lucide-react-taro'
+import { isIOS, isWeapp } from '@/utils/device'
 
 interface MembershipStatus {
   is_member: boolean
@@ -129,6 +130,35 @@ const MemberPage = () => {
   }
 
   const handlePurchase = (plan: MembershipPlan) => {
+    // iOS 设备虚拟支付限制处理
+    if (isWeapp() && isIOS()) {
+      Taro.showModal({
+        title: '温馨提示',
+        content: '由于苹果公司政策限制，iOS设备暂不支持小程序内购买会员。请联系客服完成购买。',
+        confirmText: '联系客服',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            // 引导用户联系客服
+            // 注意：小程序中打开客服需要使用 button 组件的 open-type="contact"
+            // 这里复制客服微信号到剪贴板
+            Taro.setClipboardData({
+              data: 'mht_edu',
+              success: () => {
+                Taro.showToast({
+                  title: '已复制客服微信号：mht_edu',
+                  icon: 'success',
+                  duration: 2000
+                })
+              }
+            })
+          }
+        }
+      })
+      return
+    }
+
+    // 非iOS设备，正常支付流程
     Taro.showModal({
       title: '确认开通',
       content: `${plan.name} - ¥${plan.price}\n有效期：${plan.days}天`,
@@ -221,6 +251,16 @@ const MemberPage = () => {
         {/* 套餐列表 */}
         <View className="px-4 mt-4">
           <Text className="text-base font-semibold mb-3">选择套餐</Text>
+          
+          {/* iOS 设备提示 */}
+          {isWeapp() && isIOS() && (
+            <View className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+              <Text className="text-orange-700 text-sm">
+                温馨提示：由于苹果公司政策限制，iOS设备暂不支持小程序内购买会员，请点击下方「联系客服购买」按钮完成购买。
+              </Text>
+            </View>
+          )}
+          
           <View className="flex flex-row gap-3">
             {plans.map((plan) => (
               <View
@@ -252,13 +292,38 @@ const MemberPage = () => {
                   )}
                 </View>
                 
-                <Button 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => handlePurchase(plan)}
-                >
-                  <Text className="text-white text-sm">立即开通</Text>
-                </Button>
+                {/* iOS 设备显示客服按钮 */}
+                {isWeapp() && isIOS() ? (
+                  <Button
+                    size="sm"
+                    className="w-full bg-blue-600"
+                    onClick={() => {
+                      // 引导用户联系客服
+                      // 注意：小程序中打开客服需要使用 button 组件的 open-type="contact"
+                      // 这里复制客服微信号到剪贴板
+                      Taro.setClipboardData({
+                        data: 'mht_edu',
+                        success: () => {
+                          Taro.showToast({
+                            title: '已复制客服微信号：mht_edu',
+                            icon: 'success',
+                            duration: 2000
+                          })
+                        }
+                      })
+                    }}
+                  >
+                    <Text className="text-white text-sm">联系客服购买</Text>
+                  </Button>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => handlePurchase(plan)}
+                  >
+                    <Text className="text-white text-sm">立即开通</Text>
+                  </Button>
+                )}
               </View>
             ))}
           </View>
