@@ -1,10 +1,10 @@
 {
   "miniprogramRoot": "./dist",
   "projectname": "coze-mini-program",
-  "description": "test",
-  "appid": "touristappid",
+  "description": "棉花糖教育成长平台",
+  "appid": "wx81e127cbb16df249",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "es6": false,
     "enhance": false,
     "compileHotReLoad": false,
