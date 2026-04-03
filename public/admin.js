@@ -197,12 +197,15 @@ function switchPage(pageName) {
         orders: '订单管理',
         'elite-class': '牛师班管理',
         membership: '会员套餐',
+        'membership-sales': '会员销售记录',
         activities: '活动管理',
         products: '商品管理',
         banners: '广告位管理',
         commissions: '分佣管理',
         withdrawals: '提现审核',
         agents: '代理商管理',
+        report: '运营报表',
+        export: '数据导出',
         config: '系统配置',
         payment: '支付配置',
         admins: '管理员管理',
@@ -265,6 +268,12 @@ async function renderPage(pageName) {
                 break;
             case 'agents':
                 await renderAgents();
+                break;
+            case 'report':
+                await renderReport();
+                break;
+            case 'export':
+                await renderExport();
                 break;
             case 'config':
                 await renderConfig();
@@ -2271,6 +2280,405 @@ async function filterMembershipSales() {
     } catch (error) {
         console.error('筛选失败:', error);
     }
+}
+
+// ========== 运营报表页面 ==========
+
+async function renderReport() {
+    const content = document.getElementById('mainContent');
+    
+    try {
+        // 获取报表数据
+        const [overview, userDist, orderDist, revenue, distribution] = await Promise.all([
+            fetch('/api/report/overview').then(r => r.json()),
+            fetch('/api/report/user-distribution').then(r => r.json()),
+            fetch('/api/report/order-distribution').then(r => r.json()),
+            fetch('/api/report/revenue').then(r => r.json()),
+            fetch('/api/report/distribution').then(r => r.json())
+        ]);
+
+        content.innerHTML = `
+            <div class="report-page">
+                <!-- 概览卡片 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">👥</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${overview.users?.total_users || 0}</div>
+                            <div class="stat-label">总用户数</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">📋</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${overview.orders?.total_orders || 0}</div>
+                            <div class="stat-label">总订单数</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">💰</div>
+                        <div class="stat-info">
+                            <div class="stat-value">¥${overview.payments?.total_amount || '0.00'}</div>
+                            <div class="stat-label">总收入</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">💎</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${overview.users?.member_count || 0}</div>
+                            <div class="stat-label">会员数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户分布 -->
+                <div class="report-section">
+                    <h3 class="section-title">用户分布</h3>
+                    <div class="report-grid">
+                        <div class="chart-card">
+                            <h4>角色分布</h4>
+                            <div class="distribution-list">
+                                ${(userDist.by_role || []).map(item => `
+                                    <div class="distribution-item">
+                                        <span class="dist-label">${item.role_name}</span>
+                                        <div class="dist-bar">
+                                            <div class="dist-fill" style="width: ${(item.count / (overview.users?.total_users || 1)) * 100}%"></div>
+                                        </div>
+                                        <span class="dist-value">${item.count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h4>会员分布</h4>
+                            <div class="distribution-list">
+                                ${(userDist.by_member || []).map(item => `
+                                    <div class="distribution-item">
+                                        <span class="dist-label">${item.member_type}</span>
+                                        <div class="dist-bar">
+                                            <div class="dist-fill" style="width: ${(item.count / (overview.users?.total_users || 1)) * 100}%"></div>
+                                        </div>
+                                        <span class="dist-value">${item.count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 订单分布 -->
+                <div class="report-section">
+                    <h3 class="section-title">订单分布</h3>
+                    <div class="report-grid">
+                        <div class="chart-card">
+                            <h4>订单状态分布</h4>
+                            <div class="distribution-list">
+                                ${(orderDist.by_status || []).map(item => `
+                                    <div class="distribution-item">
+                                        <span class="dist-label">${item.status_name}</span>
+                                        <div class="dist-bar">
+                                            <div class="dist-fill" style="width: ${(item.count / (overview.orders?.total_orders || 1)) * 100}%"></div>
+                                        </div>
+                                        <span class="dist-value">${item.count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h4>科目分布 TOP 10</h4>
+                            <div class="distribution-list">
+                                ${(orderDist.by_subject || []).map(item => `
+                                    <div class="distribution-item">
+                                        <span class="dist-label">${item.subject}</span>
+                                        <div class="dist-bar">
+                                            <div class="dist-fill" style="width: ${(item.count / (orderDist.by_subject?.[0]?.count || 1)) * 100}%"></div>
+                                        </div>
+                                        <span class="dist-value">${item.count}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分销统计 -->
+                <div class="report-section">
+                    <h3 class="section-title">分销统计</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">💰</div>
+                            <div class="stat-info">
+                                <div class="stat-value">¥${overview.commissions?.total_amount || '0.00'}</div>
+                                <div class="stat-label">累计佣金</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">✅</div>
+                            <div class="stat-info">
+                                <div class="stat-value">¥${overview.commissions?.settled_amount || '0.00'}</div>
+                                <div class="stat-label">已结算</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="margin-top: 16px;">
+                        <h4>分销商排行 TOP 10</h4>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>用户</th>
+                                    <th>邀请人数</th>
+                                    <th>累计佣金</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${(distribution.top_distributors || []).map((item, index) => `
+                                    <tr>
+                                        <td><span class="rank-badge rank-${index + 1}">${index + 1}</span></td>
+                                        <td>${item.nickname || '用户'}</td>
+                                        <td>${item.invite_count || 0}</td>
+                                        <td class="text-success">¥${item.total_commission || '0.00'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 添加报表样式
+        addReportStyles();
+    } catch (error) {
+        content.innerHTML = `<div class="error-state"><h3>加载失败</h3><p>${error.message}</p></div>`;
+    }
+}
+
+// ========== 数据导出页面 ==========
+
+async function renderExport() {
+    const content = document.getElementById('mainContent');
+    
+    content.innerHTML = `
+        <div class="export-page">
+            <div class="export-grid">
+                <div class="export-card">
+                    <div class="export-icon">👥</div>
+                    <h3>导出用户数据</h3>
+                    <p>导出所有用户信息，包括角色、会员状态等</p>
+                    <div class="export-filters">
+                        <select id="exportUserRole" class="form-select">
+                            <option value="">全部角色</option>
+                            <option value="0">家长</option>
+                            <option value="1">教师</option>
+                            <option value="2">机构</option>
+                        </select>
+                        <input type="date" id="exportUserStartDate" class="form-input" placeholder="开始日期">
+                        <input type="date" id="exportUserEndDate" class="form-input" placeholder="结束日期">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleExport('users')">
+                        <span>📥</span> 导出 CSV
+                    </button>
+                </div>
+
+                <div class="export-card">
+                    <div class="export-icon">📋</div>
+                    <h3>导出订单数据</h3>
+                    <p>导出所有订单信息，包括状态、科目、金额等</p>
+                    <div class="export-filters">
+                        <select id="exportOrderStatus" class="form-select">
+                            <option value="">全部状态</option>
+                            <option value="0">待匹配</option>
+                            <option value="1">已匹配</option>
+                            <option value="2">进行中</option>
+                            <option value="4">已完成</option>
+                        </select>
+                        <input type="date" id="exportOrderStartDate" class="form-input" placeholder="开始日期">
+                        <input type="date" id="exportOrderEndDate" class="form-input" placeholder="结束日期">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleExport('orders')">
+                        <span>📥</span> 导出 CSV
+                    </button>
+                </div>
+
+                <div class="export-card">
+                    <div class="export-icon">💰</div>
+                    <h3>导出支付记录</h3>
+                    <p>导出所有支付记录，包括金额、状态、时间等</p>
+                    <div class="export-filters">
+                        <select id="exportPaymentStatus" class="form-select">
+                            <option value="">全部状态</option>
+                            <option value="0">待支付</option>
+                            <option value="1">已支付</option>
+                            <option value="2">已退款</option>
+                        </select>
+                        <input type="date" id="exportPaymentStartDate" class="form-input" placeholder="开始日期">
+                        <input type="date" id="exportPaymentEndDate" class="form-input" placeholder="结束日期">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleExport('payments')">
+                        <span>📥</span> 导出 CSV
+                    </button>
+                </div>
+
+                <div class="export-card">
+                    <div class="export-icon">💎</div>
+                    <h3>导出佣金记录</h3>
+                    <p>导出所有分佣记录，包括金额、层级、状态等</p>
+                    <div class="export-filters">
+                        <select id="exportCommissionStatus" class="form-select">
+                            <option value="">全部状态</option>
+                            <option value="0">待结算</option>
+                            <option value="1">已结算</option>
+                            <option value="2">已提现</option>
+                        </select>
+                        <input type="date" id="exportCommissionStartDate" class="form-input" placeholder="开始日期">
+                        <input type="date" id="exportCommissionEndDate" class="form-input" placeholder="结束日期">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleExport('commissions')">
+                        <span>📥</span> 导出 CSV
+                    </button>
+                </div>
+
+                <div class="export-card">
+                    <div class="export-icon">💳</div>
+                    <h3>导出提现记录</h3>
+                    <p>导出所有提现申请，包括金额、账户、状态等</p>
+                    <div class="export-filters">
+                        <select id="exportWithdrawStatus" class="form-select">
+                            <option value="">全部状态</option>
+                            <option value="0">待审核</option>
+                            <option value="1">已通过</option>
+                            <option value="2">已拒绝</option>
+                            <option value="3">已打款</option>
+                        </select>
+                        <input type="date" id="exportWithdrawStartDate" class="form-input" placeholder="开始日期">
+                        <input type="date" id="exportWithdrawEndDate" class="form-input" placeholder="结束日期">
+                    </div>
+                    <button class="btn btn-primary" onclick="handleExport('withdrawals')">
+                        <span>📥</span> 导出 CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 添加导出页面样式
+    addExportStyles();
+}
+
+async function handleExport(type) {
+    let params = [];
+    
+    switch(type) {
+        case 'users':
+            const userRole = document.getElementById('exportUserRole').value;
+            const userStartDate = document.getElementById('exportUserStartDate').value;
+            const userEndDate = document.getElementById('exportUserEndDate').value;
+            if (userRole) params.push(`role=${userRole}`);
+            if (userStartDate) params.push(`start_date=${userStartDate}`);
+            if (userEndDate) params.push(`end_date=${userEndDate}`);
+            break;
+        case 'orders':
+            const orderStatus = document.getElementById('exportOrderStatus').value;
+            const orderStartDate = document.getElementById('exportOrderStartDate').value;
+            const orderEndDate = document.getElementById('exportOrderEndDate').value;
+            if (orderStatus) params.push(`status=${orderStatus}`);
+            if (orderStartDate) params.push(`start_date=${orderStartDate}`);
+            if (orderEndDate) params.push(`end_date=${orderEndDate}`);
+            break;
+        case 'payments':
+            const paymentStatus = document.getElementById('exportPaymentStatus').value;
+            const paymentStartDate = document.getElementById('exportPaymentStartDate').value;
+            const paymentEndDate = document.getElementById('exportPaymentEndDate').value;
+            if (paymentStatus) params.push(`status=${paymentStatus}`);
+            if (paymentStartDate) params.push(`start_date=${paymentStartDate}`);
+            if (paymentEndDate) params.push(`end_date=${paymentEndDate}`);
+            break;
+        case 'commissions':
+            const commissionStatus = document.getElementById('exportCommissionStatus').value;
+            const commissionStartDate = document.getElementById('exportCommissionStartDate').value;
+            const commissionEndDate = document.getElementById('exportCommissionEndDate').value;
+            if (commissionStatus) params.push(`status=${commissionStatus}`);
+            if (commissionStartDate) params.push(`start_date=${commissionStartDate}`);
+            if (commissionEndDate) params.push(`end_date=${commissionEndDate}`);
+            break;
+        case 'withdrawals':
+            const withdrawStatus = document.getElementById('exportWithdrawStatus').value;
+            const withdrawStartDate = document.getElementById('exportWithdrawStartDate').value;
+            const withdrawEndDate = document.getElementById('exportWithdrawEndDate').value;
+            if (withdrawStatus) params.push(`status=${withdrawStatus}`);
+            if (withdrawStartDate) params.push(`start_date=${withdrawStartDate}`);
+            if (withdrawEndDate) params.push(`end_date=${withdrawEndDate}`);
+            break;
+    }
+
+    const url = `/api/export/download?type=${type}&${params.join('&')}`;
+    
+    showMessage('正在生成导出文件...', 'info');
+    
+    // 创建下载链接
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showMessage('导出成功', 'success');
+}
+
+// ========== 报表和导出样式 ==========
+
+function addReportStyles() {
+    if (document.getElementById('reportStyles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'reportStyles';
+    style.textContent = `
+        .report-page { padding: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #1f2937; }
+        .stat-label { font-size: 14px; color: #6b7280; margin-top: 4px; }
+        .report-section { margin-bottom: 32px; }
+        .section-title { font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px; }
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .chart-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .chart-card h4 { font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 16px; }
+        .distribution-list { display: flex; flex-direction: column; gap: 12px; }
+        .distribution-item { display: flex; align-items: center; gap: 12px; }
+        .dist-label { width: 80px; font-size: 14px; color: #4b5563; }
+        .dist-bar { flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .dist-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s; }
+        .dist-value { width: 50px; text-align: right; font-size: 14px; font-weight: 600; color: #374151; }
+        .rank-badge { display: inline-block; width: 24px; height: 24px; border-radius: 50%; background: #e5e7eb; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600; }
+        .rank-1 { background: #fbbf24; color: white; }
+        .rank-2 { background: #9ca3af; color: white; }
+        .rank-3 { background: #d97706; color: white; }
+        .text-success { color: #10b981; font-weight: 600; }
+    `;
+    document.head.appendChild(style);
+}
+
+function addExportStyles() {
+    if (document.getElementById('exportStyles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'exportStyles';
+    style.textContent = `
+        .export-page { padding: 20px; }
+        .export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .export-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .export-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+        .export-card h3 { font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 8px; text-align: center; }
+        .export-card p { font-size: 14px; color: #6b7280; margin-bottom: 16px; text-align: center; }
+        .export-filters { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+        .form-select, .form-input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        .form-select:focus, .form-input:focus { outline: none; border-color: #3b82f6; }
+        .export-card .btn { width: 100%; padding: 12px; font-size: 16px; }
+    `;
+    document.head.appendChild(style);
 }
 
 // ========== 添加样式 ==========

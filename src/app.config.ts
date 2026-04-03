@@ -59,6 +59,9 @@ export default defineAppConfig({
     'pages/resource/detail',
     'pages/resource/upload',
     'pages/resource/my',
+    'pages/withdraw/index',
+    'pages/commission/index',
+    'pages/team/index',
   ],
   window: {
     backgroundTextStyle: 'light',

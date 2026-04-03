@@ -42,6 +42,8 @@ import { OrgMembershipModule } from '@/modules/org-membership/org-membership.mod
 import { OrgValueModule } from '@/modules/org-value/org-value.module';
 import { ResourceModule } from '@/modules/resource/resource.module';
 import { ProductModule } from '@/modules/product/product.module';
+import { ExportModule } from '@/modules/export/export.module';
+import { ReportModule } from '@/modules/report/report.module';
 
 @Module({
   imports: [
@@ -98,6 +100,10 @@ import { ProductModule } from '@/modules/product/product.module';
     ResourceModule,
     // 商品模块
     ProductModule,
+    // 数据导出模块
+    ExportModule,
+    // 运营报表模块
+    ReportModule,
     // 管理后台
     AdminModule,
   ],
