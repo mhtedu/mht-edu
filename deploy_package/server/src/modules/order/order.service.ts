@@ -1,0 +1,612 @@
+import { Injectable } from '@nestjs/common';
+import * as db from '@/storage/database/mysql-client';
+import { MessageService } from '../message/message.service';
+import { NotificationService } from '../notification/notification.service';
+
+
+@Injectable()
+export class OrderService {
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly notificationService: NotificationService,
+  ) {}
+
+  /**
+   * 创建订单
+   */
+  async createOrder(userId: number, data: any) {
+    // 生成订单号
+    const orderNo = this.generateOrderNo();
+
+    const [result] = await db.query(`
+      INSERT INTO orders (
+        order_no, user_id, parent_id, subject, hourly_rate, student_grade, student_gender,
+        address, latitude, longitude, description, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `, [
+      orderNo,
+      userId,
+      userId, // parent_id 也使用 userId
+      data.subject || '',
+      data.budget || data.hourly_rate || 0,
+      data.grade || data.student_grade || '',
+      data.student_gender ?? 0,
+      data.address || null,
+      data.latitude || null,
+      data.longitude || null,
+      data.requirement || data.description || '',
+    ]);
+
+    return {
+      success: true,
+      order_id: (result as any).insertId,
+      order_no: orderNo,
+    };
+  }
+
+  /**
+   * 获取家长的订单列表
+   */
+  async getOrdersByParent(
+    parentId: number,
+    page: number,
+    pageSize: number,
+    status?: number,
+  ) {
+    const offset = (page - 1) * pageSize;
+    const conditions = ['o.parent_id = ?'];
+    const params: any[] = [parentId];
+
+    if (status !== undefined) {
+      conditions.push('o.status = ?');
+      params.push(status);
+    }
+
+    const [orders] = await db.query(`
+      SELECT 
+        o.*,
+        u.nickname as teacher_nickname, u.avatar as teacher_avatar,
+        tp.real_name as teacher_name, tp.subjects as teacher_subjects
+      FROM orders o
+      LEFT JOIN users u ON o.matched_teacher_id = u.id
+      LEFT JOIN teacher_profiles tp ON o.matched_teacher_id = tp.user_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY o.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [...params, pageSize, offset]);
+
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total FROM orders o WHERE ${conditions.join(' AND ')}
+    `, params);
+
+    // 获取每个订单的抢单数量
+    for (const order of orders as any[]) {
+      const [matchCount] = await db.query(`
+        SELECT COUNT(*) as count FROM order_matches WHERE order_id = ?
+      `, [order.id]);
+      order.match_count = matchCount[0]?.count || 0;
+    }
+
+    return {
+      list: orders,
+      total: countResult[0]?.total || 0,
+      page,
+      pageSize,
+    };
+  }
+
+  /**
+   * 获取订单详情
+   */
+  async getOrderDetail(orderId: number, userId: number) {
+    const [orders] = await db.query(`
+      SELECT o.*, 
+        u.nickname as parent_nickname, u.avatar as parent_avatar, u.mobile as parent_mobile,
+        t.nickname as teacher_nickname, t.avatar as teacher_avatar, 
+        tp.real_name as teacher_name, tp.subjects, tp.education, tp.teaching_years
+      FROM orders o
+      LEFT JOIN users u ON o.parent_id = u.id
+      LEFT JOIN users t ON o.matched_teacher_id = t.id
+      LEFT JOIN teacher_profiles tp ON o.matched_teacher_id = tp.user_id
+      WHERE o.id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    // 检查权限
+    const isParent = order.parent_id === userId;
+    const isTeacher = order.matched_teacher_id === userId;
+
+    // 联系方式权限控制
+    if (!isParent && !isTeacher) {
+      order.contact_hidden = true;
+      delete order.contact_phone;
+      delete order.parent_mobile;
+    }
+
+    // 非家长隐藏家长联系方式
+    if (!isParent) {
+      delete order.parent_mobile;
+    }
+
+    // 获取抢单列表
+    const [matches] = await db.query(`
+      SELECT om.*, 
+        u.nickname, u.avatar,
+        tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years
+      FROM order_matches om
+      LEFT JOIN users u ON om.teacher_id = u.id
+      LEFT JOIN teacher_profiles tp ON om.teacher_id = tp.user_id
+      WHERE om.order_id = ?
+      ORDER BY om.created_at DESC
+    `, [orderId]);
+
+    order.matches = matches;
+
+    return order;
+  }
+
+  /**
+   * 获取订单抢单列表
+   */
+  async getOrderMatches(orderId: number, userId: number) {
+    // 验证权限
+    const [orders] = await db.query(`
+      SELECT parent_id FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    if ((orders[0] as any).parent_id !== userId) {
+      throw new Error('无权限查看');
+    }
+
+    const [matches] = await db.query(`
+      SELECT om.*, 
+        u.nickname, u.avatar,
+        tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years, tp.hourly_rate
+      FROM order_matches om
+      LEFT JOIN users u ON om.teacher_id = u.id
+      LEFT JOIN teacher_profiles tp ON om.teacher_id = tp.user_id
+      WHERE om.order_id = ?
+      ORDER BY om.created_at DESC
+    `, [orderId]);
+
+    return matches;
+  }
+
+  /**
+   * 选择教师（匹配）
+   */
+  async selectTeacher(orderId: number, userId: number, teacherId: number) {
+    // 验证权限
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+    if (order.parent_id !== userId) {
+      throw new Error('无权限操作');
+    }
+
+    if (order.status !== 0) {
+      throw new Error('订单状态不允许选择教师');
+    }
+
+    // 检查教师是否抢单
+    const [matches] = await db.query(`
+      SELECT id FROM order_matches WHERE order_id = ? AND teacher_id = ?
+    `, [orderId, teacherId]);
+
+    if (matches.length === 0) {
+      throw new Error('该教师未抢单');
+    }
+
+    // 更新抢单记录状态
+    await db.query(`
+      UPDATE order_matches SET status = 1 WHERE order_id = ? AND teacher_id = ?
+    `, [orderId, teacherId]);
+
+    // 拒绝其他教师
+    await db.query(`
+      UPDATE order_matches SET status = 2 WHERE order_id = ? AND teacher_id != ?
+    `, [orderId, teacherId]);
+
+    // 更新订单状态
+    await db.query(`
+      UPDATE orders SET status = 1, matched_teacher_id = ?
+      WHERE id = ?
+    `, [teacherId, orderId]);
+
+    // 发送消息提醒
+    await this.messageService.sendSystemMessage(
+      teacherId,
+      `恭喜！您已成功匹配订单 #${order.order_no}，家长将在24小时内联系您。`,
+    );
+
+    // 发送匹配成功通知（微信订阅消息 + 短信）
+    try {
+      // 获取家长信息
+      const [parentInfo] = await db.query(`
+        SELECT u.nickname, u.mobile FROM users u WHERE u.id = ?
+      `, [order.parent_id]);
+      const parentName = (parentInfo[0] as any)?.nickname || '家长';
+      const parentPhone = (parentInfo[0] as any)?.mobile || '未填写';
+      
+      // 发送匹配成功通知给老师
+      await this.notificationService.notifyTeacherOnMatch(
+        teacherId,
+        orderId,
+        parentName,
+        parentPhone,
+        order.subject || '未知科目',
+      );
+    } catch (notifyError) {
+      console.error('发送匹配通知失败:', notifyError);
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * 更新订单状态
+   */
+  async updateOrderStatus(orderId: number, userId: number, status: number) {
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    // 验证权限
+    if (order.parent_id !== userId && order.matched_teacher_id !== userId) {
+      throw new Error('无权限操作');
+    }
+
+    // 状态流转检查
+    const validTransitions: Record<number, number[]> = {
+      0: [1],
+      1: [2, 5],
+      2: [3, 5],
+      3: [4, 5],
+    };
+
+    if (!validTransitions[order.status]?.includes(status)) {
+      throw new Error('状态流转不合法');
+    }
+
+    await db.query(`
+      UPDATE orders SET status = ? WHERE id = ?
+    `, [status, orderId]);
+
+    return { success: true };
+  }
+
+  /**
+   * 取消订单
+   */
+  async cancelOrder(orderId: number, userId: number, reason?: string) {
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    if (order.parent_id !== userId) {
+      throw new Error('无权限操作');
+    }
+
+    if (order.status > 1) {
+      throw new Error('订单已进入试课阶段，无法取消');
+    }
+
+    await db.query(`
+      UPDATE orders SET status = 5, cancel_reason = ? WHERE id = ?
+    `, [reason || '', orderId]);
+
+    // 通知已抢单教师
+    const [matches] = await db.query(`
+      SELECT teacher_id FROM order_matches WHERE order_id = ?
+    `, [orderId]);
+
+    for (const match of matches as any[]) {
+      await this.messageService.sendSystemMessage(
+        match.teacher_id,
+        `订单 #${order.order_no} 已被家长取消。`,
+      );
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * 评价订单
+   */
+  async createReview(orderId: number, userId: number, rating: number, content: string) {
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    if (order.parent_id !== userId) {
+      throw new Error('无权限评价');
+    }
+
+    if (order.status !== 4) {
+      throw new Error('订单未完成，无法评价');
+    }
+
+    // 检查是否已评价
+    const [existing] = await db.query(`
+      SELECT id FROM reviews WHERE order_id = ?
+    `, [orderId]);
+
+    if (existing.length > 0) {
+      throw new Error('已评价过');
+    }
+
+    // 创建评价
+    await db.query(`
+      INSERT INTO reviews (order_id, parent_id, teacher_id, rating, content)
+      VALUES (?, ?, ?, ?, ?)
+    `, [orderId, userId, order.matched_teacher_id, rating, content]);
+
+    // 更新教师评分
+    const [avgRating] = await db.query(`
+      SELECT AVG(rating) as avg FROM reviews WHERE teacher_id = ?
+    `, [order.matched_teacher_id]);
+
+    await db.query(`
+      UPDATE teacher_profiles 
+      SET rating = ?, review_count = review_count + 1
+      WHERE user_id = ?
+    `, [avgRating[0]?.avg || 5, order.matched_teacher_id]);
+
+    return { success: true };
+  }
+
+  /**
+   * 匹配失败，退回订单池
+   * 允许家长或老师在匹配不成功时将订单退回订单池
+   */
+  async reopenOrder(orderId: number, userId: number, reason?: string) {
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    // 验证权限：只有家长或匹配的老师可以操作
+    if (order.parent_id !== userId && order.matched_teacher_id !== userId) {
+      throw new Error('无权限操作');
+    }
+
+    // 只有已匹配、试课中、进行中的订单可以退回
+    if (![1, 2, 3].includes(order.status)) {
+      throw new Error('当前订单状态不允许退回订单池');
+    }
+
+    // 通知原匹配老师（如果是家长发起的）
+    if (order.parent_id === userId && order.matched_teacher_id) {
+      await this.messageService.sendSystemMessage(
+        order.matched_teacher_id,
+        `订单 #${order.order_no} 已被家长取消匹配，原因：${reason || '无'}。订单已退回订单池。`,
+      );
+    }
+
+    // 通知家长（如果是老师发起的）
+    if (order.matched_teacher_id === userId) {
+      await this.messageService.sendSystemMessage(
+        order.parent_id,
+        `老师已取消订单 #${order.order_no} 的匹配，原因：${reason || '无'}。订单已退回订单池，其他老师可以继续抢单。`,
+      );
+    }
+
+    // 清除匹配记录，保留历史记录供参考
+    await db.query(`
+      UPDATE order_matches SET status = 3 WHERE order_id = ? AND status = 1
+    `, [orderId]);
+
+    // 重置订单状态
+    await db.query(`
+      UPDATE orders 
+      SET status = 0, 
+          matched_teacher_id = NULL
+      WHERE id = ?
+    `, [orderId]);
+
+    return { 
+      success: true, 
+      message: '订单已退回订单池，其他老师可以继续抢单' 
+    };
+  }
+
+  /**
+   * 获取附近的订单
+   */
+  async getNearbyOrders(params: {
+    latitude: number;
+    longitude: number;
+    radius: number;
+    subject?: string;
+    page: number;
+    pageSize: number;
+  }) {
+    const offset = (params.page - 1) * params.pageSize;
+    const conditions = ['o.status = 0'];
+    const sqlParams: any[] = [];
+
+    if (params.subject) {
+      conditions.push('o.subject = ?');
+      sqlParams.push(params.subject);
+    }
+
+    // 获取符合条件的订单
+    const [orders] = await db.query(`
+      SELECT 
+        o.id,
+        o.subject,
+        o.student_grade,
+        o.hourly_rate,
+        o.description,
+        o.address,
+        o.status,
+        o.created_at,
+        o.parent_id,
+        o.latitude,
+        o.longitude,
+        u.nickname as parent_nickname, 
+        u.avatar as parent_avatar
+      FROM orders o
+      LEFT JOIN users u ON o.parent_id = u.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY o.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [
+      ...sqlParams,
+      params.pageSize,
+      offset,
+    ]);
+
+    // 在代码中计算距离
+    const processedOrders = orders.map((order: any) => {
+      let distance = 9999;
+      let distance_text = '';
+      
+      // 尝试从坐标对象中提取数值
+      let lat = order.latitude;
+      let lng = order.longitude;
+      
+      // 处理可能的Decimal对象格式
+      if (lat && typeof lat === 'object' && lat !== null) {
+        // 尝试转换为数值
+        lat = parseFloat(String(lat));
+      }
+      if (lng && typeof lng === 'object' && lng !== null) {
+        lng = parseFloat(String(lng));
+      }
+      
+      // 如果有有效坐标，计算距离
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        const R = 6371; // 地球半径（公里）
+        const dLat = (lat - params.latitude) * Math.PI / 180;
+        const dLon = (lng - params.longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(params.latitude * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        distance = R * c;
+        
+        if (distance < 1) {
+          distance_text = `${Math.round(distance * 1000)}m`;
+        } else {
+          distance_text = `${distance.toFixed(1)}km`;
+        }
+      }
+      
+      return {
+        id: order.id,
+        subject: order.subject,
+        student_grade: order.student_grade,
+        hourly_rate: order.hourly_rate,
+        description: order.description,
+        address: order.address,
+        status: order.status,
+        created_at: order.created_at,
+        parent_id: order.parent_id,
+        parent_nickname: order.parent_nickname,
+        parent_avatar: order.parent_avatar,
+        distance: distance,
+        distance_text: distance_text,
+        contact_hidden: true,
+      };
+    }).filter((order: any) => order.distance <= params.radius);
+
+    return {
+      list: processedOrders,
+      page: params.page,
+      pageSize: params.pageSize,
+    };
+  }
+
+  /**
+   * 获取订单推荐教师
+   */
+  async getRecommendedTeachers(orderId: number, userId: number) {
+    const [orders] = await db.query(`
+      SELECT * FROM orders WHERE id = ?
+    `, [orderId]);
+
+    if (orders.length === 0) {
+      throw new Error('订单不存在');
+    }
+
+    const order = orders[0] as any;
+
+    if (order.parent_id !== userId) {
+      throw new Error('无权限查看');
+    }
+
+    // 根据科目和距离推荐教师
+    const [teachers] = await db.query(`
+      SELECT 
+        u.id, u.nickname, u.avatar, u.latitude, u.longitude,
+        tp.real_name, tp.subjects, tp.education, tp.teaching_years, tp.rating, tp.hourly_rate,
+        ROUND(
+          6371 * acos(
+            cos(radians(?)) * cos(radians(u.latitude)) *
+            cos(radians(u.longitude) - radians(?)) +
+            sin(radians(?)) * sin(radians(u.latitude))
+          ), 2
+        ) as distance
+      FROM users u
+      LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
+      WHERE u.role = 1 AND u.status = 1 AND tp.verify_status = 1
+        AND FIND_IN_SET(?, tp.subjects) > 0
+      HAVING distance <= 20
+      ORDER BY tp.rating DESC, distance ASC
+      LIMIT 10
+    `, [order.latitude, order.longitude, order.latitude, order.subject]);
+
+    return teachers;
+  }
+
+  /**
+   * 生成订单号
+   */
+  private generateOrderNo(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+    return `ORD${year}${month}${day}${random}`;
+  }
+}
