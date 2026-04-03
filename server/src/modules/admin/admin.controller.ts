@@ -417,16 +417,17 @@ export class AdminController {
     const params: any[] = [];
 
     if (status === 'pending') {
-      whereClause += ' AND o.status = 0';
+      whereClause += ' AND o.verify_status = 0';
     } else if (status === 'approved') {
-      whereClause += ' AND o.status = 1';
+      whereClause += ' AND o.verify_status = 1';
     }
 
     try {
       const [orgs] = await db.query(`
         SELECT 
-          o.id, o.user_id, o.org_name as name, o.contact_person, o.contact_phone,
-          o.address, o.intro as description, o.status as verify_status, o.created_at,
+          o.id, o.user_id, o.name, o.contact_name, o.contact_phone,
+          o.address, o.description, o.verify_status, o.created_at,
+          o.teacher_count, o.student_count,
           u.nickname, u.avatar
         FROM organizations o
         LEFT JOIN users u ON o.user_id = u.id
@@ -501,6 +502,124 @@ export class AdminController {
       return orders;
     } catch (error) {
       console.error('获取订单列表失败:', error);
+      return [];
+    }
+  }
+
+  // ==================== 会员销售记录 ====================
+
+  /**
+   * 获取会员销售记录
+   */
+  @Get('membership-sales')
+  @Public()
+  async getMembershipSales(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status = '',
+    @Query('startDate') startDate = '',
+    @Query('endDate') endDate = '',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (status !== '') {
+      whereClause += ' AND p.status = ?';
+      params.push(parseInt(status));
+    }
+
+    if (startDate) {
+      whereClause += ' AND DATE(p.created_at) >= ?';
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClause += ' AND DATE(p.created_at) <= ?';
+      params.push(endDate);
+    }
+
+    try {
+      const [payments] = await db.query(`
+        SELECT 
+          p.id, p.payment_no, p.user_id, p.amount, p.status,
+          p.payment_method, p.transaction_id, p.paid_at, p.created_at,
+          u.nickname as user_name, u.mobile as user_phone, u.role as user_role,
+          m.name as membership_name, m.role as membership_role
+        FROM payments p
+        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN memberships m ON p.membership_id = m.id
+        ${whereClause}
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+
+      const [countResult] = await db.query(
+        `SELECT COUNT(*) as total FROM payments p ${whereClause}`,
+        params
+      );
+
+      // 统计汇总数据
+      const [summary] = await db.query(`
+        SELECT 
+          COUNT(*) as total_count,
+          COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as total_amount,
+          COALESCE(SUM(CASE WHEN status = 1 AND DATE(paid_at) = CURDATE() THEN amount ELSE 0 END), 0) as today_amount,
+          COALESCE(SUM(CASE WHEN status = 1 AND YEARWEEK(paid_at) = YEARWEEK(CURDATE()) THEN amount ELSE 0 END), 0) as week_amount,
+          COALESCE(SUM(CASE WHEN status = 1 AND MONTH(paid_at) = MONTH(CURDATE()) THEN amount ELSE 0 END), 0) as month_amount
+        FROM payments p
+        ${whereClause}
+      `, params);
+
+      const roleMap = { 0: '家长', 1: '牛师', 2: '机构' };
+      const statusMap = { 0: '待支付', 1: '已支付', 2: '已退款', 3: '已取消' };
+
+      const list = payments.map((p: any) => ({
+        ...p,
+        user_role_name: roleMap[p.user_role] || '家长',
+        status_name: statusMap[p.status] || '待支付',
+      }));
+
+      return {
+        list,
+        total: countResult[0]?.total || 0,
+        page: pageNum,
+        pageSize: pageSizeNum,
+        summary: {
+          totalCount: summary[0]?.total_count || 0,
+          totalAmount: summary[0]?.total_amount || 0,
+          todayAmount: summary[0]?.today_amount || 0,
+          weekAmount: summary[0]?.week_amount || 0,
+          monthAmount: summary[0]?.month_amount || 0,
+        }
+      };
+    } catch (error) {
+      console.error('获取会员销售记录失败:', error);
+      return {
+        list: [],
+        total: 0,
+        page: pageNum,
+        pageSize: pageSizeNum,
+        summary: { totalCount: 0, totalAmount: 0, todayAmount: 0, weekAmount: 0, monthAmount: 0 }
+      };
+    }
+  }
+
+  /**
+   * 获取会员套餐列表（管理用）
+   */
+  @Get('memberships')
+  @Public()
+  async getMemberships() {
+    try {
+      const [memberships] = await db.query(`
+        SELECT * FROM memberships ORDER BY sort_order ASC, id ASC
+      `);
+      return memberships;
+    } catch (error) {
+      console.error('获取会员套餐列表失败:', error);
       return [];
     }
   }

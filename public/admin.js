@@ -245,6 +245,9 @@ async function renderPage(pageName) {
             case 'membership':
                 await renderMembership();
                 break;
+            case 'membership-sales':
+                await renderMembershipSales();
+                break;
             case 'activities':
                 await renderActivities();
                 break;
@@ -700,13 +703,16 @@ async function renderTeachers() {
 async function loadTeachers() {
     try {
         const data = await apiRequest('/teachers');
-        renderTeacherTable(data.list || []);
+        // 后端返回的是数组，需要适配
+        const teachers = Array.isArray(data) ? data : (data.list || []);
+        renderTeacherTable(teachers);
     } catch (error) {
+        console.error('加载教师列表失败:', error);
         // 显示模拟数据
         const mockTeachers = [
-            { id: 1, name: '李老师', phone: '139****5678', subject: '数学', rating: 4.9, status: 'approved', createdAt: '2024-01-08' },
-            { id: 2, name: '王老师', phone: '138****9012', subject: '英语', rating: 4.8, status: 'pending', createdAt: '2024-01-10' },
-            { id: 3, name: '张老师', phone: '137****3456', subject: '物理', rating: 0, status: 'pending', createdAt: '2024-01-11' },
+            { id: 1, name: '李老师', phone: '139****5678', subject: '数学', rating: 4.9, verify_status: 1, createdAt: '2024-01-08' },
+            { id: 2, name: '王老师', phone: '138****9012', subject: '英语', rating: 4.8, verify_status: 0, createdAt: '2024-01-10' },
+            { id: 3, name: '张老师', phone: '137****3456', subject: '物理', rating: 0, verify_status: 0, createdAt: '2024-01-11' },
         ];
         renderTeacherTable(mockTeachers);
     }
@@ -721,26 +727,31 @@ function renderTeacherTable(teachers) {
     }
     
     const statusMap = {
-        pending: { name: '待审核', class: 'badge-warning' },
-        approved: { name: '已认证', class: 'badge-success' },
-        rejected: { name: '已拒绝', class: 'badge-danger' }
+        0: { name: '待审核', class: 'badge-warning' },
+        1: { name: '已认证', class: 'badge-success' },
+        2: { name: '已拒绝', class: 'badge-danger' }
     };
     
-    tbody.innerHTML = teachers.map(teacher => `
+    tbody.innerHTML = teachers.map(teacher => {
+        const status = teacher.verify_status;
+        const statusInfo = statusMap[status] || statusMap[0];
+        const phone = teacher.phone || teacher.mobile || '-';
+        
+        return `
         <tr>
             <td>${teacher.id}</td>
             <td>
                 <div class="user-info">
-                    <span class="user-name">${teacher.name}</span>
-                    <span class="user-phone">${teacher.phone}</span>
+                    <span class="user-name">${teacher.name || teacher.real_name || teacher.nickname || '-'}</span>
+                    <span class="user-phone">${phone}</span>
                 </div>
             </td>
-            <td>${teacher.subject}</td>
+            <td>${teacher.subject || (Array.isArray(teacher.subjects) ? teacher.subjects.join('、') : '-')}</td>
             <td>${teacher.rating > 0 ? `⭐ ${teacher.rating}` : '-'}</td>
-            <td><span class="badge ${statusMap[teacher.status]?.class}">${statusMap[teacher.status]?.name}</span></td>
-            <td>${formatDate(teacher.createdAt)}</td>
+            <td><span class="badge ${statusInfo.class}">${statusInfo.name}</span></td>
+            <td>${formatDate(teacher.createdAt || teacher.created_at)}</td>
             <td>
-                ${teacher.status === 'pending' ? `
+                ${status === 0 ? `
                     <button class="btn btn-sm btn-success" onclick="approveTeacher(${teacher.id})">通过</button>
                     <button class="btn btn-sm btn-danger" onclick="rejectTeacher(${teacher.id})">拒绝</button>
                 ` : `
@@ -748,7 +759,7 @@ function renderTeacherTable(teachers) {
                 `}
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 // ========== 机构管理页面 ==========
@@ -2116,6 +2127,150 @@ function renderPagination(containerId, total) {
 function changePage(page) {
     state.pagination.page = page;
     renderPage(state.currentPage);
+}
+
+// ========== 会员销售记录页面 ==========
+
+async function renderMembershipSales() {
+    const content = document.getElementById('mainContent');
+    
+    // 先显示加载中
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-body" style="text-align: center; padding: 40px;">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    `;
+    
+    try {
+        const data = await apiRequest('/membership-sales?page=1&pageSize=20');
+        const sales = Array.isArray(data.list) ? data.list : [];
+        const summary = data.summary || {};
+        
+        content.innerHTML = `
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">¥${(summary.totalAmount || 0).toLocaleString()}</div>
+                        <div class="stat-label">总收入</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">¥${(summary.todayAmount || 0).toLocaleString()}</div>
+                        <div class="stat-label">今日收入</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">¥${(summary.weekAmount || 0).toLocaleString()}</div>
+                        <div class="stat-label">本周收入</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">${summary.totalCount || 0}</div>
+                        <div class="stat-label">总订单数</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 销售记录列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>会员销售记录</h3>
+                    <div class="filter-group">
+                        <select id="salesStatusFilter" onchange="filterMembershipSales()">
+                            <option value="">全部状态</option>
+                            <option value="0">待支付</option>
+                            <option value="1">已支付</option>
+                            <option value="2">已退款</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>支付单号</th>
+                                <th>用户信息</th>
+                                <th>会员套餐</th>
+                                <th>金额</th>
+                                <th>状态</th>
+                                <th>支付方式</th>
+                                <th>创建时间</th>
+                                <th>支付时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membershipSalesTableBody">
+                            ${renderMembershipSalesRows(sales)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('加载会员销售记录失败:', error);
+        content.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <div class="error-message">加载失败，请刷新重试</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function renderMembershipSalesRows(sales) {
+    if (!sales || sales.length === 0) {
+        return '<tr><td colspan="8" class="empty-row">暂无数据</td></tr>';
+    }
+    
+    const statusMap = {
+        0: { name: '待支付', class: 'badge-warning' },
+        1: { name: '已支付', class: 'badge-success' },
+        2: { name: '已退款', class: 'badge-danger' },
+        3: { name: '已取消', class: 'badge-secondary' }
+    };
+    
+    return sales.map(sale => {
+        const statusInfo = statusMap[sale.status] || statusMap[0];
+        return `
+            <tr>
+                <td><code>${sale.payment_no || '-'}</code></td>
+                <td>
+                    <div class="user-info">
+                        <span class="user-name">${sale.user_name || '-'}</span>
+                        <span class="user-phone">${sale.user_phone || '-'}</span>
+                        <span class="user-role">[${sale.user_role_name || '用户'}]</span>
+                    </div>
+                </td>
+                <td>${sale.membership_name || '-'}</td>
+                <td><strong>¥${sale.amount || '0.00'}</strong></td>
+                <td><span class="badge ${statusInfo.class}">${sale.status_name || statusInfo.name}</span></td>
+                <td>${sale.payment_method || '-'}</td>
+                <td>${formatDate(sale.created_at)}</td>
+                <td>${sale.paid_at ? formatDate(sale.paid_at) : '-'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function filterMembershipSales() {
+    const status = document.getElementById('salesStatusFilter').value;
+    const content = document.getElementById('mainContent');
+    
+    try {
+        const data = await apiRequest(`/membership-sales?page=1&pageSize=20&status=${status}`);
+        const tbody = document.getElementById('membershipSalesTableBody');
+        if (tbody) {
+            tbody.innerHTML = renderMembershipSalesRows(data.list || []);
+        }
+    } catch (error) {
+        console.error('筛选失败:', error);
+    }
 }
 
 // ========== 添加样式 ==========
