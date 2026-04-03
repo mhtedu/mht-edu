@@ -31,6 +31,27 @@ interface Category {
   name: string;
 }
 
+// 获取完整的图片URL
+const getFullImageUrl = (imagePath: string | undefined): string => {
+  if (!imagePath) return '';
+  // 如果已经是完整URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  // 如果是本地路径，使用远程服务器地址（数据库中的图片存储在远程服务器）
+  // 开发环境下，静态文件会通过代理访问
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  // 尝试使用远程服务器地址
+  const remoteServer = 'http://119.91.193.179';
+  
+  // 如果是开发环境（localhost），使用远程服务器地址
+  if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || baseUrl.includes('dev.coze.site')) {
+    return `${remoteServer}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  }
+  
+  return `${baseUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
 /**
  * 商城页面
  */
@@ -170,58 +191,61 @@ const MallPage = () => {
           </View>
         ) : (
           <View className="grid grid-cols-2 gap-3">
-            {products.map((product) => (
-              <Card 
-                key={product.id} 
-                className="bg-white overflow-hidden"
-                onClick={() => handleProductClick(product.id)}
-              >
-                {product.image ? (
-                  <Image 
-                    src={product.image.startsWith('/') ? `http://119.91.193.179${product.image}` : product.image}
-                    className="w-full h-36"
-                    mode="aspectFill"
-                  />
-                ) : (
-                  <View className="w-full h-36 bg-gray-200 flex items-center justify-center">
-                    <Text className="text-gray-400">暂无图片</Text>
-                  </View>
-                )}
-                <CardContent className="p-3">
-                  <Text className="text-sm font-medium line-clamp-2">{product.name}</Text>
-                  
-                  {product.category_name && (
-                    <View className="mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        <Text className="text-xs">{product.category_name}</Text>
-                      </Badge>
+            {products.map((product) => {
+              const imageUrl = getFullImageUrl(product.image);
+              return (
+                <Card 
+                  key={product.id} 
+                  className="bg-white overflow-hidden"
+                  onClick={() => handleProductClick(product.id)}
+                >
+                  {imageUrl ? (
+                    <Image 
+                      src={imageUrl}
+                      className="w-full h-36"
+                      mode="aspectFill"
+                    />
+                  ) : (
+                    <View className="w-full h-36 bg-gray-200 flex items-center justify-center">
+                      <Text className="text-gray-400">暂无图片</Text>
                     </View>
                   )}
-                  
-                  <View className="flex flex-row items-center justify-between mt-2">
-                    <View className="flex flex-row items-baseline">
-                      <Text className="text-red-500 font-bold text-lg">¥{formatPrice(product.price)}</Text>
-                      {product.original_price && parseFloat(String(product.original_price)) > parseFloat(String(product.price)) && (
-                        <Text className="text-gray-400 text-xs line-through ml-1">
-                          ¥{formatPrice(product.original_price)}
-                        </Text>
-                      )}
+                  <CardContent className="p-3">
+                    <Text className="text-sm font-medium line-clamp-2">{product.name}</Text>
+                    
+                    {product.category_name && (
+                      <View className="mt-1">
+                        <Badge variant="secondary" className="text-xs">
+                          <Text className="text-xs">{product.category_name}</Text>
+                        </Badge>
+                      </View>
+                    )}
+                    
+                    <View className="flex flex-row items-center justify-between mt-2">
+                      <View className="flex flex-row items-baseline">
+                        <Text className="text-red-500 font-bold text-lg">¥{formatPrice(product.price)}</Text>
+                        {product.original_price && parseFloat(String(product.original_price)) > parseFloat(String(product.price)) && (
+                          <Text className="text-gray-400 text-xs line-through ml-1">
+                            ¥{formatPrice(product.original_price)}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                  
-                  <View className="flex flex-row items-center justify-between mt-2">
-                    <Text className="text-gray-400 text-xs">已售 {product.sales || 0}</Text>
-                    <Button 
-                      size="sm" 
-                      className="bg-blue-500 px-3"
-                      onClick={(e) => handleAddToCart(product.id, e)}
-                    >
-                      <Text className="text-white text-xs">查看详情</Text>
-                    </Button>
-                  </View>
-                </CardContent>
-              </Card>
-            ))}
+                    
+                    <View className="flex flex-row items-center justify-between mt-2">
+                      <Text className="text-gray-400 text-xs">已售 {product.sales || 0}</Text>
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-500 px-3"
+                        onClick={(e) => handleAddToCart(product.id, e)}
+                      >
+                        <Text className="text-white text-xs">查看详情</Text>
+                      </Button>
+                    </View>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </View>
         )}
       </View>
