@@ -212,6 +212,7 @@ export default defineConfig<'vite'>(async (merge, _env) => {
             platform: 'h5',
             designWidth: 750,
             onePxTransform: true,
+            baseFontSize: 16, // 与 Tailwind 的 rem 基准一致
           },
         },
         cssModules: {

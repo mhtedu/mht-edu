@@ -10,6 +10,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="white">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
   <title>教育平台</title>
+  <script>
+    // H5 端根字体大小计算 - 基于 Tailwind 的 16px rem 基准
+    // 公式: fontSize = 32 * screenWidth / 750，在 375px 屏幕上得到 16px
+    !function(n){function f(){var e=n.document.documentElement,w=Math.min(e.getBoundingClientRect().width,window.screen.width),x=32*w/750;e.style.fontSize=x<=16?"16px":x+"px"}n.addEventListener("resize",f),f()}(window);
+  </script>
   <script><%= htmlWebpackPlugin.options.script %></script>
 </head>
 
