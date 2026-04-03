@@ -124,7 +124,8 @@ textarea.taro-textarea {
 
 const PC_WIDESCREEN_STYLES = `
 /* PC 宽屏适配 - 基础布局 */
-@media (min-width: 769px) {
+/* 只在非触摸设备（PC）上应用，避免横屏手机、大屏手机被误判 */
+@media (min-width: 769px) and (hover: hover) and (pointer: fine) {
   html {
     font-size: 15px !important;
   }
@@ -141,7 +142,8 @@ const PC_WIDESCREEN_STYLES = `
 
 const PC_WIDESCREEN_PHONE_FRAME = `
 /* PC 宽屏适配 - 手机框样式（有 TabBar 页面） */
-@media (min-width: 769px) {
+/* 只在非触摸设备（PC）上应用，避免横屏手机、大屏手机被误判 */
+@media (min-width: 769px) and (hover: hover) and (pointer: fine) {
   .taro-tabbar__container {
     width: 375px !important;
     max-width: 375px !important;
@@ -162,7 +164,7 @@ const PC_WIDESCREEN_PHONE_FRAME = `
 }
 
 /* PC 宽屏适配 - Toast 定位到手机框范围内 */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (hover: hover) and (pointer: fine) {
   body .toaster {
     left: 50% !important;
     right: auto !important;
@@ -174,7 +176,7 @@ const PC_WIDESCREEN_PHONE_FRAME = `
 }
 
 /* PC 宽屏适配 - 手机框样式（无 TabBar 页面，通过 JS 添加 no-tabbar 类） */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (hover: hover) and (pointer: fine) {
   body.no-tabbar #app {
     width: 375px !important;
     max-width: 375px !important;
