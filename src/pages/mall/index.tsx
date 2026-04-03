@@ -178,7 +178,7 @@ const MallPage = () => {
               >
                 {product.image ? (
                   <Image 
-                    src={product.image.startsWith('/') ? `http://localhost:3000${product.image}` : product.image}
+                    src={product.image.startsWith('/') ? `http://119.91.193.179${product.image}` : product.image}
                     className="w-full h-36"
                     mode="aspectFill"
                   />

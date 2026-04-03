@@ -41,6 +41,7 @@ import { DemoModule } from '@/modules/demo/demo.module';
 import { OrgMembershipModule } from '@/modules/org-membership/org-membership.module';
 import { OrgValueModule } from '@/modules/org-value/org-value.module';
 import { ResourceModule } from '@/modules/resource/resource.module';
+import { ProductModule } from '@/modules/product/product.module';
 
 @Module({
   imports: [
@@ -95,6 +96,8 @@ import { ResourceModule } from '@/modules/resource/resource.module';
     SeedModule,
     // 资源共享模块
     ResourceModule,
+    // 商品模块
+    ProductModule,
     // 管理后台
     AdminModule,
   ],

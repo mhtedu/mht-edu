@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query, Param, Request, Req, Res } from '@nestjs/common';
 import { PaymentService } from './payment.service';
+import { Public } from '../auth/decorators/public.decorator';
 import { Request as ExpressRequest, Response } from 'express';
 
 @Controller('payment')
@@ -10,6 +11,7 @@ export class PaymentController {
    * 创建支付订单（会员）
    */
   @Post('membership')
+  @Public()
   async createMembershipPayment(
     @Request() req: any,
     @Body() body: { planId: number },
@@ -22,6 +24,7 @@ export class PaymentController {
    * 创建支付订单（商品）
    */
   @Post('product')
+  @Public()
   async createProductPayment(
     @Request() req: any,
     @Body() body: { productId: number; quantity: number },
@@ -38,6 +41,7 @@ export class PaymentController {
    * 微信支付回调
    */
   @Post('notify/wechat')
+  @Public()
   async wechatNotify(@Req() req: ExpressRequest, @Res() res: Response) {
     try {
       const xml = req.body;
@@ -56,6 +60,7 @@ export class PaymentController {
    * 查询支付状态
    */
   @Get('status/:paymentNo')
+  @Public()
   async getPaymentStatus(
     @Request() req: any,
     @Param('paymentNo') paymentNo: string,
@@ -68,6 +73,7 @@ export class PaymentController {
    * 获取支付记录列表
    */
   @Get('records')
+  @Public()
   async getPaymentRecords(
     @Request() req: any,
     @Query('page') page: string = '1',
@@ -81,6 +87,7 @@ export class PaymentController {
    * 模拟支付（开发环境测试用）
    */
   @Post('mock-pay')
+  @Public()
   async mockPay(
     @Request() req: any,
     @Body() body: { paymentNo: string },
