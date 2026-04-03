@@ -125,11 +125,11 @@ const PC_WIDESCREEN_STYLES = `
     align-items: center !important;
     min-height: 100vh !important;
   }
-}
 
-/* PC 宽屏下固定字体大小，避免 4vw 在大屏幕上过大 */
-@media (min-width: 769px) {
-  body.is-pc-device {
+  /* PC 宽屏下限制根字体大小，避免 Taro 内联脚本计算出的值过大 */
+  html.is-pc-device,
+  body.is-pc-device,
+  body.is-pc-device html {
     font-size: 16px !important;
   }
 }
@@ -245,12 +245,28 @@ function setupDeviceDetection() {
   const checkDevice = () => {
     const isPC = isPCDevice();
     document.body.classList.toggle('is-pc-device', isPC);
+
+    // PC 设备上，强制覆盖 Taro 内联脚本设置的根字体大小
+    // Taro 脚本会根据屏幕宽度计算: 40 * width / 750
+    // 在 PC 宽屏上这个值会非常大，导致页面元素过大
+    if (isPC && window.innerWidth >= 769) {
+      // 直接设置 html 元素的 style，覆盖 Taro 的内联脚本
+      // 使用 setTimeout 确保在 Taro 脚本执行后再覆盖
+      setTimeout(() => {
+        const html = document.documentElement;
+        html.style.cssText = html.style.cssText.replace(/font-size:[^;]+;/g, '');
+        html.style.setProperty('font-size', '16px', 'important');
+      }, 0);
+    }
   };
 
   checkDevice();
 
   // 监听窗口大小变化（如旋转屏幕）
-  window.addEventListener('resize', checkDevice);
+  // Taro 脚本也会在 resize 时重新计算，我们需要在其之后覆盖
+  window.addEventListener('resize', () => {
+    checkDevice();
+  });
 }
 
 export function injectH5Styles() {
