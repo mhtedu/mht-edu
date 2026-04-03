@@ -14,7 +14,50 @@
     // H5 端根字体大小计算 - 基于 Tailwind 的 16px rem 基准
     // 公式: fontSize = 16 * screenWidth / 375，在 375px 屏幕上得到 16px
     // 使用更合理的字体缩放比例
-    !function(n){function f(){var e=n.document.documentElement,w=Math.min(e.getBoundingClientRect().width,window.screen.width,750),x=16*w/375;e.style.fontSize=Math.max(12,Math.min(16,x))+"px"}n.addEventListener("resize",f),f()}(window);
+    (function() {
+      var targetFontSize = 16; // 基准字体大小
+      var baseWidth = 375; // 基准屏幕宽度
+      
+      function setRootFontSize() {
+        var e = document.documentElement;
+        var w = Math.min(e.getBoundingClientRect().width, window.screen.width, 750);
+        var x = targetFontSize * w / baseWidth;
+        var fontSize = Math.max(12, Math.min(16, x));
+        e.style.fontSize = fontSize + "px";
+        console.log('[字体调整] 屏幕宽度:', w, '字体大小:', fontSize);
+        return fontSize;
+      }
+      
+      // 立即执行
+      setRootFontSize();
+      
+      // 监听 resize
+      window.addEventListener("resize", setRootFontSize);
+      
+      // 使用 requestAnimationFrame 在下一帧覆盖 Taro 的设置
+      var attempts = 0;
+      function overrideTaroScript() {
+        var current = parseFloat(document.documentElement.style.fontSize);
+        // 如果当前字体大于 18px，说明被 Taro 脚本覆盖了
+        if (current > 18) {
+          setRootFontSize();
+          attempts++;
+          if (attempts < 10) {
+            requestAnimationFrame(overrideTaroScript);
+          }
+        } else if (attempts < 10) {
+          attempts++;
+          requestAnimationFrame(overrideTaroScript);
+        }
+      }
+      requestAnimationFrame(overrideTaroScript);
+      
+      // DOMContentLoaded 后再次确保
+      document.addEventListener("DOMContentLoaded", function() {
+        setRootFontSize();
+        setTimeout(setRootFontSize, 100);
+      });
+    })();
   </script>
   <script><%= htmlWebpackPlugin.options.script %></script>
 </head>
