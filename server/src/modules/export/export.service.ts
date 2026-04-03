@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class ExportService {
@@ -61,7 +57,7 @@ export class ExportService {
 
     sql += ` ORDER BY u.created_at DESC`;
 
-    const users = await executeQuery(sql, params);
+    const users = await db.query(sql, params);
 
     // 转换为CSV格式
     const headers = ['ID', '昵称', '手机号', '角色', '会员类型', '会员到期时间', '邀请人ID', '邀请码', '注册时间', '最后登录'];
@@ -141,7 +137,7 @@ export class ExportService {
 
     sql += ` ORDER BY o.created_at DESC`;
 
-    const orders = await executeQuery(sql, params);
+    const orders = await db.query(sql, params);
 
     const headers = ['订单ID', '订单号', '科目', '年级', '预算', '状态', '家长姓名', '家长电话', '教师姓名', '教师电话', '创建时间', '匹配时间'];
     const rows = orders.map((o: any) => [
@@ -212,7 +208,7 @@ export class ExportService {
 
     sql += ` ORDER BY p.created_at DESC`;
 
-    const payments = await executeQuery(sql, params);
+    const payments = await db.query(sql, params);
 
     const headers = ['支付ID', '支付单号', '金额', '状态', '支付方式', '交易号', '用户姓名', '用户电话', '套餐名称', '支付时间', '创建时间'];
     const rows = payments.map((p: any) => [
@@ -288,7 +284,7 @@ export class ExportService {
 
     sql += ` ORDER BY c.created_at DESC`;
 
-    const commissions = await executeQuery(sql, params);
+    const commissions = await db.query(sql, params);
 
     const headers = ['佣金ID', '金额', '比例(%)', '分佣类型', '状态', '用户姓名', '用户电话', '来源用户', '支付单号', '创建时间'];
     const rows = commissions.map((c: any) => [
@@ -357,7 +353,7 @@ export class ExportService {
 
     sql += ` ORDER BY w.created_at DESC`;
 
-    const withdrawals = await executeQuery(sql, params);
+    const withdrawals = await db.query(sql, params);
 
     const headers = ['提现ID', '金额', '账户类型', '账号', '账户名', '状态', '拒绝原因', '用户姓名', '用户电话', '申请时间', '处理时间'];
     const rows = withdrawals.map((w: any) => [

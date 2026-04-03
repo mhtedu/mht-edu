@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class EliteClassService {
@@ -14,23 +10,23 @@ export class EliteClassService {
    */
   async checkSuperMember(userId: number): Promise<{ isSuper: boolean; reason?: string }> {
     // 1. 检查付费超级会员
-    const superMembers = await executeQuery(`
+    const [superMembers] = await db.query(`
       SELECT * FROM super_memberships 
       WHERE user_id = ? AND status = 1 AND expire_at > NOW()
-    `, [userId]);
+    `, [userId]) as [any[], any];
 
     if (superMembers.length > 0) {
       return { isSuper: true };
     }
 
     // 2. 检查邀请达标情况（任意角色累计10人）
-    const inviteStats = await executeQuery(`
+    const [inviteStats] = await db.query(`
       SELECT COUNT(*) as total_count
       FROM users u
       WHERE u.inviter_id = ? AND u.status = 1
-    `, [userId]);
+    `, [userId]) as [any[], any];
 
-    const totalCount = (inviteStats[0] as any)?.total_count || 0;
+    const totalCount = inviteStats[0]?.total_count || 0;
 
     if (totalCount >= 10) {
       // 自动授予超级会员资格
@@ -48,7 +44,7 @@ export class EliteClassService {
    * 授予超级会员资格
    */
   async grantSuperMember(userId: number, type: number, days: number = 365) {
-    await executeQuery(`
+    await db.query(`
       INSERT INTO super_memberships (user_id, type, start_at, expire_at, status)
       VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1)
       ON DUPLICATE KEY UPDATE 
@@ -58,7 +54,7 @@ export class EliteClassService {
     `, [userId, type, days, days]);
 
     // 更新用户表
-    await executeQuery(`
+    await db.query(`
       UPDATE users SET is_super_member = 1, super_member_expire_at = DATE_ADD(NOW(), INTERVAL ? DAY)
       WHERE id = ?
     `, [days, userId]);
@@ -74,7 +70,7 @@ export class EliteClassService {
       throw new Error(`创建牛师班需要超级会员资格。${reason || ''}`);
     }
 
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO elite_classes (
         teacher_id, class_name, subject, start_time, total_lessons, 
         address, latitude, longitude, hourly_rate, max_students, description, cover_image
@@ -92,11 +88,11 @@ export class EliteClassService {
       data.max_students,
       data.description,
       data.cover_image,
-    ]);
+    ]) as [any, any];
 
     return { 
       success: true, 
-      id: (result as any).insertId 
+      id: result.insertId 
     };
   }
 
@@ -153,7 +149,7 @@ export class EliteClassService {
       distanceOrder = 'ORDER BY distance ASC';
     }
 
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT 
         ec.*,
         u.nickname as teacher_nickname, u.avatar as teacher_avatar,
@@ -166,7 +162,7 @@ export class EliteClassService {
       WHERE ${whereClause}
       ${distanceOrder || 'ORDER BY ec.current_students DESC, ec.created_at DESC'}
       LIMIT ? OFFSET ?
-    `, [...sqlParams, params.pageSize, offset]);
+    `, [...sqlParams, params.pageSize, offset]) as [any[], any];
 
     // 处理返回数据格式
     const formattedClasses = classes.map((c: any) => ({
@@ -182,7 +178,7 @@ export class EliteClassService {
    * 获取牛师班详情
    */
   async getClassDetail(classId: number, userId?: number) {
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT 
         ec.*,
         u.nickname as teacher_nickname, u.avatar as teacher_avatar,
@@ -192,7 +188,7 @@ export class EliteClassService {
       LEFT JOIN users u ON ec.teacher_id = u.id
       LEFT JOIN teacher_profiles tp ON ec.teacher_id = tp.user_id
       WHERE ec.id = ?
-    `, [classId]);
+    `, [classId]) as [any[], any];
 
     if (classes.length === 0) {
       throw new Error('牛师班不存在');
@@ -202,12 +198,12 @@ export class EliteClassService {
 
     // 检查用户是否已报名
     if (userId) {
-      const enrollments = await executeQuery(`
+      const [enrollments] = await db.query(`
         SELECT * FROM elite_class_enrollments 
         WHERE class_id = ? AND student_id = ?
-      `, [classId, userId]);
+      `, [classId, userId]) as [any[], any];
       classInfo.is_enrolled = enrollments.length > 0;
-      classInfo.enrollment_status = enrollments.length > 0 ? (enrollments[0] as any).status : null;
+      classInfo.enrollment_status = enrollments.length > 0 ? enrollments[0].status : null;
     }
 
     return classInfo;
@@ -219,9 +215,9 @@ export class EliteClassService {
    */
   async enrollClass(userId: number, classId: number, referrerId?: number) {
     // 检查班级是否存在且可报名
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT * FROM elite_classes WHERE id = ? AND status IN (0, 1)
-    `, [classId]);
+    `, [classId]) as [any[], any];
 
     if (classes.length === 0) {
       throw new Error('牛师班不存在或已停止招生');
@@ -235,9 +231,9 @@ export class EliteClassService {
     }
 
     // 检查是否已报名
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT * FROM elite_class_enrollments WHERE class_id = ? AND student_id = ?
-    `, [classId, userId]);
+    `, [classId, userId]) as [any[], any];
 
     if (existing.length > 0) {
       throw new Error('您已报名该班级');
@@ -249,13 +245,13 @@ export class EliteClassService {
     }
 
     // 创建报名记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO elite_class_enrollments (class_id, student_id, status, trial_lesson, referrer_id)
       VALUES (?, ?, 0, 1, ?)
     `, [classId, userId, referrerId]);
 
     // 更新报名人数
-    await executeQuery(`
+    await db.query(`
       UPDATE elite_classes SET current_students = current_students + 1 WHERE id = ?
     `, [classId]);
 
@@ -268,9 +264,9 @@ export class EliteClassService {
    */
   async lockShareRelation(userId: number, lockerId: number, lockType: string, sourceId?: number) {
     // 检查是否已有锁定关系
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT * FROM referral_locks WHERE user_id = ?
-    `, [userId]);
+    `, [userId]) as [any[], any];
 
     if (existing.length > 0) {
       // 已有锁定关系，不覆盖
@@ -279,13 +275,13 @@ export class EliteClassService {
     }
 
     // 创建锁定关系
-    await executeQuery(`
+    await db.query(`
       INSERT INTO referral_locks (user_id, locker_id, lock_type, lock_source_id)
       VALUES (?, ?, ?, ?)
     `, [userId, lockerId, lockType, sourceId]);
 
     // 同时更新用户表的邀请关系
-    await executeQuery(`
+    await db.query(`
       UPDATE users 
       SET inviter_id = ?, 
           inviter_2nd_id = (SELECT inviter_id FROM users WHERE id = ?),
@@ -294,7 +290,7 @@ export class EliteClassService {
     `, [lockerId, lockerId, userId]);
 
     // 记录锁定日志
-    await executeQuery(`
+    await db.query(`
       INSERT INTO referral_lock_logs (user_id, locker_id, lock_type, lock_source_id)
       VALUES (?, ?, ?, ?)
     `, [userId, lockerId, lockType, sourceId]);
@@ -307,11 +303,11 @@ export class EliteClassService {
    */
   async confirmEnrollment(teacherId: number, enrollmentId: number) {
     // 验证权限
-    const enrollments = await executeQuery(`
+    const [enrollments] = await db.query(`
       SELECT e.*, ec.teacher_id FROM elite_class_enrollments e
       LEFT JOIN elite_classes ec ON e.class_id = ec.id
       WHERE e.id = ?
-    `, [enrollmentId]);
+    `, [enrollmentId]) as [any[], any];
 
     if (enrollments.length === 0) {
       throw new Error('报名记录不存在');
@@ -323,7 +319,7 @@ export class EliteClassService {
     }
 
     // 更新状态
-    await executeQuery(`
+    await db.query(`
       UPDATE elite_class_enrollments SET status = 1, updated_at = NOW()
       WHERE id = ?
     `, [enrollmentId]);
@@ -336,9 +332,9 @@ export class EliteClassService {
    */
   async updateLessonProgress(teacherId: number, classId: number, lessonNo: number) {
     // 验证权限
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT * FROM elite_classes WHERE id = ? AND teacher_id = ?
-    `, [classId, teacherId]);
+    `, [classId, teacherId]) as [any[], any];
 
     if (classes.length === 0) {
       throw new Error('无权操作');
@@ -357,25 +353,25 @@ export class EliteClassService {
     const teacherIncome = hourlyRate * teacherRate;
 
     // 更新进度
-    await executeQuery(`
+    await db.query(`
       UPDATE elite_classes SET current_lesson = ? WHERE id = ?
     `, [lessonNo, classId]);
 
     // 记录课时
-    await executeQuery(`
+    await db.query(`
       INSERT INTO elite_class_lessons (class_id, lesson_no, lesson_time, status, teacher_income, platform_income, referrer_income)
       VALUES (?, ?, NOW(), 2, ?, ?, ?)
     `, [classId, lessonNo, teacherIncome, platformIncome, referrerIncome]);
 
     // 发放佣金给推荐人
-    const enrollments = await executeQuery(`
+    const [enrollments] = await db.query(`
       SELECT DISTINCT referrer_id FROM elite_class_enrollments 
       WHERE class_id = ? AND referrer_id IS NOT NULL
-    `, [classId]);
+    `, [classId]) as [any[], any];
 
     for (const e of enrollments) {
-      const referrerId = (e as any).referrer_id;
-      await executeQuery(`
+      const referrerId = e.referrer_id;
+      await db.query(`
         INSERT INTO commissions (user_id, amount, type, from_user_id, status)
         VALUES (?, ?, 'elite_class_share', ?, 1)
       `, [referrerId, referrerIncome / (enrollments.length || 1), teacherId]);
@@ -396,13 +392,13 @@ export class EliteClassService {
       params.push(status);
     }
 
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT ec.*, 
         (SELECT COUNT(*) FROM elite_class_enrollments WHERE class_id = ec.id) as actual_students
       FROM elite_classes ec
       WHERE ${conditions.join(' AND ')}
       ORDER BY ec.created_at DESC
-    `, params);
+    `, params) as [any[], any];
 
     return classes;
   }
@@ -412,15 +408,15 @@ export class EliteClassService {
    */
   async getEnrolledStudents(teacherId: number, classId: number) {
     // 验证权限
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT * FROM elite_classes WHERE id = ? AND teacher_id = ?
-    `, [classId, teacherId]);
+    `, [classId, teacherId]) as [any[], any];
 
     if (classes.length === 0) {
       throw new Error('无权操作');
     }
 
-    const students = await executeQuery(`
+    const [students] = await db.query(`
       SELECT 
         e.*,
         u.nickname, u.avatar, u.mobile
@@ -428,7 +424,7 @@ export class EliteClassService {
       LEFT JOIN users u ON e.student_id = u.id
       WHERE e.class_id = ?
       ORDER BY e.created_at ASC
-    `, [classId]);
+    `, [classId]) as [any[], any];
 
     return students;
   }
@@ -438,9 +434,9 @@ export class EliteClassService {
    */
   async closeClass(teacherId: number, classId: number, reason?: string) {
     // 验证权限
-    const classes = await executeQuery(`
+    const [classes] = await db.query(`
       SELECT * FROM elite_classes WHERE id = ? AND teacher_id = ?
-    `, [classId, teacherId]);
+    `, [classId, teacherId]) as [any[], any];
 
     if (classes.length === 0) {
       throw new Error('无权操作');
@@ -449,7 +445,7 @@ export class EliteClassService {
     const classInfo = classes[0] as any;
     const status = classInfo.current_lesson >= classInfo.total_lessons ? 2 : 3; // 已结束或已取消
 
-    await executeQuery(`
+    await db.query(`
       UPDATE elite_classes SET status = ? WHERE id = ?
     `, [status, classId]);
 

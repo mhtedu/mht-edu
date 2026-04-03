@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class OrgService {
@@ -42,10 +38,10 @@ export class OrgService {
 
     sql += ` ORDER BY uo.join_time DESC`;
 
-    const teachers = await executeQuery(sql, params);
+    const teachers = await db.query(sql, params);
 
     // 获取统计数据
-    const statsResult = await executeQuery(`
+    const [statsResult] = await db.query(`
       SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active,
@@ -64,7 +60,7 @@ export class OrgService {
    * 审核教师入驻申请
    */
   async approveTeacher(orgId: number, teacherId: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE user_orgs SET status = 1, join_time = NOW()
       WHERE org_id = ? AND user_id = ?
     `, [orgId, teacherId]);
@@ -76,7 +72,7 @@ export class OrgService {
    * 拒绝教师入驻申请
    */
   async rejectTeacher(orgId: number, teacherId: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE user_orgs SET status = 2
       WHERE org_id = ? AND user_id = ?
     `, [orgId, teacherId]);
@@ -88,7 +84,7 @@ export class OrgService {
    * 更新教师状态
    */
   async updateTeacherStatus(orgId: number, teacherId: number, status: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE user_orgs SET status = ?
       WHERE org_id = ? AND user_id = ?
     `, [status, orgId, teacherId]);
@@ -118,10 +114,10 @@ export class OrgService {
 
     sql += ` ORDER BY c.created_at DESC`;
 
-    const courses = await executeQuery(sql, params);
+    const courses = await db.query(sql, params);
 
     // 获取统计数据
-    const statsResult = await executeQuery(`
+    const [statsResult] = await db.query(`
       SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active,
@@ -156,7 +152,7 @@ export class OrgService {
   }) {
     if (data.id) {
       // 更新
-      await executeQuery(`
+      await db.query(`
         UPDATE courses SET 
           title = ?, subject = ?, teacher_id = ?, total_hours = ?,
           price_per_hour = ?, schedule = ?, address = ?, description = ?
@@ -168,7 +164,7 @@ export class OrgService {
       ]);
     } else {
       // 创建
-      await executeQuery(`
+      await db.query(`
         INSERT INTO courses (
           org_id, title, subject, teacher_id, total_hours,
           price_per_hour, schedule, address, description, status
@@ -186,7 +182,7 @@ export class OrgService {
    * 更新课程状态
    */
   async updateCourseStatus(orgId: number, courseId: number, status: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE courses SET status = ?
       WHERE id = ? AND org_id = ?
     `, [status, courseId, orgId]);
@@ -200,7 +196,7 @@ export class OrgService {
    * 获取机构信息
    */
   async getOrgInfo(orgId: number) {
-    const orgs = await executeQuery(`
+    const [orgs] = await db.query(`
       SELECT * FROM organizations WHERE id = ?
     `, [orgId]);
 
@@ -235,7 +231,7 @@ export class OrgService {
     if (data.city !== undefined) { updates.push('city = ?'); values.push(data.city); }
 
     if (updates.length > 0) {
-      await executeQuery(`
+      await db.query(`
         UPDATE organizations SET ${updates.join(', ')} WHERE id = ?
       `, [...values, orgId]);
     }
@@ -249,7 +245,7 @@ export class OrgService {
    * 生成邀请链接和邀请码
    */
   async getInviteInfo(orgId: number) {
-    const orgs = await executeQuery(`
+    const [orgs] = await db.query(`
       SELECT id, invite_code FROM organizations WHERE id = ?
     `, [orgId]);
 
@@ -271,7 +267,7 @@ export class OrgService {
   async sendInviteSms(orgId: number, phone: string) {
     // TODO: 调用短信服务发送邀请
     // 记录邀请记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO org_invites (org_id, phone, type, status)
       VALUES (?, ?, 'sms', 0)
     `, [orgId, phone]);
@@ -283,7 +279,7 @@ export class OrgService {
    * 获取邀请记录
    */
   async getInviteHistory(orgId: number) {
-    const history = await executeQuery(`
+    const [history] = await db.query(`
       SELECT * FROM org_invites 
       WHERE org_id = ?
       ORDER BY created_at DESC

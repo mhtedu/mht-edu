@@ -1,19 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
-
-async function executeInsert(sql: string, params: any[] = []): Promise<number> {
-  const [result] = await query(sql, params);
-  return (result as any).insertId;
-}
-
-async function executeUpdate(sql: string, params: any[] = []): Promise<void> {
-  await query(sql, params);
-}
 
 @Injectable()
 export class MembershipService {
@@ -31,7 +18,7 @@ export class MembershipService {
 
     sql += ' ORDER BY price ASC';
 
-    const data = await executeQuery(sql, params);
+    const [data] = await db.query(sql, params) as [any[], any];
     return data;
   }
 
@@ -40,10 +27,10 @@ export class MembershipService {
    */
   async buyMembership(userId: number, planId: number, role?: number) {
     // 获取套餐信息
-    const plans = await executeQuery(
+    const [plans] = await db.query(
       'SELECT * FROM membership_plans WHERE id = ?',
       [planId]
-    );
+    ) as [any[], any];
 
     if (plans.length === 0) {
       throw new Error('套餐不存在');
@@ -56,14 +43,14 @@ export class MembershipService {
     // 创建支付记录
     const paymentNo = `PAY${Date.now()}${Math.random().toString(36).substr(2, 9)}`.toUpperCase();
 
-    const paymentId = await executeInsert(
+    const [result] = await db.query(
       `INSERT INTO payments (user_id, membership_id, amount, payment_no, status, created_at)
        VALUES (?, ?, ?, ?, 0, NOW())`,
       [userId, planId, plan.price, paymentNo]
-    );
+    ) as [any, any];
 
     return {
-      payment_id: paymentId,
+      payment_id: (result as any).insertId,
       payment_no: paymentNo,
       amount: plan.price,
       plan_name: plan.name,
@@ -76,13 +63,13 @@ export class MembershipService {
    */
   async handlePaymentSuccess(paymentNo: string, transactionId: string) {
     // 获取支付记录
-    const payments = await executeQuery(
+    const [payments] = await db.query(
       `SELECT p.*, mp.duration_days, mp.name as plan_name, mp.role as plan_role
        FROM payments p
        LEFT JOIN membership_plans mp ON p.membership_id = mp.id
        WHERE p.payment_no = ?`,
       [paymentNo]
-    );
+    ) as [any[], any];
 
     if (payments.length === 0) {
       throw new Error('支付记录不存在');
@@ -105,14 +92,14 @@ export class MembershipService {
     // 更新用户角色会员状态（在角色会员表中）
     try {
       // 先检查是否存在记录
-      const existing = await executeQuery(
+      const [existing] = await db.query(
         'SELECT id FROM user_role_memberships WHERE user_id = ? AND role = ?',
         [userId, role]
-      );
+      ) as [any[], any];
 
       if (existing.length > 0) {
         // 更新现有记录
-        await executeUpdate(
+        await db.query(
           `UPDATE user_role_memberships 
            SET membership_type = 1, expire_at = ?, updated_at = NOW() 
            WHERE user_id = ? AND role = ?`,
@@ -120,7 +107,7 @@ export class MembershipService {
         );
       } else {
         // 插入新记录
-        await executeInsert(
+        await db.query(
           `INSERT INTO user_role_memberships (user_id, role, membership_type, expire_at, created_at)
            VALUES (?, ?, 1, ?, NOW())`,
           [userId, role, expireAt]
@@ -129,14 +116,14 @@ export class MembershipService {
     } catch (error) {
       console.log('角色会员表不存在，更新用户表');
       // 回退到更新用户表
-      await executeUpdate(
+      await db.query(
         `UPDATE users SET membership_type = 1, membership_expire_at = ?, updated_at = NOW() WHERE id = ?`,
         [expireAt, userId]
       );
     }
 
     // 更新支付记录
-    await executeUpdate(
+    await db.query(
       `UPDATE payments SET status = 1, transaction_id = ?, paid_at = NOW() WHERE id = ?`,
       [transactionId, payment.id]
     );
@@ -152,10 +139,10 @@ export class MembershipService {
    */
   private async triggerCommission(userId: number, paymentId: number, amount: number) {
     // 获取用户信息（包含推荐人）
-    const users = await executeQuery(
+    const [users] = await db.query(
       'SELECT id, inviter_id, inviter_2nd_id, city_agent_id, affiliated_org_id FROM users WHERE id = ?',
       [userId]
-    );
+    ) as [any[], any];
 
     if (users.length === 0) return;
 
@@ -226,7 +213,7 @@ export class MembershipService {
     // 批量插入佣金记录
     if (commissions.length > 0) {
       for (const commission of commissions) {
-        await executeInsert(
+        await db.query(
           `INSERT INTO commissions (user_id, from_user_id, payment_id, level_type, amount, rate, status, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
           [commission.user_id, commission.from_user_id, commission.payment_id, 
@@ -250,7 +237,7 @@ export class MembershipService {
         params.push(role);
       }
       
-      const memberships = await executeQuery(sql, params);
+      const [memberships] = await db.query(sql, params) as [any[], any];
 
       if (memberships.length > 0) {
         const membership = memberships[0] as any;
@@ -274,10 +261,10 @@ export class MembershipService {
     }
 
     // 回退到用户表
-    const users = await executeQuery(
+    const [users] = await db.query(
       'SELECT membership_type, membership_expire_at FROM users WHERE id = ?',
       [userId]
-    );
+    ) as [any[], any];
 
     if (users.length === 0) {
       throw new Error('用户不存在');

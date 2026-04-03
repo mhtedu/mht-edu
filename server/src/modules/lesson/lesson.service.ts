@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class LessonService {
@@ -26,7 +22,7 @@ export class LessonService {
     studentPerformance?: string;
     nextLessonPlan?: string;
   }) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO lesson_records (
         order_id, teacher_id, parent_id, lesson_date,
         lesson_start_time, lesson_end_time, lesson_hours,
@@ -99,7 +95,7 @@ export class LessonService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT lr.*,
         o.order_no, o.subject,
         u.nickname as parent_nickname, u.avatar as parent_avatar,
@@ -115,7 +111,7 @@ export class LessonService {
       LIMIT ? OFFSET ?
     `, [...sqlParams, params.pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM lesson_records lr ${whereClause}
     `, sqlParams);
 
@@ -131,7 +127,7 @@ export class LessonService {
    * 获取课时记录详情
    */
   async getLessonRecordDetail(id: number) {
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT lr.*,
         o.order_no, o.subject, o.student_grade,
         u.nickname as parent_nickname, u.avatar as parent_avatar, u.mobile as parent_mobile,
@@ -163,7 +159,7 @@ export class LessonService {
     parentComment: string;
   }>) {
     // 验证权限
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT teacher_id, parent_id FROM lesson_records WHERE id = ?
     `, [id]);
 
@@ -209,7 +205,7 @@ export class LessonService {
     }
 
     if (updates.length > 0) {
-      await executeQuery(`
+      await db.query(`
         UPDATE lesson_records SET ${updates.join(', ')} WHERE id = ?
       `, [...values, id]);
     }
@@ -221,7 +217,7 @@ export class LessonService {
    * 家长确认课时
    */
   async confirmLesson(id: number, parentId: number, comment?: string) {
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT parent_id FROM lesson_records WHERE id = ?
     `, [id]);
 
@@ -233,7 +229,7 @@ export class LessonService {
       throw new Error('无权限操作');
     }
 
-    await executeQuery(`
+    await db.query(`
       UPDATE lesson_records 
       SET status = 1, parent_confirm_at = NOW(), parent_comment = ?
       WHERE id = ?
@@ -246,7 +242,7 @@ export class LessonService {
    * 家长提出异议
    */
   async disputeLesson(id: number, parentId: number, comment: string) {
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT parent_id FROM lesson_records WHERE id = ?
     `, [id]);
 
@@ -258,7 +254,7 @@ export class LessonService {
       throw new Error('无权限操作');
     }
 
-    await executeQuery(`
+    await db.query(`
       UPDATE lesson_records 
       SET status = 2, parent_comment = ?
       WHERE id = ?
@@ -279,7 +275,7 @@ export class LessonService {
       params.push(month);
     }
 
-    const stats = await executeQuery(`
+    const [stats] = await db.query(`
       SELECT 
         COUNT(*) as total_lessons,
         SUM(lesson_hours) as total_hours,
@@ -299,7 +295,7 @@ export class LessonService {
    * 更新订单课时统计
    */
   private async updateOrderLessonStats(orderId: number, addedHours: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE orders 
       SET completed_hours = COALESCE(completed_hours, 0) + ?
       WHERE id = ?
@@ -312,9 +308,10 @@ export class LessonService {
    * 获取教师排课设置
    */
   async getTeacherSchedules(teacherId: number) {
-    return executeQuery(`
+    const [schedules] = await db.query(`
       SELECT * FROM teacher_schedules WHERE teacher_id = ? ORDER BY day_of_week, start_time
-    `, [teacherId]);
+    `, [teacherId]) as [any[], any];
+    return schedules;
   }
 
   /**
@@ -328,11 +325,11 @@ export class LessonService {
     note?: string;
   }>) {
     // 先删除原有设置
-    await executeQuery(`DELETE FROM teacher_schedules WHERE teacher_id = ?`, [teacherId]);
+    await db.query(`DELETE FROM teacher_schedules WHERE teacher_id = ?`, [teacherId]);
 
     // 批量插入新设置
     for (const schedule of schedules) {
-      await executeQuery(`
+      await db.query(`
         INSERT INTO teacher_schedules (teacher_id, day_of_week, start_time, end_time, is_available, note)
         VALUES (?, ?, ?, ?, ?, ?)
       `, [teacherId, schedule.dayOfWeek, schedule.startTime, schedule.endTime, schedule.isAvailable ? 1 : 0, schedule.note || '']);
@@ -348,7 +345,7 @@ export class LessonService {
     const dayOfWeek = new Date(date).getDay();
 
     // 检查排课设置
-    const schedules = await executeQuery(`
+    const [schedules] = await db.query(`
       SELECT * FROM teacher_schedules 
       WHERE teacher_id = ? AND day_of_week = ? AND is_available = 1
       AND start_time <= ? AND end_time >= ?
@@ -359,7 +356,7 @@ export class LessonService {
     }
 
     // 检查是否有冲突的课程
-    const conflicts = await executeQuery(`
+    const [conflicts] = await db.query(`
       SELECT * FROM lesson_records 
       WHERE teacher_id = ? AND lesson_date = ?
       AND ((lesson_start_time < ? AND lesson_end_time > ?) 
@@ -377,7 +374,7 @@ export class LessonService {
    * 获取教师某月的课程日历
    */
   async getTeacherMonthlyLessons(teacherId: number, year: number, month: number) {
-    const lessons = await executeQuery(`
+    const [lessons] = await db.query(`
       SELECT lr.*, o.subject, o.student_grade,
         u.nickname as parent_nickname
       FROM lesson_records lr

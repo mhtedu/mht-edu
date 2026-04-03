@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class TeachingService {
@@ -21,14 +17,14 @@ export class TeachingService {
     expectedGoals: string;
   }) {
     // 检查是否已提交
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM trial_feedbacks 
       WHERE order_id = ? AND teacher_id = ? AND feedback_type = 1
-    `, [data.orderId, data.teacherId]);
+    `, [data.orderId, data.teacherId]) as [any[], any];
 
     if (existing.length > 0) {
       // 更新
-      await executeQuery(`
+      await db.query(`
         UPDATE trial_feedbacks 
         SET student_level = ?, teaching_suggestion = ?, expected_goals = ?
         WHERE order_id = ? AND teacher_id = ? AND feedback_type = 1
@@ -37,15 +33,15 @@ export class TeachingService {
     }
 
     // 获取家长ID
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT parent_id FROM orders WHERE id = ?
-    `, [data.orderId]);
+    `, [data.orderId]) as [any[], any];
 
     if (orders.length === 0) {
       throw new Error('订单不存在');
     }
 
-    await executeQuery(`
+    await db.query(`
       INSERT INTO trial_feedbacks (
         order_id, teacher_id, parent_id, feedback_type,
         student_level, teaching_suggestion, expected_goals
@@ -69,14 +65,14 @@ export class TeachingService {
     comment?: string;
   }) {
     // 检查是否已提交
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM trial_feedbacks 
       WHERE order_id = ? AND parent_id = ? AND feedback_type = 2
-    `, [data.orderId, data.parentId]);
+    `, [data.orderId, data.parentId]) as [any[], any];
 
     if (existing.length > 0) {
       // 更新
-      await executeQuery(`
+      await db.query(`
         UPDATE trial_feedbacks 
         SET satisfaction = ?, teacher_attitude = ?, teaching_quality = ?, 
             willingness = ?, parent_comment = ?
@@ -85,7 +81,7 @@ export class TeachingService {
       return { success: true, updated: true };
     }
 
-    await executeQuery(`
+    await db.query(`
       INSERT INTO trial_feedbacks (
         order_id, teacher_id, parent_id, feedback_type,
         satisfaction, teacher_attitude, teaching_quality, willingness, parent_comment
@@ -99,9 +95,9 @@ export class TeachingService {
    * 获取试课反馈
    */
   async getTrialFeedback(orderId: number) {
-    const feedbacks = await executeQuery(`
+    const [feedbacks] = await db.query(`
       SELECT * FROM trial_feedbacks WHERE order_id = ?
-    `, [orderId]);
+    `, [orderId]) as [any[], any];
 
     const result: any = {
       teacherFeedback: null,
@@ -136,7 +132,7 @@ export class TeachingService {
     materials?: string;
     notes?: string;
   }) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO teaching_plans (
         order_id, teacher_id, subject, total_lessons,
         start_date, end_date, teaching_goals, teaching_methods, materials, notes
@@ -152,7 +148,7 @@ export class TeachingService {
       data.teachingMethods || '',
       data.materials || '',
       data.notes || '',
-    ]);
+    ]) as [any, any];
 
     return { success: true, id: (result as any).insertId };
   }
@@ -161,7 +157,7 @@ export class TeachingService {
    * 获取教学计划
    */
   async getTeachingPlan(orderId: number) {
-    const plans = await executeQuery(`
+    const [plans] = await db.query(`
       SELECT tp.*, 
         o.subject as order_subject, o.student_grade,
         u.nickname as teacher_nickname
@@ -169,7 +165,7 @@ export class TeachingService {
       LEFT JOIN orders o ON tp.order_id = o.id
       LEFT JOIN users u ON tp.teacher_id = u.id
       WHERE tp.order_id = ?
-    `, [orderId]);
+    `, [orderId]) as [any[], any];
 
     if (plans.length === 0) {
       return null;
@@ -228,7 +224,7 @@ export class TeachingService {
     }
 
     if (updates.length > 0) {
-      await executeQuery(`
+      await db.query(`
         UPDATE teaching_plans SET ${updates.join(', ')}
         WHERE order_id = ? AND teacher_id = ?
       `, [...values, orderId, teacherId]);
@@ -241,7 +237,7 @@ export class TeachingService {
    * 更新教学进度
    */
   async updateProgress(orderId: number, teacherId: number, completedLessons: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE teaching_plans 
       SET completed_lessons = ?
       WHERE order_id = ? AND teacher_id = ?
@@ -263,7 +259,7 @@ export class TeachingService {
       conditions.push('tp.completed_lessons >= tp.total_lessons');
     }
 
-    return executeQuery(`
+    const [plans] = await db.query(`
       SELECT tp.*,
         o.order_no, o.student_grade,
         u.nickname as parent_nickname, u.avatar as parent_avatar,
@@ -273,6 +269,8 @@ export class TeachingService {
       LEFT JOIN users u ON o.parent_id = u.id
       WHERE ${conditions.join(' AND ')}
       ORDER BY tp.created_at DESC
-    `, params);
+    `, params) as [any[], any];
+    
+    return plans;
   }
 }

@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class OrgMembershipService {
@@ -14,25 +10,27 @@ export class OrgMembershipService {
    * 获取机构会员套餐列表
    */
   async getOrgMembershipPlans() {
-    return executeQuery(`
+    const [plans] = await db.query(`
       SELECT * FROM org_membership_plans 
       WHERE is_active = 1 
       ORDER BY sort_order ASC
-    `);
+    `) as [any[], any];
+    
+    return plans;
   }
 
   /**
    * 获取机构会员信息
    */
   async getOrgMembership(orgId: number) {
-    const memberships = await executeQuery(`
+    const [memberships] = await db.query(`
       SELECT om.*, omp.name as plan_name, omp.type as plan_type, omp.features
       FROM org_memberships om
       LEFT JOIN org_membership_plans omp ON om.membership_type = omp.type
       WHERE om.org_id = ? AND om.expire_at > NOW()
       ORDER BY om.expire_at DESC
       LIMIT 1
-    `, [orgId]);
+    `, [orgId]) as [any[], any];
 
     if (memberships.length === 0) {
       return {
@@ -65,10 +63,10 @@ export class OrgMembershipService {
    */
   async buyOrgMembership(orgId: number, planId: number) {
     // 获取套餐信息
-    const plans = await executeQuery(
+    const [plans] = await db.query(
       'SELECT * FROM org_membership_plans WHERE id = ? AND is_active = 1',
       [planId]
-    );
+    ) as [any[], any];
 
     if (plans.length === 0) {
       throw new Error('套餐不存在');
@@ -85,10 +83,10 @@ export class OrgMembershipService {
     // 创建支付记录
     const paymentNo = `ORG${Date.now()}${Math.random().toString(36).substr(2, 9)}`.toUpperCase();
 
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO payments (user_id, amount, payment_no, type, status, created_at)
       VALUES (?, ?, ?, 'org_membership', 0, NOW())
-    `, [orgId, plan.price, paymentNo]);
+    `, [orgId, plan.price, paymentNo]) as [any, any];
 
     const paymentId = (result as any).insertId;
 
@@ -106,10 +104,10 @@ export class OrgMembershipService {
    */
   async activateOrgMembership(orgId: number, planId: number, paymentId: number) {
     // 获取套餐信息
-    const plans = await executeQuery(
+    const [plans] = await db.query(
       'SELECT * FROM org_membership_plans WHERE id = ?',
       [planId]
-    );
+    ) as [any[], any];
 
     if (plans.length === 0) {
       throw new Error('套餐不存在');
@@ -122,32 +120,32 @@ export class OrgMembershipService {
     const expireAt = new Date(now.getTime() + plan.duration_days * 24 * 60 * 60 * 1000);
 
     // 检查是否已有会员
-    const existingMembership = await executeQuery(`
+    const [existingMembership] = await db.query(`
       SELECT id, expire_at FROM org_memberships 
       WHERE org_id = ? AND expire_at > NOW()
       ORDER BY expire_at DESC LIMIT 1
-    `, [orgId]);
+    `, [orgId]) as [any[], any];
 
     if (existingMembership.length > 0) {
       // 续期 - 在现有到期时间基础上延长
       const currentExpire = new Date((existingMembership[0] as any).expire_at);
       const newExpireAt = new Date(currentExpire.getTime() + plan.duration_days * 24 * 60 * 60 * 1000);
 
-      await executeQuery(`
+      await db.query(`
         UPDATE org_memberships 
         SET membership_type = ?, expire_at = ?, teacher_quota = ?
         WHERE org_id = ?
       `, [plan.type, newExpireAt, plan.teacher_quota, orgId]);
     } else {
       // 新购
-      await executeQuery(`
+      await db.query(`
         INSERT INTO org_memberships (org_id, membership_type, start_at, expire_at, teacher_quota)
         VALUES (?, ?, NOW(), ?, ?)
       `, [orgId, plan.type, expireAt, plan.teacher_quota]);
     }
 
     // 更新机构表的会员状态
-    await executeQuery(`
+    await db.query(`
       UPDATE organizations 
       SET membership_type = ?, membership_expire_at = ?
       WHERE user_id = ?
@@ -157,7 +155,7 @@ export class OrgMembershipService {
     await this.syncTeacherMembership(orgId, expireAt);
 
     // 更新支付记录
-    await executeQuery(`
+    await db.query(`
       UPDATE payments SET status = 1, paid_at = NOW() WHERE id = ?
     `, [paymentId]);
 
@@ -168,11 +166,11 @@ export class OrgMembershipService {
    * 获取机构教师数量
    */
   private async getOrgTeacherCount(orgId: number): Promise<number> {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       SELECT COUNT(*) as count FROM user_orgs 
       WHERE org_id = ? AND status = 1
-    `, [orgId]);
-    return (result[0] as any)?.count || 0;
+    `, [orgId]) as [any[], any];
+    return result[0]?.count || 0;
   }
 
   /**
@@ -180,16 +178,16 @@ export class OrgMembershipService {
    */
   async syncTeacherMembership(orgId: number, expireAt: Date) {
     // 获取机构下所有启用会员共享的教师
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT user_id FROM user_orgs 
       WHERE org_id = ? AND status = 1 AND inherit_membership = 1
-    `, [orgId]);
+    `, [orgId]) as [any[], any];
 
     for (const teacher of teachers) {
       const teacherId = (teacher as any).user_id;
 
       // 更新教师会员状态
-      await executeQuery(`
+      await db.query(`
         UPDATE users 
         SET membership_type = 1, 
             membership_expire_at = ?,
@@ -198,7 +196,7 @@ export class OrgMembershipService {
       `, [expireAt, orgId, teacherId]);
 
       // 更新关联表的会员到期时间
-      await executeQuery(`
+      await db.query(`
         UPDATE user_orgs 
         SET membership_expire_at = ?
         WHERE org_id = ? AND user_id = ?
@@ -226,14 +224,14 @@ export class OrgMembershipService {
     }
 
     // 设置会员共享
-    await executeQuery(`
+    await db.query(`
       UPDATE user_orgs 
       SET inherit_membership = 1, membership_expire_at = ?
       WHERE org_id = ? AND user_id = ?
     `, [membership.expire_at, orgId, teacherId]);
 
     // 更新教师会员状态
-    await executeQuery(`
+    await db.query(`
       UPDATE users 
       SET membership_type = 1, 
           membership_expire_at = ?,
@@ -242,7 +240,7 @@ export class OrgMembershipService {
     `, [membership.expire_at, orgId, teacherId]);
 
     // 更新机构已用名额
-    await executeQuery(`
+    await db.query(`
       UPDATE org_memberships 
       SET used_quota = used_quota + 1
       WHERE org_id = ?
@@ -259,9 +257,9 @@ export class OrgMembershipService {
    */
   async revokeMembershipOnLeave(orgId: number, teacherId: number) {
     // 检查教师的会员是否来自机构
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT org_membership_source FROM users WHERE id = ?
-    `, [teacherId]);
+    `, [teacherId]) as [any[], any];
 
     if (users.length === 0) return;
 
@@ -269,7 +267,7 @@ export class OrgMembershipService {
 
     // 如果会员来自此机构，则取消
     if (user.org_membership_source === orgId) {
-      await executeQuery(`
+      await db.query(`
         UPDATE users 
         SET membership_type = 0, 
             membership_expire_at = NULL,
@@ -279,7 +277,7 @@ export class OrgMembershipService {
     }
 
     // 更新机构已用名额
-    await executeQuery(`
+    await db.query(`
       UPDATE org_memberships 
       SET used_quota = GREATEST(0, used_quota - 1)
       WHERE org_id = ?
@@ -298,13 +296,13 @@ export class OrgMembershipService {
 
     if (inherit) {
       // 开启继承
-      await executeQuery(`
+      await db.query(`
         UPDATE user_orgs 
         SET inherit_membership = 1, membership_expire_at = ?
         WHERE org_id = ? AND user_id = ?
       `, [membership.expire_at, orgId, teacherId]);
 
-      await executeQuery(`
+      await db.query(`
         UPDATE users 
         SET membership_type = 1, 
             membership_expire_at = ?,
@@ -313,19 +311,19 @@ export class OrgMembershipService {
       `, [membership.expire_at, orgId, teacherId]);
     } else {
       // 关闭继承
-      await executeQuery(`
+      await db.query(`
         UPDATE user_orgs 
         SET inherit_membership = 0, membership_expire_at = NULL
         WHERE org_id = ? AND user_id = ?
       `, [orgId, teacherId]);
 
       // 检查教师是否自购会员
-      const selfMembership = await executeQuery(`
+      const [selfMembership] = await db.query(`
         SELECT membership_expire_at FROM users WHERE id = ? AND org_membership_source = ?
-      `, [teacherId, orgId]);
+      `, [teacherId, orgId]) as [any[], any];
 
       if (selfMembership.length > 0) {
-        await executeQuery(`
+        await db.query(`
           UPDATE users 
           SET membership_type = 0, 
               membership_expire_at = NULL,
@@ -359,13 +357,13 @@ export class OrgMembershipService {
     const membership = await this.getOrgMembership(orgId);
 
     // 获取继承会员的教师列表
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT u.id, u.nickname, u.avatar, uo.membership_expire_at, uo.inherit_membership
       FROM user_orgs uo
       LEFT JOIN users u ON uo.user_id = u.id
       WHERE uo.org_id = ? AND uo.status = 1
       ORDER BY uo.inherit_membership DESC, uo.join_time DESC
-    `, [orgId]);
+    `, [orgId]) as [any[], any];
 
     const inheritedCount = teachers.filter((t: any) => t.inherit_membership === 1).length;
 

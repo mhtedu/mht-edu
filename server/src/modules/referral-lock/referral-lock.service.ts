@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 /**
  * 分销关系锁定服务
@@ -32,7 +28,7 @@ export class ReferralLockService {
     }
 
     // 检查是否已有锁定关系
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT * FROM referral_locks WHERE user_id = ?
     `, [userId]);
 
@@ -45,7 +41,7 @@ export class ReferralLockService {
     }
 
     // 创建锁定关系
-    await executeQuery(`
+    await db.query(`
       INSERT INTO referral_locks (user_id, locker_id, lock_type, lock_source_id, created_at)
       VALUES (?, ?, ?, ?, NOW())
     `, [userId, lockerId, lockType, sourceId || null]);
@@ -67,7 +63,7 @@ export class ReferralLockService {
     shareCode: string
   ): Promise<{ locked: boolean; reason: string }> {
     // 获取分享码信息
-    const shares = await executeQuery(`
+    const [shares] = await db.query(`
       SELECT * FROM share_links WHERE share_code = ?
     `, [shareCode]);
 
@@ -100,14 +96,14 @@ export class ReferralLockService {
    */
   private async updateUserInviter(userId: number, inviterId: number) {
     // 获取邀请人的一级邀请人（作为二级邀请人）
-    const inviterInfo = await executeQuery(`
+    const [inviterInfo] = await db.query(`
       SELECT inviter_id FROM users WHERE id = ?
     `, [inviterId]);
 
     const inviter2ndId = inviterInfo.length > 0 ? (inviterInfo[0] as any).inviter_id : null;
 
     // 更新用户的邀请关系
-    await executeQuery(`
+    await db.query(`
       UPDATE users 
       SET inviter_id = ?, inviter_2nd_id = ?, updated_at = NOW()
       WHERE id = ? AND inviter_id IS NULL
@@ -123,7 +119,7 @@ export class ReferralLockService {
     lockType: string,
     sourceId?: number
   ) {
-    await executeQuery(`
+    await db.query(`
       INSERT INTO referral_lock_logs (user_id, locker_id, lock_type, lock_source_id, created_at)
       VALUES (?, ?, ?, ?, NOW())
     `, [userId, lockerId, lockType, sourceId || null]);
@@ -133,7 +129,7 @@ export class ReferralLockService {
    * 获取用户的锁定者（推荐人）
    */
   async getLocker(userId: number): Promise<any> {
-    const locks = await executeQuery(`
+    const [locks] = await db.query(`
       SELECT r.*, u.nickname, u.avatar, u.mobile
       FROM referral_locks r
       LEFT JOIN users u ON r.locker_id = u.id
@@ -147,7 +143,7 @@ export class ReferralLockService {
    * 检查用户是否已被锁定
    */
   async isLocked(userId: number): Promise<boolean> {
-    const locks = await executeQuery(`
+    const [locks] = await db.query(`
       SELECT id FROM referral_locks WHERE user_id = ?
     `, [userId]);
 
@@ -159,12 +155,12 @@ export class ReferralLockService {
    */
   async getInviteStats(userId: number) {
     // 一级邀请人数
-    const level1 = await executeQuery(`
+    const [level1] = await db.query(`
       SELECT COUNT(*) as count FROM referral_locks WHERE locker_id = ?
     `, [userId]);
 
     // 按类型统计
-    const byType = await executeQuery(`
+    const [byType] = await db.query(`
       SELECT lock_type, COUNT(*) as count 
       FROM referral_locks 
       WHERE locker_id = ?
@@ -172,7 +168,7 @@ export class ReferralLockService {
     `, [userId]);
 
     // 邀请的教师数
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT COUNT(*) as count 
       FROM referral_locks r
       LEFT JOIN users u ON r.user_id = u.id
@@ -180,7 +176,7 @@ export class ReferralLockService {
     `, [userId]);
 
     // 邀请的家长数
-    const parents = await executeQuery(`
+    const [parents] = await db.query(`
       SELECT COUNT(*) as count 
       FROM referral_locks r
       LEFT JOIN users u ON r.user_id = u.id

@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class ShareService {
@@ -16,7 +12,7 @@ export class ShareService {
     const shareCode = this.generateCode(userId, targetType, targetId);
     
     // 检查是否已有分享记录
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT * FROM share_links 
       WHERE user_id = ? AND target_type = ? AND target_id = ?
     `, [userId, targetType, targetId]);
@@ -30,7 +26,7 @@ export class ShareService {
     }
 
     // 创建分享记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO share_links (share_code, user_id, target_type, target_id, view_count, share_count, created_at)
       VALUES (?, ?, ?, ?, 0, 0, NOW())
     `, [shareCode, userId, targetType, targetId]);
@@ -47,7 +43,7 @@ export class ShareService {
    */
   async recordShare(userId: number, shareCode: string, channel: string) {
     // 获取分享链接信息
-    const shares = await executeQuery(`
+    const [shares] = await db.query(`
       SELECT * FROM share_links WHERE share_code = ?
     `, [shareCode]);
 
@@ -58,12 +54,12 @@ export class ShareService {
     const share = shares[0] as any;
 
     // 更新分享次数
-    await executeQuery(`
+    await db.query(`
       UPDATE share_links SET share_count = share_count + 1 WHERE share_code = ?
     `, [shareCode]);
 
     // 记录分享日志
-    await executeQuery(`
+    await db.query(`
       INSERT INTO share_logs (share_code, user_id, channel, created_at)
       VALUES (?, ?, ?, NOW())
     `, [shareCode, userId || share.user_id, channel]);
@@ -76,7 +72,7 @@ export class ShareService {
    */
   async recordView(userId: number, shareCode: string) {
     // 获取分享链接信息
-    const shares = await executeQuery(`
+    const [shares] = await db.query(`
       SELECT * FROM share_links WHERE share_code = ?
     `, [shareCode]);
 
@@ -87,19 +83,19 @@ export class ShareService {
     const share = shares[0] as any;
 
     // 更新浏览次数
-    await executeQuery(`
+    await db.query(`
       UPDATE share_links SET view_count = view_count + 1 WHERE share_code = ?
     `, [shareCode]);
 
     // 记录浏览日志
-    await executeQuery(`
+    await db.query(`
       INSERT INTO share_view_logs (share_code, viewer_id, created_at)
       VALUES (?, ?, NOW())
     `, [shareCode, userId || 0]);
 
     // 如果是新用户且未注册，记录为潜在用户
     if (!userId) {
-      await executeQuery(`
+      await db.query(`
         INSERT INTO potential_users (share_code, inviter_id, status, created_at)
         VALUES (?, ?, 'pending', NOW())
       `, [shareCode, share.user_id]);
@@ -112,7 +108,7 @@ export class ShareService {
    * 获取分享详情
    */
   async getShareInfo(code: string) {
-    const shares = await executeQuery(`
+    const [shares] = await db.query(`
       SELECT s.*, u.nickname, u.avatar
       FROM share_links s
       LEFT JOIN users u ON s.user_id = u.id
@@ -128,7 +124,7 @@ export class ShareService {
     // 根据类型获取目标详情
     let targetInfo: any = null;
     if (share.target_type === 'order') {
-      const orders = await executeQuery(`
+      const [orders] = await db.query(`
         SELECT id, subject, hourly_rate, student_grade, address, description
         FROM orders WHERE id = ?
       `, [share.target_id]);
@@ -147,7 +143,7 @@ export class ShareService {
   async getMyShares(userId: number, page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const shares = await executeQuery(`
+    const [shares] = await db.query(`
       SELECT s.*, 
         CASE s.target_type 
           WHEN 'order' THEN o.subject 
@@ -162,7 +158,7 @@ export class ShareService {
       LIMIT ? OFFSET ?
     `, [userId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM share_links WHERE user_id = ?
     `, [userId]);
 
@@ -179,23 +175,23 @@ export class ShareService {
    */
   async getShareEarnings(userId: number) {
     // 总分享次数
-    const shareCount = await executeQuery(`
+    const [shareCount] = await db.query(`
       SELECT COALESCE(SUM(share_count), 0) as total FROM share_links WHERE user_id = ?
     `, [userId]);
 
     // 总浏览次数
-    const viewCount = await executeQuery(`
+    const [viewCount] = await db.query(`
       SELECT COALESCE(SUM(view_count), 0) as total FROM share_links WHERE user_id = ?
     `, [userId]);
 
     // 通过分享转化的人数
-    const conversions = await executeQuery(`
+    const [conversions] = await db.query(`
       SELECT COUNT(*) as total FROM potential_users 
       WHERE inviter_id = ? AND status = 'converted'
     `, [userId]);
 
     // 分享产生的佣金
-    const commissions = await executeQuery(`
+    const [commissions] = await db.query(`
       SELECT COALESCE(SUM(amount), 0) as total FROM commissions
       WHERE user_id = ? AND level_type = 5
     `, [userId]);

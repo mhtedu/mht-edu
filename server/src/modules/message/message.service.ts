@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class MessageService {
@@ -14,7 +10,7 @@ export class MessageService {
   async getConversations(userId: number, page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const conversations = await executeQuery(`
+    const [conversations] = await db.query(`
       SELECT 
         c.*,
         CASE 
@@ -45,7 +41,7 @@ export class MessageService {
     `, [userId, userId, userId, userId, userId, userId, pageSize, offset]);
 
     // 获取总数
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM conversations 
       WHERE user1_id = ? OR user2_id = ?
     `, [userId, userId]);
@@ -65,7 +61,7 @@ export class MessageService {
     const offset = (page - 1) * pageSize;
 
     // 验证用户是否属于该会话
-    const convCheck = await executeQuery(`
+    const [convCheck] = await db.query(`
       SELECT id FROM conversations 
       WHERE id = ? AND (user1_id = ? OR user2_id = ?)
     `, [conversationId, userId, userId]);
@@ -74,7 +70,7 @@ export class MessageService {
       return { list: [], total: 0 };
     }
 
-    const messages = await executeQuery(`
+    const [messages] = await db.query(`
       SELECT m.*, u.nickname as sender_nickname, u.avatar as sender_avatar
       FROM messages m
       LEFT JOIN users u ON m.sender_id = u.id
@@ -83,7 +79,7 @@ export class MessageService {
       LIMIT ? OFFSET ?
     `, [conversationId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM messages WHERE conversation_id = ?
     `, [conversationId]);
 
@@ -100,7 +96,7 @@ export class MessageService {
    */
   async sendMessage(conversationId: number, senderId: number, content: string, msgType: number) {
     // 验证会话
-    const conv = await executeQuery(`
+    const [conv] = await db.query(`
       SELECT * FROM conversations WHERE id = ?
     `, [conversationId]);
 
@@ -116,14 +112,14 @@ export class MessageService {
     }
 
     // 插入消息
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO messages (conversation_id, sender_id, content, msg_type)
       VALUES (?, ?, ?, ?)
     `, [conversationId, senderId, content, msgType]);
 
     // 更新会话
     const isUser1 = conversation.user1_id === senderId;
-    await executeQuery(`
+    await db.query(`
       UPDATE conversations 
       SET last_message = ?, 
           last_message_at = NOW(),
@@ -151,7 +147,7 @@ export class MessageService {
    */
   async getOrCreateOrderConversation(orderId: number, userId: number, targetUserId: number) {
     // 查找现有会话
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT * FROM conversations 
       WHERE order_id = ? AND 
             ((user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?))
@@ -162,7 +158,7 @@ export class MessageService {
     }
 
     // 创建新会话
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO conversations (order_id, user1_id, user2_id, last_message_at)
       VALUES (?, ?, ?, NOW())
     `, [orderId, Math.min(userId, targetUserId), Math.max(userId, targetUserId)]);
@@ -179,7 +175,7 @@ export class MessageService {
    * 标记会话已读
    */
   async markAsRead(conversationId: number, userId: number) {
-    const conv = await executeQuery(`
+    const [conv] = await db.query(`
       SELECT * FROM conversations WHERE id = ?
     `, [conversationId]);
 
@@ -190,11 +186,11 @@ export class MessageService {
     const conversation = conv[0] as any;
 
     if (conversation.user1_id === userId) {
-      await executeQuery(`
+      await db.query(`
         UPDATE conversations SET user1_unread = 0 WHERE id = ?
       `, [conversationId]);
     } else if (conversation.user2_id === userId) {
-      await executeQuery(`
+      await db.query(`
         UPDATE conversations SET user2_unread = 0 WHERE id = ?
       `, [conversationId]);
     }
@@ -206,7 +202,7 @@ export class MessageService {
    * 获取未读消息数
    */
   async getUnreadCount(userId: number) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       SELECT 
         SUM(CASE WHEN user1_id = ? THEN user1_unread ELSE user2_unread END) as unread_count
       FROM conversations
@@ -214,7 +210,7 @@ export class MessageService {
     `, [userId, userId, userId]);
 
     // 获取提醒未读数
-    const reminderResult = await executeQuery(`
+    const [reminderResult] = await db.query(`
       SELECT COUNT(*) as reminder_count FROM message_reminders 
       WHERE user_id = ? AND is_read = 0
     `, [userId]);
@@ -235,7 +231,7 @@ export class MessageService {
     targetId: number | null,
     content: string,
   ) {
-    await executeQuery(`
+    await db.query(`
       INSERT INTO message_reminders (user_id, from_user_id, type, target_id, content)
       VALUES (?, ?, ?, ?, ?)
     `, [userId, fromUserId, type, targetId, content]);
@@ -249,7 +245,7 @@ export class MessageService {
   async getReminders(userId: number, page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const reminders = await executeQuery(`
+    const [reminders] = await db.query(`
       SELECT r.*, u.nickname as from_nickname, u.avatar as from_avatar
       FROM message_reminders r
       LEFT JOIN users u ON r.from_user_id = u.id
@@ -258,7 +254,7 @@ export class MessageService {
       LIMIT ? OFFSET ?
     `, [userId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM message_reminders WHERE user_id = ?
     `, [userId]);
 
@@ -275,12 +271,12 @@ export class MessageService {
    */
   async markRemindersRead(userId: number, ids?: number[]) {
     if (ids && ids.length > 0) {
-      await executeQuery(`
+      await db.query(`
         UPDATE message_reminders SET is_read = 1 
         WHERE user_id = ? AND id IN (${ids.map(() => '?').join(',')})
       `, [userId, ...ids]);
     } else {
-      await executeQuery(`
+      await db.query(`
         UPDATE message_reminders SET is_read = 1 WHERE user_id = ?
       `, [userId]);
     }
@@ -293,7 +289,7 @@ export class MessageService {
    */
   async sendSystemMessage(userId: number, content: string) {
     // 获取或创建与系统的会话
-    let conv = await executeQuery(`
+    let conv = await db.query(`
       SELECT id FROM conversations 
       WHERE (user1_id = 1 AND user2_id = ?) OR (user1_id = ? AND user2_id = 1)
     `, [userId, userId]);
@@ -302,7 +298,7 @@ export class MessageService {
     if (conv.length > 0) {
       conversationId = (conv[0] as any).id;
     } else {
-      const result = await executeQuery(`
+      const [result] = await db.query(`
         INSERT INTO conversations (user1_id, user2_id, last_message_at)
         VALUES (1, ?, NOW())
       `, [userId]);
@@ -310,13 +306,13 @@ export class MessageService {
     }
 
     // 插入系统消息
-    await executeQuery(`
+    await db.query(`
       INSERT INTO messages (conversation_id, sender_id, content, msg_type, is_robot)
       VALUES (?, 1, ?, 2, 1)
     `, [conversationId, content]);
 
     // 更新会话
-    await executeQuery(`
+    await db.query(`
       UPDATE conversations 
       SET last_message = ?, last_message_at = NOW(), user2_unread = user2_unread + 1
       WHERE id = ?
@@ -330,7 +326,7 @@ export class MessageService {
    */
   async robotReply(conversationId: number, userId: number) {
     // 检查用户是否是会员
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT membership_type, membership_expire_at FROM users WHERE id = ?
     `, [userId]);
 
@@ -348,7 +344,7 @@ export class MessageService {
     }
 
     // 发送机器人消息
-    await executeQuery(`
+    await db.query(`
       INSERT INTO messages (conversation_id, sender_id, content, msg_type, is_robot)
       VALUES (?, 1, ?, 2, 1)
     `, [conversationId, replyContent]);

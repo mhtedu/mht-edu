@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class RobotService {
@@ -95,7 +91,7 @@ export class RobotService {
    */
   async handleMessage(userId: number, message: string, conversationId?: number) {
     // 检查用户会员状态
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT membership_type, membership_expire_at, role 
       FROM users WHERE id = ?
     `, [userId]);
@@ -202,19 +198,19 @@ export class RobotService {
   ) {
     try {
       // 保存用户消息
-      await executeQuery(`
+      await db.query(`
         INSERT INTO messages (conversation_id, sender_id, content, msg_type, is_robot)
         VALUES (?, ?, ?, 0, 0)
       `, [conversationId, userId, userMessage]);
 
       // 保存机器人回复
-      await executeQuery(`
+      await db.query(`
         INSERT INTO messages (conversation_id, sender_id, content, msg_type, is_robot)
         VALUES (?, 1, ?, 0, 1)
       `, [conversationId, robotResponse]);
 
       // 更新会话最后消息
-      await executeQuery(`
+      await db.query(`
         UPDATE conversations 
         SET last_message = ?, last_message_at = NOW()
         WHERE id = ?

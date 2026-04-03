@@ -1,12 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 import { MessageService } from '../message/message.service';
 import { NotificationService } from '../notification/notification.service';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class TeacherService {
@@ -68,7 +64,7 @@ export class TeacherService {
       distanceOrder = 'ORDER BY distance ASC';
     }
 
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT 
         u.id, u.nickname, u.avatar, u.latitude, u.longitude,
         tp.real_name, tp.education, tp.subjects, tp.grades, 
@@ -82,7 +78,7 @@ export class TeacherService {
     `, [...sqlParams, params.pageSize, offset]);
 
     // 获取总数
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total 
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
@@ -102,7 +98,7 @@ export class TeacherService {
    */
   async getTeacherDetail(teacherId: number, userId: number) {
     // 获取教师基本信息
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT 
         u.id, u.nickname, u.avatar, u.mobile, u.latitude, u.longitude,
         tp.*
@@ -120,7 +116,7 @@ export class TeacherService {
     // 检查是否匹配（是否可查看联系方式）
     let canViewContact = false;
     if (userId) {
-      const matches = await executeQuery(`
+      const [matches] = await db.query(`
         SELECT id FROM order_matches 
         WHERE teacher_id = ? AND order_id IN (
           SELECT id FROM orders WHERE parent_id = ?
@@ -149,7 +145,7 @@ export class TeacherService {
     }
 
     // 获取评价统计
-    const reviewStats = await executeQuery(`
+    const [reviewStats] = await db.query(`
       SELECT 
         COUNT(*) as total,
         AVG(rating) as avg_rating,
@@ -175,7 +171,7 @@ export class TeacherService {
   async getTeacherReviews(teacherId: number, page: number, pageSize: number) {
     const offset = (page - 1) * pageSize;
 
-    const reviews = await executeQuery(`
+    const [reviews] = await db.query(`
       SELECT r.*, u.nickname, u.avatar
       FROM reviews r
       LEFT JOIN users u ON r.parent_id = u.id
@@ -184,7 +180,7 @@ export class TeacherService {
       LIMIT ? OFFSET ?
     `, [teacherId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM reviews WHERE teacher_id = ?
     `, [teacherId]);
 
@@ -201,7 +197,7 @@ export class TeacherService {
    */
   async sendMessage(teacherId: number, userId: number, content: string) {
     // 检查教师是否存在
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT id FROM users WHERE id = ? AND role = 1
     `, [teacherId]);
 
@@ -210,7 +206,7 @@ export class TeacherService {
     }
 
     // 检查用户会员状态
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT membership_type, membership_expire_at 
       FROM users WHERE id = ?
     `, [userId]);
@@ -228,7 +224,7 @@ export class TeacherService {
     }
 
     // 创建会话（如果不存在）
-    const existingConv = await executeQuery(`
+    const [existingConv] = await db.query(`
       SELECT id FROM conversations 
       WHERE ((user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?))
     `, [userId, teacherId, teacherId, userId]);
@@ -237,14 +233,14 @@ export class TeacherService {
     if (existingConv.length > 0) {
       conversationId = (existingConv[0] as any).id;
     } else {
-      const result = await executeQuery(`
+      const [result] = await db.query(`
         INSERT INTO conversations (user1_id, user2_id) VALUES (?, ?)
       `, [userId, teacherId]);
       conversationId = (result as any).insertId;
     }
 
     // 发送消息
-    await executeQuery(`
+    await db.query(`
       INSERT INTO messages (conversation_id, sender_id, receiver_id, content, msg_type)
       VALUES (?, ?, ?, ?, 1)
     `, [conversationId, userId, teacherId, content]);
@@ -304,7 +300,7 @@ export class TeacherService {
       distanceOrder = 'ORDER BY distance ASC';
     }
 
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT 
         o.*,
         ${distanceSelect},
@@ -317,7 +313,7 @@ export class TeacherService {
     `, [...sqlParams, params.pageSize, offset]);
 
     // 获取总数
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM orders o WHERE ${whereClause}
     `, sqlParams);
 
@@ -340,7 +336,7 @@ export class TeacherService {
    */
   async grabOrder(orderId: number, userId: number) {
     // 检查会员状态 - 抢单功能需要会员权限
-    const memberCheck = await executeQuery(`
+    const [memberCheck] = await db.query(`
       SELECT membership_type, membership_expire_at, role FROM users WHERE id = ?
     `, [userId]);
     
@@ -359,7 +355,7 @@ export class TeacherService {
     }
 
     // 检查订单状态
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ? FOR UPDATE
     `, [orderId]);
 
@@ -373,7 +369,7 @@ export class TeacherService {
     }
 
     // 检查是否已抢过
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM order_matches WHERE order_id = ? AND teacher_id = ?
     `, [orderId, userId]);
 
@@ -382,7 +378,7 @@ export class TeacherService {
     }
 
     // 创建抢单记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO order_matches (order_id, teacher_id, status)
       VALUES (?, ?, 0)
     `, [orderId, userId]);
@@ -393,7 +389,7 @@ export class TeacherService {
     // 发送通知（微信订阅消息 + 短信）
     try {
       // 获取教师信息
-      const teacherInfo = await executeQuery(`
+      const [teacherInfo] = await db.query(`
         SELECT u.nickname, tp.real_name FROM users u
         LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
         WHERE u.id = ?
@@ -432,7 +428,7 @@ export class TeacherService {
       params.push(status);
     }
 
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT 
         o.*,
         u.nickname as parent_nickname, u.avatar as parent_avatar, u.mobile as parent_mobile
@@ -444,7 +440,7 @@ export class TeacherService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total 
       FROM order_matches om
       LEFT JOIN orders o ON om.order_id = o.id
@@ -464,7 +460,7 @@ export class TeacherService {
    */
   async updateOrderStatus(orderId: number, teacherId: number, status: number) {
     // 验证教师是否有权限操作此订单
-    const matches = await executeQuery(`
+    const [matches] = await db.query(`
       SELECT om.*, o.status as order_status
       FROM order_matches om
       LEFT JOIN orders o ON om.order_id = o.id
@@ -489,7 +485,7 @@ export class TeacherService {
     }
 
     // 更新订单状态
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = ? WHERE id = ?
     `, [status, orderId]);
 

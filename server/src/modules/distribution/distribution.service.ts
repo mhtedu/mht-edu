@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class DistributionService {
@@ -13,7 +9,7 @@ export class DistributionService {
    */
   async getInviteInfo(userId: number) {
     // 获取用户基本信息
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT id, nickname, avatar, inviter_id, invite_code
       FROM users WHERE id = ?
     `, [userId]);
@@ -21,17 +17,17 @@ export class DistributionService {
     const user = users[0] as any;
 
     // 统计一级邀请人数
-    const [level1Result] = await executeQuery(`
+    const [level1Result] = await db.query(`
       SELECT COUNT(*) as count FROM users WHERE inviter_id = ?
     `, [userId]);
 
     // 统计二级邀请人数
-    const [level2Result] = await executeQuery(`
+    const [level2Result] = await db.query(`
       SELECT COUNT(*) as count FROM users WHERE inviter_2nd_id = ?
     `, [userId]);
 
     // 统计佣金
-    const commissionStats = await executeQuery(`
+    const [commissionStats] = await db.query(`
       SELECT 
         COALESCE(SUM(amount), 0) as total,
         COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as settled,
@@ -49,7 +45,7 @@ export class DistributionService {
     if (!inviteCode) {
       inviteCode = this.generateInviteCode(userId);
       // 更新用户的邀请码
-      await executeQuery(`
+      await db.query(`
         UPDATE users SET invite_code = ? WHERE id = ?
       `, [inviteCode, userId]);
     }
@@ -106,7 +102,7 @@ export class DistributionService {
     }
 
     // 检查用户是否已有推荐人
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT inviter_id FROM users WHERE id = ?
     `, [userId]);
 
@@ -116,7 +112,7 @@ export class DistributionService {
     }
 
     // 验证推荐人是否存在并获取其推荐人
-    const inviters = await executeQuery(`
+    const [inviters] = await db.query(`
       SELECT id, inviter_id FROM users WHERE id = ?
     `, [inviterId]);
 
@@ -127,7 +123,7 @@ export class DistributionService {
     const inviter = inviters[0] as any;
 
     // 更新邀请关系
-    await executeQuery(`
+    await db.query(`
       UPDATE users SET inviter_id = ?, inviter_2nd_id = ?, updated_at = NOW()
       WHERE id = ?
     `, [inviterId, inviter.inviter_id || null, userId]);
@@ -164,7 +160,7 @@ export class DistributionService {
   async getCommissionList(userId: number, page: number = 1, pageSize: number = 20) {
     const offset = (page - 1) * pageSize;
 
-    const list = await executeQuery(`
+    const [list] = await db.query(`
       SELECT c.*, u.nickname as from_nickname, u.avatar as from_avatar
       FROM commissions c
       LEFT JOIN users u ON c.from_user_id = u.id
@@ -173,7 +169,7 @@ export class DistributionService {
       LIMIT ? OFFSET ?
     `, [userId, pageSize, offset]);
 
-    const [countResult] = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM commissions WHERE user_id = ?
     `, [userId]);
 
@@ -191,7 +187,7 @@ export class DistributionService {
    */
   async applyWithdraw(userId: number, amount: number, accountInfo: { type: string; account: string; name: string }) {
     // 检查可提现余额
-    const balanceResult = await executeQuery(`
+    const [balanceResult] = await db.query(`
       SELECT 
         COALESCE(SUM(CASE WHEN status = 1 THEN amount ELSE 0 END), 0) as settled,
         COALESCE(SUM(CASE WHEN status = 2 THEN amount ELSE 0 END), 0) as withdrawn
@@ -206,7 +202,7 @@ export class DistributionService {
     }
 
     // 创建提现记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO withdraw_records (user_id, amount, account_type, account_no, account_name, status, created_at)
       VALUES (?, ?, ?, ?, ?, 0, NOW())
     `, [userId, amount, accountInfo.type, accountInfo.account, accountInfo.name]);
@@ -224,7 +220,7 @@ export class DistributionService {
     const offset = (page - 1) * pageSize;
     const field = level === 2 ? 'inviter_2nd_id' : 'inviter_id';
 
-    const list = await executeQuery(`
+    const [list] = await db.query(`
       SELECT id, nickname, avatar, created_at
       FROM users
       WHERE ${field} = ?
@@ -232,7 +228,7 @@ export class DistributionService {
       LIMIT ? OFFSET ?
     `, [userId, pageSize, offset]);
 
-    const [countResult] = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM users WHERE ${field} = ?
     `, [userId]);
 

@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class ActivityService {
@@ -42,7 +38,7 @@ export class ActivityService {
 
     const whereClause = conditions.join(' AND ');
 
-    const activities = await executeQuery(`
+    const [activities] = await db.query(`
       SELECT 
         id, title, type, cover_image, start_time, end_time,
         address, online_price, offline_price, max_participants,
@@ -55,7 +51,7 @@ export class ActivityService {
     `, [...sqlParams, params.pageSize, offset]);
 
     // 获取总数
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM activities WHERE ${whereClause}
     `, sqlParams);
 
@@ -71,7 +67,7 @@ export class ActivityService {
    * 获取活动详情
    */
   async getActivityDetail(activityId: number) {
-    const activities = await executeQuery(`
+    const [activities] = await db.query(`
       SELECT * FROM activities WHERE id = ? AND is_active = 1
     `, [activityId]);
 
@@ -82,7 +78,7 @@ export class ActivityService {
     const activity = activities[0] as any;
 
     // 获取报名人数统计
-    const signupStats = await executeQuery(`
+    const [signupStats] = await db.query(`
       SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN participation_type = 1 THEN 1 ELSE 0 END) as online_count,
@@ -109,7 +105,7 @@ export class ActivityService {
     participantCount: number,
   ) {
     // 检查活动是否存在
-    const activities = await executeQuery(`
+    const [activities] = await db.query(`
       SELECT * FROM activities WHERE id = ? AND is_active = 1 FOR UPDATE
     `, [activityId]);
 
@@ -132,7 +128,7 @@ export class ActivityService {
     }
 
     // 检查是否已报名
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM activity_signups 
       WHERE activity_id = ? AND user_id = ? AND status != 2
     `, [activityId, userId]);
@@ -146,14 +142,14 @@ export class ActivityService {
     const totalAmount = price * participantCount;
 
     // 创建报名记录
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO activity_signups 
       (activity_id, user_id, participation_type, status)
       VALUES (?, ?, ?, 1)
     `, [activityId, userId, signupType]);
 
     // 更新活动报名人数
-    await executeQuery(`
+    await db.query(`
       UPDATE activities 
       SET current_participants = current_participants + ?
       WHERE id = ?
@@ -185,7 +181,7 @@ export class ActivityService {
       params.push(status);
     }
 
-    const activities = await executeQuery(`
+    const [activities] = await db.query(`
       SELECT 
         a.id, a.title, a.type, a.cover_image, a.start_time, a.end_time,
         a.address, a.status, a.is_online,
@@ -198,7 +194,7 @@ export class ActivityService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total 
       FROM activity_signups s
       LEFT JOIN activities a ON s.activity_id = a.id
@@ -218,7 +214,7 @@ export class ActivityService {
    */
   async cancelSignup(activityId: number, userId: number) {
     // 检查报名记录
-    const signups = await executeQuery(`
+    const [signups] = await db.query(`
       SELECT * FROM activity_signups 
       WHERE activity_id = ? AND user_id = ? AND status = 1
     `, [activityId, userId]);
@@ -230,12 +226,12 @@ export class ActivityService {
     const signup = signups[0] as any;
 
     // 更新报名状态
-    await executeQuery(`
+    await db.query(`
       UPDATE activity_signups SET status = 2 WHERE id = ?
     `, [signup.id]);
 
     // 更新活动人数
-    await executeQuery(`
+    await db.query(`
       UPDATE activities 
       SET current_participants = current_participants - 1
       WHERE id = ?
@@ -254,7 +250,7 @@ export class ActivityService {
   ) {
     const offset = (page - 1) * pageSize;
 
-    const participants = await executeQuery(`
+    const [participants] = await db.query(`
       SELECT 
         s.id, s.participation_type as signup_type, s.created_at,
         u.nickname, u.avatar
@@ -265,7 +261,7 @@ export class ActivityService {
       LIMIT ? OFFSET ?
     `, [activityId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM activity_signups 
       WHERE activity_id = ? AND status = 1
     `, [activityId]);

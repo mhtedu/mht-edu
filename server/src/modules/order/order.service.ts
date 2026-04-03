@@ -1,12 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 import { MessageService } from '../message/message.service';
 import { NotificationService } from '../notification/notification.service';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class OrderService {
@@ -22,7 +18,7 @@ export class OrderService {
     // 生成订单号
     const orderNo = this.generateOrderNo();
 
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO orders (
         order_no, user_id, parent_id, subject, hourly_rate, student_grade, student_gender,
         address, latitude, longitude, description, status
@@ -66,7 +62,7 @@ export class OrderService {
       params.push(status);
     }
 
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT 
         o.*,
         u.nickname as teacher_nickname, u.avatar as teacher_avatar,
@@ -79,13 +75,13 @@ export class OrderService {
       LIMIT ? OFFSET ?
     `, [...params, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM orders o WHERE ${conditions.join(' AND ')}
     `, params);
 
     // 获取每个订单的抢单数量
     for (const order of orders as any[]) {
-      const matchCount = await executeQuery(`
+      const [matchCount] = await db.query(`
         SELECT COUNT(*) as count FROM order_matches WHERE order_id = ?
       `, [order.id]);
       order.match_count = matchCount[0]?.count || 0;
@@ -103,7 +99,7 @@ export class OrderService {
    * 获取订单详情
    */
   async getOrderDetail(orderId: number, userId: number) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT o.*, 
         u.nickname as parent_nickname, u.avatar as parent_avatar, u.mobile as parent_mobile,
         t.nickname as teacher_nickname, t.avatar as teacher_avatar, 
@@ -138,7 +134,7 @@ export class OrderService {
     }
 
     // 获取抢单列表
-    const matches = await executeQuery(`
+    const [matches] = await db.query(`
       SELECT om.*, 
         u.nickname, u.avatar,
         tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years
@@ -159,7 +155,7 @@ export class OrderService {
    */
   async getOrderMatches(orderId: number, userId: number) {
     // 验证权限
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT parent_id FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -171,7 +167,7 @@ export class OrderService {
       throw new Error('无权限查看');
     }
 
-    const matches = await executeQuery(`
+    const [matches] = await db.query(`
       SELECT om.*, 
         u.nickname, u.avatar,
         tp.real_name, tp.subjects, tp.education, tp.rating, tp.teaching_years, tp.hourly_rate
@@ -190,7 +186,7 @@ export class OrderService {
    */
   async selectTeacher(orderId: number, userId: number, teacherId: number) {
     // 验证权限
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -208,7 +204,7 @@ export class OrderService {
     }
 
     // 检查教师是否抢单
-    const matches = await executeQuery(`
+    const [matches] = await db.query(`
       SELECT id FROM order_matches WHERE order_id = ? AND teacher_id = ?
     `, [orderId, teacherId]);
 
@@ -217,17 +213,17 @@ export class OrderService {
     }
 
     // 更新抢单记录状态
-    await executeQuery(`
+    await db.query(`
       UPDATE order_matches SET status = 1 WHERE order_id = ? AND teacher_id = ?
     `, [orderId, teacherId]);
 
     // 拒绝其他教师
-    await executeQuery(`
+    await db.query(`
       UPDATE order_matches SET status = 2 WHERE order_id = ? AND teacher_id != ?
     `, [orderId, teacherId]);
 
     // 更新订单状态
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 1, matched_teacher_id = ?
       WHERE id = ?
     `, [teacherId, orderId]);
@@ -241,7 +237,7 @@ export class OrderService {
     // 发送匹配成功通知（微信订阅消息 + 短信）
     try {
       // 获取家长信息
-      const parentInfo = await executeQuery(`
+      const [parentInfo] = await db.query(`
         SELECT u.nickname, u.mobile FROM users u WHERE u.id = ?
       `, [order.parent_id]);
       const parentName = (parentInfo[0] as any)?.nickname || '家长';
@@ -266,7 +262,7 @@ export class OrderService {
    * 更新订单状态
    */
   async updateOrderStatus(orderId: number, userId: number, status: number) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -293,7 +289,7 @@ export class OrderService {
       throw new Error('状态流转不合法');
     }
 
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = ? WHERE id = ?
     `, [status, orderId]);
 
@@ -304,7 +300,7 @@ export class OrderService {
    * 取消订单
    */
   async cancelOrder(orderId: number, userId: number, reason?: string) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -322,12 +318,12 @@ export class OrderService {
       throw new Error('订单已进入试课阶段，无法取消');
     }
 
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 5, cancel_reason = ? WHERE id = ?
     `, [reason || '', orderId]);
 
     // 通知已抢单教师
-    const matches = await executeQuery(`
+    const [matches] = await db.query(`
       SELECT teacher_id FROM order_matches WHERE order_id = ?
     `, [orderId]);
 
@@ -345,7 +341,7 @@ export class OrderService {
    * 评价订单
    */
   async createReview(orderId: number, userId: number, rating: number, content: string) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -364,7 +360,7 @@ export class OrderService {
     }
 
     // 检查是否已评价
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM reviews WHERE order_id = ?
     `, [orderId]);
 
@@ -373,17 +369,17 @@ export class OrderService {
     }
 
     // 创建评价
-    await executeQuery(`
+    await db.query(`
       INSERT INTO reviews (order_id, parent_id, teacher_id, rating, content)
       VALUES (?, ?, ?, ?, ?)
     `, [orderId, userId, order.matched_teacher_id, rating, content]);
 
     // 更新教师评分
-    const avgRating = await executeQuery(`
+    const [avgRating] = await db.query(`
       SELECT AVG(rating) as avg FROM reviews WHERE teacher_id = ?
     `, [order.matched_teacher_id]);
 
-    await executeQuery(`
+    await db.query(`
       UPDATE teacher_profiles 
       SET rating = ?, review_count = review_count + 1
       WHERE user_id = ?
@@ -397,7 +393,7 @@ export class OrderService {
    * 允许家长或老师在匹配不成功时将订单退回订单池
    */
   async reopenOrder(orderId: number, userId: number, reason?: string) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -434,12 +430,12 @@ export class OrderService {
     }
 
     // 清除匹配记录，保留历史记录供参考
-    await executeQuery(`
+    await db.query(`
       UPDATE order_matches SET status = 3 WHERE order_id = ? AND status = 1
     `, [orderId]);
 
     // 重置订单状态
-    await executeQuery(`
+    await db.query(`
       UPDATE orders 
       SET status = 0, 
           matched_teacher_id = NULL
@@ -473,7 +469,7 @@ export class OrderService {
     }
 
     // 获取符合条件的订单
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT 
         o.id,
         o.subject,
@@ -564,7 +560,7 @@ export class OrderService {
    * 获取订单推荐教师
    */
   async getRecommendedTeachers(orderId: number, userId: number) {
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ?
     `, [orderId]);
 
@@ -579,7 +575,7 @@ export class OrderService {
     }
 
     // 根据科目和距离推荐教师
-    const teachers = await executeQuery(`
+    const [teachers] = await db.query(`
       SELECT 
         u.id, u.nickname, u.avatar, u.latitude, u.longitude,
         tp.real_name, tp.subjects, tp.education, tp.teaching_years, tp.rating, tp.hourly_rate,

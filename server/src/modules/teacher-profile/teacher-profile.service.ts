@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class TeacherProfileService {
@@ -82,7 +78,7 @@ export class TeacherProfileService {
     sql += ` LIMIT ? OFFSET ?`;
     values.push(pageSize, offset);
 
-    const teachers = await executeQuery(sql, values);
+    const teachers = await db.query(sql, values);
 
     // 处理返回数据
     const list = teachers.map((teacher: any) => {
@@ -150,7 +146,7 @@ export class TeacherProfileService {
       countValues.push(`"${subject}"`, `%"${subject}"%`);
     }
 
-    const countResult = await executeQuery(countSql, countValues);
+    const [countResult] = await db.query(countSql, countValues) as [any[], any];
     const total = countResult[0]?.total || 0;
 
     return {
@@ -168,7 +164,7 @@ export class TeacherProfileService {
    */
   async getTeacherProfile(teacherId: number, viewerId?: number) {
     // 获取用户基本信息
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT id, nickname, avatar, mobile, wechat_id, role, 
         membership_type, membership_expire_at, city_name
       FROM users WHERE id = ?
@@ -181,7 +177,7 @@ export class TeacherProfileService {
     const user = users[0] as any;
 
     // 获取教师扩展信息
-    const profiles = await executeQuery(`
+    const [profiles] = await db.query(`
       SELECT * FROM teacher_profiles WHERE user_id = ?
     `, [teacherId]);
 
@@ -191,7 +187,7 @@ export class TeacherProfileService {
     let contactUnlocked = false;
     let wechatUnlocked = false;
     if (viewerId) {
-      const unlocks = await executeQuery(`
+      const [unlocks] = await db.query(`
         SELECT unlock_type FROM contact_unlocks 
         WHERE user_id = ? AND target_user_id = ?
         ORDER BY created_at DESC LIMIT 1
@@ -204,7 +200,7 @@ export class TeacherProfileService {
     }
 
     // 增加浏览量
-    await executeQuery(`
+    await db.query(`
       UPDATE teacher_profiles SET view_count = view_count + 1 WHERE user_id = ?
     `, [teacherId]);
 
@@ -237,13 +233,13 @@ export class TeacherProfileService {
     teachingYears: number;
   }>) {
     // 检查是否存在记录
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT user_id FROM teacher_profiles WHERE user_id = ?
     `, [teacherId]);
 
     if (existing.length === 0) {
       // 创建新记录
-      await executeQuery(`
+      await db.query(`
         INSERT INTO teacher_profiles (
           user_id, real_name, gender, birth_year, education,
           subjects, hourly_rate_min, hourly_rate_max, intro, one_line_intro,
@@ -285,7 +281,7 @@ export class TeacherProfileService {
       if (data.teachingYears !== undefined) { updates.push('teaching_years = ?'); values.push(data.teachingYears); }
 
       if (updates.length > 0) {
-        await executeQuery(`
+        await db.query(`
           UPDATE teacher_profiles SET ${updates.join(', ')} WHERE user_id = ?
         `, [...values, teacherId]);
       }
@@ -305,7 +301,7 @@ export class TeacherProfileService {
     videoUrl?: string;
     videoCover?: string;
   }) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO teacher_moments (teacher_id, content, images, video_url, video_cover)
       VALUES (?, ?, ?, ?, ?)
     `, [
@@ -325,7 +321,7 @@ export class TeacherProfileService {
   async getMoments(teacherId: number, page: number = 1, pageSize: number = 10) {
     const offset = (page - 1) * pageSize;
 
-    const moments = await executeQuery(`
+    const [moments] = await db.query(`
       SELECT tm.*, 
         u.nickname, u.avatar
       FROM teacher_moments tm
@@ -335,10 +331,10 @@ export class TeacherProfileService {
       LIMIT ? OFFSET ?
     `, [teacherId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM teacher_moments 
       WHERE teacher_id = ? AND is_visible = 1
-    `, [teacherId]);
+    `, [teacherId]) as [any[], any];
 
     return {
       list: moments,
@@ -352,7 +348,7 @@ export class TeacherProfileService {
    * 删除动态
    */
   async deleteMoment(teacherId: number, momentId: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE teacher_moments SET is_visible = 0 
       WHERE id = ? AND teacher_id = ?
     `, [momentId, teacherId]);
@@ -365,19 +361,19 @@ export class TeacherProfileService {
    */
   async likeMoment(momentId: number, userId: number) {
     // 检查是否已点赞
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM moment_likes WHERE moment_id = ? AND user_id = ?
     `, [momentId, userId]);
 
     if (existing.length > 0) {
       // 取消点赞
-      await executeQuery(`DELETE FROM moment_likes WHERE moment_id = ? AND user_id = ?`, [momentId, userId]);
-      await executeQuery(`UPDATE teacher_moments SET like_count = like_count - 1 WHERE id = ?`, [momentId]);
+      await db.query(`DELETE FROM moment_likes WHERE moment_id = ? AND user_id = ?`, [momentId, userId]);
+      await db.query(`UPDATE teacher_moments SET like_count = like_count - 1 WHERE id = ?`, [momentId]);
       return { success: true, liked: false };
     } else {
       // 点赞
-      await executeQuery(`INSERT INTO moment_likes (moment_id, user_id) VALUES (?, ?)`, [momentId, userId]);
-      await executeQuery(`UPDATE teacher_moments SET like_count = like_count + 1 WHERE id = ?`, [momentId]);
+      await db.query(`INSERT INTO moment_likes (moment_id, user_id) VALUES (?, ?)`, [momentId, userId]);
+      await db.query(`UPDATE teacher_moments SET like_count = like_count + 1 WHERE id = ?`, [momentId]);
       return { success: true, liked: true };
     }
   }
@@ -390,7 +386,7 @@ export class TeacherProfileService {
   async getTeacherReviews(teacherId: number, page: number = 1, pageSize: number = 10) {
     const offset = (page - 1) * pageSize;
 
-    const reviews = await executeQuery(`
+    const [reviews] = await db.query(`
       SELECT r.*,
         CASE WHEN r.is_anonymous = 1 THEN '匿名用户' ELSE u.nickname END as parent_nickname,
         CASE WHEN r.is_anonymous = 1 THEN NULL ELSE u.avatar END as parent_avatar
@@ -401,12 +397,12 @@ export class TeacherProfileService {
       LIMIT ? OFFSET ?
     `, [teacherId, pageSize, offset]);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM reviews WHERE teacher_id = ?
-    `, [teacherId]);
+    `, [teacherId]) as [any[], any];
 
     // 统计评分分布
-    const ratingStats = await executeQuery(`
+    const [ratingStats] = await db.query(`
       SELECT 
         rating,
         COUNT(*) as count
@@ -414,7 +410,7 @@ export class TeacherProfileService {
       WHERE teacher_id = ?
       GROUP BY rating
       ORDER BY rating DESC
-    `, [teacherId]);
+    `, [teacherId]) as [any[], any];
 
     return {
       list: reviews,
@@ -430,7 +426,7 @@ export class TeacherProfileService {
    */
   async replyReview(teacherId: number, reviewId: number, reply: string) {
     // 验证评价归属
-    const reviews = await executeQuery(`
+    const [reviews] = await db.query(`
       SELECT id FROM reviews WHERE id = ? AND teacher_id = ?
     `, [reviewId, teacherId]);
 
@@ -438,7 +434,7 @@ export class TeacherProfileService {
       throw new Error('评价不存在或无权限');
     }
 
-    await executeQuery(`
+    await db.query(`
       UPDATE reviews SET reply = ?, reply_at = NOW() WHERE id = ?
     `, [reply, reviewId]);
 
@@ -458,7 +454,7 @@ export class TeacherProfileService {
     isMember: boolean;
   }) {
     // 检查目标用户是否存在
-    const targets = await executeQuery(`
+    const [targets] = await db.query(`
       SELECT id, mobile, wechat_id FROM users WHERE id = ?
     `, [data.targetUserId]);
 
@@ -475,7 +471,7 @@ export class TeacherProfileService {
     }
 
     // 创建解锁记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO contact_unlocks (order_id, user_id, target_user_id, unlock_type, cost_amount)
       VALUES (?, ?, ?, ?, ?)
     `, [data.orderId || null, data.userId, data.targetUserId, data.unlockType, costAmount]);
@@ -496,7 +492,7 @@ export class TeacherProfileService {
    * 更新用户微信号
    */
   async updateWechat(userId: number, wechatId: string, qrcode?: string) {
-    await executeQuery(`
+    await db.query(`
       UPDATE users SET wechat_id = ?, wechat_qrcode = ? WHERE id = ?
     `, [wechatId, qrcode || null, userId]);
 
@@ -509,7 +505,7 @@ export class TeacherProfileService {
    * 获取教师主页统计数据
    */
   async getTeacherStats(teacherId: number) {
-    const stats = await executeQuery(`
+    const [stats] = await db.query(`
       SELECT 
         tp.view_count,
         tp.rating,

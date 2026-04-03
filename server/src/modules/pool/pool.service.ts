@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class PoolService {
@@ -21,7 +17,7 @@ export class PoolService {
     releaseType: number; // 1家长取消 2教师解约 3系统回收
   }) {
     // 检查是否已在公海池
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM order_pool WHERE order_id = ? AND pool_status = 0
     `, [data.orderId]);
 
@@ -30,14 +26,14 @@ export class PoolService {
     }
 
     // 获取订单过期时间
-    const configs = await executeQuery(`
+    const [configs] = await db.query(`
       SELECT config_value FROM system_configs WHERE config_key = 'order_expire_days'
     `);
     const expireDays = configs.length > 0 ? parseInt((configs[0] as any).config_value) : 7;
     const expireAt = new Date();
     expireAt.setDate(expireAt.getDate() + expireDays);
 
-    await executeQuery(`
+    await db.query(`
       INSERT INTO order_pool (
         order_id, original_parent_id, original_teacher_id,
         release_reason, release_type, expire_at
@@ -45,7 +41,7 @@ export class PoolService {
     `, [data.orderId, data.originalParentId, data.originalTeacherId || null, data.releaseReason, data.releaseType, expireAt]);
 
     // 更新订单状态为已解除
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 5 WHERE id = ?
     `, [data.orderId]);
 
@@ -85,7 +81,7 @@ export class PoolService {
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
-    let orders = await executeQuery(`
+    let [orders] = await db.query(`
       SELECT op.*, o.*,
         u.nickname as parent_nickname, u.avatar as parent_avatar, u.city_code,
         ROUND(
@@ -109,15 +105,15 @@ export class PoolService {
       ...sqlParams,
       params.pageSize,
       offset,
-    ]);
+    ]) as [any[], any];
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total 
       FROM order_pool op
       LEFT JOIN orders o ON op.order_id = o.id
       LEFT JOIN users u ON op.original_parent_id = u.id
       ${whereClause}
-    `, sqlParams);
+    `, sqlParams) as [any[], any];
 
     // 隐藏联系方式
     orders = orders.map((order: any) => {
@@ -138,7 +134,7 @@ export class PoolService {
    */
   async grabFromPool(poolId: number, teacherId: number) {
     // 检查公海池订单状态
-    const poolOrders = await executeQuery(`
+    const [poolOrders] = await db.query(`
       SELECT * FROM order_pool WHERE id = ? AND pool_status = 0 AND expire_at > NOW()
     `, [poolId]);
 
@@ -149,26 +145,26 @@ export class PoolService {
     const poolOrder = poolOrders[0] as any;
 
     // 检查教师是否已有该订单的抢单记录
-    const existingMatch = await executeQuery(`
+    const [existingMatch] = await db.query(`
       SELECT id FROM order_matches WHERE order_id = ? AND teacher_id = ?
     `, [poolOrder.order_id, teacherId]);
 
     if (existingMatch.length === 0) {
       // 创建抢单记录
-      await executeQuery(`
+      await db.query(`
         INSERT INTO order_matches (order_id, teacher_id, status)
         VALUES (?, ?, 0)
       `, [poolOrder.order_id, teacherId]);
     }
 
     // 更新订单状态为待抢单
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 0, matched_teacher_id = NULL, matched_at = NULL
       WHERE id = ?
     `, [poolOrder.order_id]);
 
     // 更新公海池状态
-    await executeQuery(`
+    await db.query(`
       UPDATE order_pool SET pool_status = 1, assigned_teacher_id = ?, assigned_at = NOW()
       WHERE id = ?
     `, [teacherId, poolId]);
@@ -180,7 +176,7 @@ export class PoolService {
    * 获取公海池统计
    */
   async getPoolStats() {
-    const stats = await executeQuery(`
+    const [stats] = await db.query(`
       SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN pool_status = 0 THEN 1 ELSE 0 END) as pending,
@@ -200,19 +196,19 @@ export class PoolService {
    */
   async cleanExpiredOrders() {
     // 获取过期订单
-    const expired = await executeQuery(`
+    const [expired] = await db.query(`
       SELECT id, order_id FROM order_pool 
       WHERE pool_status = 0 AND expire_at < NOW()
     `);
 
     for (const order of expired as any[]) {
       // 更新公海池状态
-      await executeQuery(`
+      await db.query(`
         UPDATE order_pool SET pool_status = 2 WHERE id = ?
       `, [order.id]);
 
       // 彻底关闭订单
-      await executeQuery(`
+      await db.query(`
         UPDATE orders SET status = 5 WHERE id = ?
       `, [order.order_id]);
     }
@@ -224,7 +220,7 @@ export class PoolService {
    * 管理员重新分配公海池订单
    */
   async assignFromPool(poolId: number, teacherId: number) {
-    const poolOrders = await executeQuery(`
+    const [poolOrders] = await db.query(`
       SELECT * FROM order_pool WHERE id = ?
     `, [poolId]);
 
@@ -235,17 +231,17 @@ export class PoolService {
     const poolOrder = poolOrders[0] as any;
 
     // 直接匹配
-    await executeQuery(`
+    await db.query(`
       INSERT INTO order_matches (order_id, teacher_id, status)
       VALUES (?, ?, 1)
     `, [poolOrder.order_id, teacherId]);
 
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 1, matched_teacher_id = ?, matched_at = NOW()
       WHERE id = ?
     `, [teacherId, poolOrder.order_id]);
 
-    await executeQuery(`
+    await db.query(`
       UPDATE order_pool SET pool_status = 1, assigned_teacher_id = ?, assigned_at = NOW()
       WHERE id = ?
     `, [teacherId, poolId]);

@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class OrgValueService {
@@ -26,7 +22,7 @@ export class OrgValueService {
     apply_scope?: number;
     teacher_ids?: number[];
   }) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO org_coupons (
         org_id, name, type, discount_amount, discount_rate, 
         min_amount, total_count, per_user_limit, start_at, expire_at,
@@ -61,7 +57,7 @@ export class OrgValueService {
 
     sql += ' ORDER BY oc.created_at DESC';
 
-    const coupons = await executeQuery(sql, params);
+    const coupons = await db.query(sql, params);
 
     return coupons.map((c: any) => ({
       ...c,
@@ -74,7 +70,7 @@ export class OrgValueService {
    */
   async receiveCoupon(userId: number, couponId: number) {
     // 获取优惠券信息
-    const coupons = await executeQuery(`
+    const [coupons] = await db.query(`
       SELECT * FROM org_coupons WHERE id = ? AND status = 1
     `, [couponId]);
 
@@ -94,7 +90,7 @@ export class OrgValueService {
     }
 
     // 检查库存
-    const receivedCount = await executeQuery(`
+    const [receivedCount] = await db.query(`
       SELECT COUNT(*) as count FROM user_coupons WHERE coupon_id = ?
     `, [couponId]);
 
@@ -103,7 +99,7 @@ export class OrgValueService {
     }
 
     // 检查用户领取次数
-    const userReceivedCount = await executeQuery(`
+    const [userReceivedCount] = await db.query(`
       SELECT COUNT(*) as count FROM user_coupons WHERE coupon_id = ? AND user_id = ?
     `, [couponId, userId]);
 
@@ -112,7 +108,7 @@ export class OrgValueService {
     }
 
     // 领取
-    await executeQuery(`
+    await db.query(`
       INSERT INTO user_coupons (user_id, coupon_id, org_id, status)
       VALUES (?, ?, ?, 0)
     `, [userId, couponId, coupon.org_id]);
@@ -142,7 +138,7 @@ export class OrgValueService {
 
     sql += ' ORDER BY oc.expire_at ASC';
 
-    const coupons = await executeQuery(sql, params);
+    const coupons = await db.query(sql, params);
 
     // 过滤适用的优惠券
     return coupons.filter((c: any) => {
@@ -169,7 +165,7 @@ export class OrgValueService {
     source?: string;
     notes?: string;
   }) {
-    const result = await executeQuery(`
+    const [result] = await db.query(`
       INSERT INTO org_students (
         org_id, student_name, parent_name, parent_phone, grade,
         subjects, teacher_id, source, notes
@@ -181,7 +177,7 @@ export class OrgValueService {
     ]);
 
     // 更新机构学员数量
-    await executeQuery(`
+    await db.query(`
       UPDATE organizations SET student_count = student_count + 1 WHERE user_id = ?
     `, [orgId]);
 
@@ -228,13 +224,13 @@ export class OrgValueService {
     sql += ' ORDER BY os.updated_at DESC LIMIT ? OFFSET ?';
     params.push(pageSize, offset);
 
-    const students = await executeQuery(sql, params);
+    const students = await db.query(sql, params);
 
     // 获取总数
     const countSql = `
       SELECT COUNT(*) as total FROM org_students WHERE org_id = ?
     `;
-    const countResult = await executeQuery(countSql, [orgId]);
+    const countResult = await db.query(countSql, [orgId]);
 
     return {
       list: students.map((s: any) => ({
@@ -251,7 +247,7 @@ export class OrgValueService {
    * 更新学员状态
    */
   async updateStudentStatus(orgId: number, studentId: number, status: number) {
-    await executeQuery(`
+    await db.query(`
       UPDATE org_students SET status = ? WHERE id = ? AND org_id = ?
     `, [status, studentId, orgId]);
 
@@ -268,7 +264,7 @@ export class OrgValueService {
     content: string;
     next_action?: string;
   }) {
-    await executeQuery(`
+    await db.query(`
       INSERT INTO student_follow_records (
         student_id, org_id, operator_id, follow_type, content, next_action
       ) VALUES (?, ?, ?, ?, ?, ?)
@@ -278,7 +274,7 @@ export class OrgValueService {
     ]);
 
     // 更新学员最后联系时间
-    await executeQuery(`
+    await db.query(`
       UPDATE org_students SET last_contact_at = NOW() WHERE id = ?
     `, [data.student_id]);
 
@@ -289,7 +285,7 @@ export class OrgValueService {
    * 获取跟进记录
    */
   async getFollowRecords(studentId: number) {
-    const records = await executeQuery(`
+    const [records] = await db.query(`
       SELECT sfr.*, u.nickname as operator_name
       FROM student_follow_records sfr
       LEFT JOIN users u ON sfr.operator_id = u.id
@@ -305,7 +301,7 @@ export class OrgValueService {
    * 获取待跟进学员列表
    */
   async getPendingFollowStudents(orgId: number) {
-    const students = await executeQuery(`
+    const [students] = await db.query(`
       SELECT * FROM org_students 
       WHERE org_id = ? 
       AND (next_follow_at IS NULL OR next_follow_at <= NOW())
@@ -328,7 +324,7 @@ export class OrgValueService {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const monthStats = await executeQuery(`
+    const [monthStats] = await db.query(`
       SELECT 
         COUNT(*) as order_count,
         COALESCE(SUM(total_amount), 0) as total_amount,
@@ -340,7 +336,7 @@ export class OrgValueService {
     `, [orgId, monthStart]);
 
     // 累计数据
-    const totalStats = await executeQuery(`
+    const [totalStats] = await db.query(`
       SELECT 
         COALESCE(SUM(total_amount), 0) as total_amount,
         COALESCE(SUM(org_income), 0) as org_income,
@@ -350,7 +346,7 @@ export class OrgValueService {
     `, [orgId]);
 
     // 待结算金额
-    const pendingSettlement = await executeQuery(`
+    const [pendingSettlement] = await db.query(`
       SELECT COALESCE(SUM(org_income), 0) as pending_amount
       FROM org_settlements 
       WHERE org_id = ? AND status = 0
@@ -388,9 +384,9 @@ export class OrgValueService {
     sql += ' ORDER BY period_start DESC LIMIT ? OFFSET ?';
     params.push(pageSize, offset);
 
-    const settlements = await executeQuery(sql, params);
+    const settlements = await db.query(sql, params);
 
-    const countResult = await executeQuery(`
+    const [countResult] = await db.query(`
       SELECT COUNT(*) as total FROM org_settlements WHERE org_id = ?
     `, [orgId]);
 
@@ -428,7 +424,7 @@ export class OrgValueService {
     }
 
     // 订单趋势
-    const orderTrend = await executeQuery(`
+    const [orderTrend] = await db.query(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as order_count,
@@ -442,7 +438,7 @@ export class OrgValueService {
     `, [orgId, startDate]);
 
     // 教师绩效排行
-    const teacherPerformance = await executeQuery(`
+    const [teacherPerformance] = await db.query(`
       SELECT 
         u.id, u.nickname, u.avatar,
         tp.real_name, tp.subjects,
@@ -461,7 +457,7 @@ export class OrgValueService {
     `, [startDate, orgId]);
 
     // 学员增长趋势
-    const studentTrend = await executeQuery(`
+    const [studentTrend] = await db.query(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as new_count
@@ -472,7 +468,7 @@ export class OrgValueService {
     `, [orgId, startDate]);
 
     // 科目分布
-    const subjectDistribution = await executeQuery(`
+    const [subjectDistribution] = await db.query(`
       SELECT 
         subject,
         COUNT(*) as count
@@ -497,7 +493,7 @@ export class OrgValueService {
    * 获取机构品牌配置
    */
   async getBrandConfig(orgId: number) {
-    const configs = await executeQuery(`
+    const [configs] = await db.query(`
       SELECT * FROM org_brand_configs WHERE org_id = ?
     `, [orgId]);
 
@@ -540,13 +536,13 @@ export class OrgValueService {
     faqs?: any[];
   }) {
     // 检查是否存在
-    const existing = await executeQuery(`
+    const [existing] = await db.query(`
       SELECT id FROM org_brand_configs WHERE org_id = ?
     `, [orgId]);
 
     if (existing.length === 0) {
       // 创建
-      await executeQuery(`
+      await db.query(`
         INSERT INTO org_brand_configs (
           org_id, banner_images, intro_video, featured_teachers,
           success_cases, honors, teaching_features, service_promise, faqs
@@ -601,7 +597,7 @@ export class OrgValueService {
       }
 
       if (updates.length > 0) {
-        await executeQuery(`
+        await db.query(`
           UPDATE org_brand_configs SET ${updates.join(', ')} WHERE org_id = ?
         `, [...values, orgId]);
       }

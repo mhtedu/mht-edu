@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Query, Param, Request } from '@nestjs/common';
 import { TeacherProfileService } from './teacher-profile.service';
 import { Public } from '../auth/decorators/public.decorator';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
 @Controller('teacher-profile')
 export class TeacherProfileController {
@@ -188,12 +188,12 @@ export class TeacherProfileController {
     const userId = req.user?.id || 1;
     
     // 检查会员状态
-    const [users] = await query(
+    const [users] = await db.query(
       'SELECT membership_type, membership_expire_at FROM users WHERE id = ?',
       [userId]
-    );
+    ) as [any[], any];
     
-    const user = (users as any[])[0];
+    const user = users[0];
     const isMember = user?.membership_type === 1 && 
       user?.membership_expire_at && 
       new Date(user.membership_expire_at) > new Date();

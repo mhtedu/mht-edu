@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class ReportService {
@@ -13,7 +9,7 @@ export class ReportService {
    */
   async getOverview() {
     // 用户数据
-    const userStats = await executeQuery(`
+    const [userStats] = await db.query(`
       SELECT 
         COUNT(*) as total_users,
         SUM(CASE WHEN role = 0 THEN 1 ELSE 0 END) as parent_count,
@@ -27,7 +23,7 @@ export class ReportService {
     `);
 
     // 订单数据
-    const orderStats = await executeQuery(`
+    const [orderStats] = await db.query(`
       SELECT 
         COUNT(*) as total_orders,
         SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending_count,
@@ -41,7 +37,7 @@ export class ReportService {
     `);
 
     // 支付数据
-    const paymentStats = await executeQuery(`
+    const [paymentStats] = await db.query(`
       SELECT 
         COUNT(*) as total_payments,
         COALESCE(SUM(amount), 0) as total_amount,
@@ -53,7 +49,7 @@ export class ReportService {
     `);
 
     // 分佣数据
-    const commissionStats = await executeQuery(`
+    const [commissionStats] = await db.query(`
       SELECT 
         COUNT(*) as total_commissions,
         COALESCE(SUM(amount), 0) as total_amount,
@@ -75,7 +71,7 @@ export class ReportService {
    * 获取趋势数据（用于图表）
    */
   async getTrend(days: number = 30) {
-    const userTrend = await executeQuery(`
+    const [userTrend] = await db.query(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as count
@@ -85,7 +81,7 @@ export class ReportService {
       ORDER BY date
     `, [days]);
 
-    const orderTrend = await executeQuery(`
+    const [orderTrend] = await db.query(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as count
@@ -95,7 +91,7 @@ export class ReportService {
       ORDER BY date
     `, [days]);
 
-    const paymentTrend = await executeQuery(`
+    const [paymentTrend] = await db.query(`
       SELECT 
         DATE(paid_at) as date,
         COUNT(*) as count,
@@ -118,7 +114,7 @@ export class ReportService {
    */
   async getUserDistribution() {
     // 角色分布
-    const roleDistribution = await executeQuery(`
+    const [roleDistribution] = await db.query(`
       SELECT 
         role,
         CASE role
@@ -133,7 +129,7 @@ export class ReportService {
     `);
 
     // 会员分布
-    const memberDistribution = await executeQuery(`
+    const [memberDistribution] = await db.query(`
       SELECT 
         CASE 
           WHEN membership_type = 1 AND membership_expire_at > NOW() THEN '会员'
@@ -145,7 +141,7 @@ export class ReportService {
     `);
 
     // 邀请层级分布
-    const inviteDistribution = await executeQuery(`
+    const [inviteDistribution] = await db.query(`
       SELECT 
         CASE 
           WHEN inviter_id IS NULL THEN '无邀请人'
@@ -168,7 +164,7 @@ export class ReportService {
    */
   async getOrderDistribution() {
     // 状态分布
-    const statusDistribution = await executeQuery(`
+    const [statusDistribution] = await db.query(`
       SELECT 
         status,
         CASE status
@@ -186,7 +182,7 @@ export class ReportService {
     `);
 
     // 科目分布
-    const subjectDistribution = await executeQuery(`
+    const [subjectDistribution] = await db.query(`
       SELECT 
         subject,
         COUNT(*) as count
@@ -198,7 +194,7 @@ export class ReportService {
     `);
 
     // 年级分布
-    const gradeDistribution = await executeQuery(`
+    const [gradeDistribution] = await db.query(`
       SELECT 
         student_grade as grade,
         COUNT(*) as count
@@ -221,7 +217,7 @@ export class ReportService {
    */
   async getRevenueAnalysis() {
     // 每日收入
-    const dailyRevenue = await executeQuery(`
+    const [dailyRevenue] = await db.query(`
       SELECT 
         DATE(paid_at) as date,
         COUNT(*) as payment_count,
@@ -234,7 +230,7 @@ export class ReportService {
     `);
 
     // 收入来源分布
-    const revenueSource = await executeQuery(`
+    const [revenueSource] = await db.query(`
       SELECT 
         CASE 
           WHEN membership_id IS NOT NULL THEN '会员'
@@ -249,7 +245,7 @@ export class ReportService {
     `);
 
     // 会员套餐销售统计
-    const planSales = await executeQuery(`
+    const [planSales] = await db.query(`
       SELECT 
         mp.name as plan_name,
         mp.price,
@@ -274,7 +270,7 @@ export class ReportService {
    */
   async getDistributionStats() {
     // 分销商排行
-    const topDistributors = await executeQuery(`
+    const [topDistributors] = await db.query(`
       SELECT 
         u.id,
         u.nickname,
@@ -289,7 +285,7 @@ export class ReportService {
     `);
 
     // 分佣层级统计
-    const levelStats = await executeQuery(`
+    const [levelStats] = await db.query(`
       SELECT 
         level_type,
         CASE level_type
@@ -307,7 +303,7 @@ export class ReportService {
     `);
 
     // 提现统计
-    const withdrawStats = await executeQuery(`
+    const [withdrawStats] = await db.query(`
       SELECT 
         status,
         CASE status

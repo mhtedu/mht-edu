@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { query } from '@/storage/database/mysql-client';
+import * as db from '@/storage/database/mysql-client';
 
-async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
-  const [rows] = await query(sql, params);
-  return rows as any[];
-}
 
 @Injectable()
 export class OrderCloseService {
@@ -20,7 +16,7 @@ export class OrderCloseService {
     feedback?: string;
   }) {
     // 获取订单信息
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ? AND parent_id = ?
     `, [data.orderId, data.parentId]);
 
@@ -36,7 +32,7 @@ export class OrderCloseService {
     }
 
     // 检查是否有关闭记录
-    const existingClose = await executeQuery(`
+    const [existingClose] = await db.query(`
       SELECT id FROM order_close_reasons WHERE order_id = ?
     `, [data.orderId]);
 
@@ -46,7 +42,7 @@ export class OrderCloseService {
 
     // 开始事务处理
     // 1. 创建关闭原因记录
-    await executeQuery(`
+    await db.query(`
       INSERT INTO order_close_reasons (
         order_id, user_id, close_type, reason, feedback, to_pool, membership_terminated
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -61,21 +57,21 @@ export class OrderCloseService {
     ]);
 
     // 2. 更新订单状态为已解除
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 5 WHERE id = ?
     `, [data.orderId]);
 
     // 3. 如果有匹配教师，通知教师
     if (order.matched_teacher_id) {
       // 拒绝其他抢单记录
-      await executeQuery(`
+      await db.query(`
         UPDATE order_matches SET status = 3 WHERE order_id = ?
       `, [data.orderId]);
     }
 
     // 4. 订单进入公海池（未达成合作的情况）
     if (data.closeType === 1) {
-      await executeQuery(`
+      await db.query(`
         INSERT INTO order_pool (
           order_id, original_parent_id, original_teacher_id,
           release_reason, release_type, expire_at
@@ -84,7 +80,7 @@ export class OrderCloseService {
     }
 
     // 5. 终止家长会员权益
-    await executeQuery(`
+    await db.query(`
       UPDATE users SET membership_terminated = 1 WHERE id = ?
     `, [data.parentId]);
 
@@ -107,7 +103,7 @@ export class OrderCloseService {
     isAnonymous?: boolean;
   }) {
     // 获取订单信息
-    const orders = await executeQuery(`
+    const [orders] = await db.query(`
       SELECT * FROM orders WHERE id = ? AND parent_id = ?
     `, [data.orderId, data.parentId]);
 
@@ -122,12 +118,12 @@ export class OrderCloseService {
     }
 
     // 更新订单状态为已完成
-    await executeQuery(`
+    await db.query(`
       UPDATE orders SET status = 4 WHERE id = ?
     `, [data.orderId]);
 
     // 创建评价
-    await executeQuery(`
+    await db.query(`
       INSERT INTO reviews (order_id, parent_id, teacher_id, rating, content, tags, is_anonymous)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -141,7 +137,7 @@ export class OrderCloseService {
     ]);
 
     // 更新教师评分
-    await executeQuery(`
+    await db.query(`
       UPDATE teacher_profiles 
       SET rating = (
         SELECT AVG(rating) FROM reviews WHERE teacher_id = ?
@@ -172,7 +168,7 @@ export class OrderCloseService {
    * 获取订单关闭历史
    */
   async getCloseHistory(orderId: number) {
-    const history = await executeQuery(`
+    const [history] = await db.query(`
       SELECT ocr.*, u.nickname, u.avatar
       FROM order_close_reasons ocr
       LEFT JOIN users u ON ocr.user_id = u.id
@@ -191,7 +187,7 @@ export class OrderCloseService {
     reason?: string;
     expireAt?: Date;
   }> {
-    const users = await executeQuery(`
+    const [users] = await db.query(`
       SELECT membership_type, membership_expire_at, membership_terminated
       FROM users WHERE id = ?
     `, [userId]);
