@@ -106,7 +106,7 @@ export class DemoService {
         `INSERT INTO teacher_profiles (
           user_id, real_name, subjects, education, teaching_years, 
           hourly_rate_min, hourly_rate_max, verify_status, rating, review_count, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 2, ?, ?, NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, NOW())`,
         [
           userId,
           data.real_name || data.nickname,

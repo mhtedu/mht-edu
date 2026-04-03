@@ -2214,7 +2214,9 @@ export class AdminController {
     
     try {
       const [list] = await db.query(`
-        SELECT w.*, u.nickname, u.mobile, u.avatar
+        SELECT w.id, w.user_id, w.amount, w.account_type, w.account_no, w.account_name,
+          w.status, w.reject_reason, w.created_at, w.processed_at,
+          u.nickname as user_nickname, u.mobile as user_phone, u.avatar as user_avatar
         FROM withdraw_records w
         LEFT JOIN users u ON w.user_id = u.id
         ${whereClause}
@@ -2234,23 +2236,42 @@ export class AdminController {
   }
 
   /**
-   * 审核提现
+   * 通过提现申请
    */
-  @Post('withdrawals/:id/audit')
+  @Post('withdrawals/:id/approve')
   @Public()
-  async auditWithdrawal(
-    @Param('id') id: string,
-    @Body() body: { status: number; reason?: string }
-  ) {
+  async approveWithdrawal(@Param('id') id: string) {
     try {
       await db.update(
-        'UPDATE withdraw_records SET status = ?, reason = ?, processed_at = NOW() WHERE id = ?',
-        [body.status, body.reason || null, parseInt(id)]
+        'UPDATE withdraw_records SET status = 1, processed_at = NOW() WHERE id = ?',
+        [parseInt(id)]
       );
       
       return { success: true };
     } catch (error) {
-      console.error('审核提现失败:', error);
+      console.error('通过提现失败:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 拒绝提现申请
+   */
+  @Post('withdrawals/:id/reject')
+  @Public()
+  async rejectWithdrawal(
+    @Param('id') id: string,
+    @Body() body: { reason?: string }
+  ) {
+    try {
+      await db.update(
+        'UPDATE withdraw_records SET status = 2, reject_reason = ?, processed_at = NOW() WHERE id = ?',
+        [body.reason || null, parseInt(id)]
+      );
+      
+      return { success: true };
+    } catch (error) {
+      console.error('拒绝提现失败:', error);
       return { success: false, error: error.message };
     }
   }

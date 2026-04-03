@@ -969,6 +969,27 @@ async function renderConfig() {
                             </div>
                         </div>
                         
+                        <div class="form-group">
+                            <label class="form-label">站点Logo</label>
+                            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <input type="text" class="form-input" name="siteLogo" id="siteLogoInput"
+                                           value="${config?.siteLogo || ''}" placeholder="请输入Logo图片URL或上传图片">
+                                </div>
+                                <div>
+                                    <input type="file" id="logoFileInput" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
+                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('logoFileInput').click()">
+                                        上传图片
+                                    </button>
+                                </div>
+                            </div>
+                            ${config?.siteLogo ? `
+                                <div style="margin-top: 12px;">
+                                    <img src="${config.siteLogo}" alt="Logo预览" style="max-width: 200px; max-height: 60px; border: 1px solid #e5e7eb; border-radius: 4px; padding: 8px;">
+                                </div>
+                            ` : ''}
+                        </div>
+                        
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">客服电话</label>
@@ -1087,9 +1108,63 @@ async function saveSiteConfig(event) {
             body: JSON.stringify(data)
         });
         showMessage('配置保存成功', 'success');
+        // 重新加载配置页面以更新Logo预览
+        setTimeout(() => renderConfig(), 500);
     } catch (error) {
         showMessage('保存失败: ' + error.message, 'error');
     }
+}
+
+// 处理Logo图片上传
+async function handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+        showMessage('请选择图片文件', 'error');
+        return;
+    }
+    
+    // 验证文件大小（最大2MB）
+    if (file.size > 2 * 1024 * 1024) {
+        showMessage('图片大小不能超过2MB', 'error');
+        return;
+    }
+    
+    try {
+        showMessage('正在上传...', 'info');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // 使用 moments/upload 接口上传图片
+        const response = await fetch(`${CONFIG.API_BASE}/moments/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        // 兼容多种返回格式
+        const logoUrl = result.data?.url || result.url || result.data?.key;
+        
+        if (logoUrl) {
+            document.getElementById('siteLogoInput').value = logoUrl;
+            showMessage('图片上传成功', 'success');
+        } else {
+            throw new Error(result.msg || result.message || '上传失败');
+        }
+    } catch (error) {
+        console.error('上传失败:', error);
+        showMessage('图片上传失败: ' + error.message, 'error');
+    }
+    
+    // 清空文件选择
+    event.target.value = '';
 }
 
 // ========== 支付配置页面 ==========
@@ -1831,21 +1906,21 @@ async function renderCommissions() {
             <div class="stat-card">
                 <div class="stat-icon">💰</div>
                 <div class="stat-content">
-                    <div class="stat-value">¥12,345</div>
+                    <div class="stat-value" id="totalCommission">¥0.00</div>
                     <div class="stat-label">总分佣金额</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">⏳</div>
                 <div class="stat-content">
-                    <div class="stat-value">¥2,580</div>
+                    <div class="stat-value" id="pendingCommission">¥0.00</div>
                     <div class="stat-label">待结算</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">✅</div>
                 <div class="stat-content">
-                    <div class="stat-value">¥9,765</div>
+                    <div class="stat-value" id="settledCommission">¥0.00</div>
                     <div class="stat-label">已结算</div>
                 </div>
             </div>
@@ -1862,49 +1937,70 @@ async function renderCommissions() {
                             <th>ID</th>
                             <th>推荐人</th>
                             <th>被推荐人</th>
-                            <th>订单金额</th>
+                            <th>层级</th>
                             <th>佣金比例</th>
                             <th>佣金金额</th>
                             <th>状态</th>
                             <th>时间</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>1</td>
-                            <td>张老师</td>
-                            <td>李家长</td>
-                            <td>¥199.00</td>
-                            <td>10%</td>
-                            <td><strong>¥19.90</strong></td>
-                            <td><span class="badge badge-success">已结算</span></td>
-                            <td>2024-01-15</td>
-                        </tr>
-                        <tr>
-                            <td>2</td>
-                            <td>王老师</td>
-                            <td>赵家长</td>
-                            <td>¥299.00</td>
-                            <td>10%</td>
-                            <td><strong>¥29.90</strong></td>
-                            <td><span class="badge badge-warning">待结算</span></td>
-                            <td>2024-01-14</td>
-                        </tr>
-                        <tr>
-                            <td>3</td>
-                            <td>李老师</td>
-                            <td>孙家长</td>
-                            <td>¥799.00</td>
-                            <td>10%</td>
-                            <td><strong>¥79.90</strong></td>
-                            <td><span class="badge badge-success">已结算</span></td>
-                            <td>2024-01-13</td>
-                        </tr>
+                    <tbody id="commissionTableBody">
+                        <tr><td colspan="8" class="empty-row">加载中...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     `;
+    
+    await loadCommissions();
+}
+
+async function loadCommissions() {
+    try {
+        const data = await fetch('/api/admin/commissions').then(r => r.json());
+        const list = data.list || [];
+        
+        // 统计
+        let total = 0, pending = 0, settled = 0;
+        list.forEach(item => {
+            total += parseFloat(item.amount) || 0;
+            if (item.status === 0) pending += parseFloat(item.amount) || 0;
+            if (item.status === 1) settled += parseFloat(item.amount) || 0;
+        });
+        
+        document.getElementById('totalCommission').textContent = '¥' + total.toFixed(2);
+        document.getElementById('pendingCommission').textContent = '¥' + pending.toFixed(2);
+        document.getElementById('settledCommission').textContent = '¥' + settled.toFixed(2);
+        
+        // 渲染表格
+        const tbody = document.getElementById('commissionTableBody');
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-row">暂无数据</td></tr>';
+            return;
+        }
+        
+        const levelNames = { 1: '一级邀请', 2: '二级邀请', 3: '城市代理', 4: '机构分佣' };
+        const statusNames = { 0: { name: '待结算', class: 'badge-warning' }, 1: { name: '已结算', class: 'badge-success' }, 2: { name: '已提现', class: 'badge-info' } };
+        
+        tbody.innerHTML = list.map(item => {
+            const status = statusNames[item.status] || statusNames[0];
+            return `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.user_nickname || '-'}</td>
+                    <td>${item.from_nickname || '-'}</td>
+                    <td>${levelNames[item.level_type] || '-'}</td>
+                    <td>${item.rate}%</td>
+                    <td><strong>¥${item.amount}</strong></td>
+                    <td><span class="badge ${status.class}">${status.name}</span></td>
+                    <td>${formatDate(item.created_at)}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('加载分佣记录失败:', error);
+        document.getElementById('commissionTableBody').innerHTML = '<tr><td colspan="8" class="empty-row">加载失败</td></tr>';
+    }
 }
 
 // ========== 提现审核页面 ==========
@@ -1914,9 +2010,114 @@ async function renderWithdrawals() {
     
     content.innerHTML = `
         <div class="tabs">
-            <button class="tab-btn active">全部申请</button>
-            <button class="tab-btn">待审核 (3)</button>
-            <button class="tab-btn">已通过</button>
+            <button class="tab-btn active" onclick="filterWithdrawals('')">全部申请</button>
+            <button class="tab-btn" onclick="filterWithdrawals(0)">待审核</button>
+            <button class="tab-btn" onclick="filterWithdrawals(1)">已通过</button>
+            <button class="tab-btn" onclick="filterWithdrawals(2)">已拒绝</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>申请人</th>
+                            <th>提现金额</th>
+                            <th>账户类型</th>
+                            <th>账号</th>
+                            <th>申请时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="withdrawalTableBody">
+                        <tr><td colspan="8" class="empty-row">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    await loadWithdrawals();
+}
+
+async function loadWithdrawals(status = '') {
+    try {
+        const url = status !== '' ? `/api/admin/withdrawals?status=${status}` : '/api/admin/withdrawals';
+        const data = await fetch(url).then(r => r.json());
+        const list = data.list || [];
+        
+        const tbody = document.getElementById('withdrawalTableBody');
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-row">暂无数据</td></tr>';
+            return;
+        }
+        
+        const statusNames = { 
+            0: { name: '待审核', class: 'badge-warning' }, 
+            1: { name: '已通过', class: 'badge-success' }, 
+            2: { name: '已拒绝', class: 'badge-danger' },
+            3: { name: '已打款', class: 'badge-info' }
+        };
+        const accountTypes = { wechat: '微信', alipay: '支付宝', bank: '银行卡' };
+        
+        tbody.innerHTML = list.map(item => {
+            const status = statusNames[item.status] || statusNames[0];
+            return `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>
+                        <div class="user-info">
+                            <span class="user-name">${item.user_nickname || '用户'}</span>
+                            <span class="user-phone">${item.user_phone || '-'}</span>
+                        </div>
+                    </td>
+                    <td><strong>¥${item.amount}</strong></td>
+                    <td>${accountTypes[item.account_type] || item.account_type}</td>
+                    <td>${item.account_no || '-'}</td>
+                    <td>${formatDate(item.created_at)}</td>
+                    <td><span class="badge ${status.class}">${status.name}</span></td>
+                    <td>
+                        ${item.status === 0 ? `
+                            <button class="btn btn-sm btn-success" onclick="approveWithdrawal(${item.id})">通过</button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectWithdrawal(${item.id})">拒绝</button>
+                        ` : '-'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('加载提现记录失败:', error);
+        document.getElementById('withdrawalTableBody').innerHTML = '<tr><td colspan="8" class="empty-row">加载失败</td></tr>';
+    }
+}
+
+function filterWithdrawals(status) {
+    loadWithdrawals(status);
+}
+
+async function approveWithdrawal(id) {
+    if (!confirm('确定通过该提现申请吗？')) return;
+    try {
+        await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
+        showMessage('已通过', 'success');
+        loadWithdrawals();
+    } catch (error) {
+        showMessage('操作失败', 'error');
+    }
+}
+
+async function rejectWithdrawal(id) {
+    if (!confirm('确定拒绝该提现申请吗？')) return;
+    try {
+        await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
+        showMessage('已拒绝', 'success');
+        loadWithdrawals();
+    } catch (error) {
+        showMessage('操作失败', 'error');
+    }
+}
             <button class="tab-btn">已拒绝</button>
         </div>
         

@@ -7,6 +7,47 @@ import { Public } from '../auth/decorators/public.decorator';
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
+  // 获取公开配置（不需要登录）- 返回驼峰格式给前端
+  @Public()
+  @Get()
+  async getConfig() {
+    const config = await this.configService.getPublicSiteConfig();
+    // 转换为驼峰格式
+    return {
+      siteName: config.site_name || '',
+      siteDomain: config.site_domain || '',
+      siteLogo: config.site_logo || '',
+      siteDescription: config.site_description || '',
+      servicePhone: config.contact_phone || '',
+      serviceEmail: '',
+      copyright: '',
+    };
+  }
+
+  // 保存配置 - 支持前端驼峰格式
+  @Public()
+  @Post()
+  async saveConfig(@Body() body: Record<string, string>) {
+    // 映射前端字段名到后端字段名
+    const fieldMapping: Record<string, string> = {
+      siteName: 'site_name',
+      siteDomain: 'site_domain',
+      siteLogo: 'site_logo',
+      siteDescription: 'site_description',
+      servicePhone: 'contact_phone',
+      serviceEmail: 'contact_email',
+      copyright: 'copyright',
+    };
+
+    const configs: { key: string; value: string }[] = [];
+    for (const [key, value] of Object.entries(body)) {
+      const backendKey = fieldMapping[key] || key;
+      configs.push({ key: backendKey, value: value || '' });
+    }
+
+    return this.configService.batchUpdateConfig(configs);
+  }
+
   // 获取公开配置（不需要登录）
   @Public()
   @Get('public')

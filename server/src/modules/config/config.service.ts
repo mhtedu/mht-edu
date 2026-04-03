@@ -72,16 +72,19 @@ export class ConfigService {
     return { success: true, message: '配置更新成功' };
   }
 
-  // 批量更新配置
+  // 批量更新配置 - 支持插入新配置
   async batchUpdateConfig(configs: { key: string; value: string }[]) {
     const conn = await db.getConnection();
     await conn.beginTransaction();
 
     try {
       for (const config of configs) {
+        // 使用 INSERT ... ON DUPLICATE KEY UPDATE 来支持插入和更新
         await conn.execute(
-          'UPDATE site_config SET config_value = ? WHERE config_key = ?',
-          [config.value, config.key]
+          `INSERT INTO site_config (config_key, config_value, config_group, sort_order, created_at, updated_at)
+           VALUES (?, ?, 'site', 0, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()`,
+          [config.key, config.value, config.value]
         );
       }
       await conn.commit();
