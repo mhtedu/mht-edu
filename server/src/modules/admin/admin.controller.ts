@@ -372,6 +372,7 @@ export class AdminController {
    * 通过教师认证
    */
   @Post('teachers/:id/approve')
+  @Public()
   @RequirePermission('teacher:audit')
   async approveTeacher(@Param('id') id: string) {
     await db.update(
@@ -392,6 +393,7 @@ export class AdminController {
    * 拒绝教师认证
    */
   @Post('teachers/:id/reject')
+  @Public()
   @RequirePermission('teacher:audit')
   async rejectTeacher(
     @Param('id') id: string,

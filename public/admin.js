@@ -711,7 +711,7 @@ async function renderTeachers() {
 
 async function loadTeachers() {
     try {
-        const data = await apiRequest('/teachers');
+        const data = await apiRequest('/admin/teachers');
         // 后端返回的是数组，需要适配
         const teachers = Array.isArray(data) ? data : (data.list || []);
         renderTeacherTable(teachers);
@@ -769,6 +769,44 @@ function renderTeacherTable(teachers) {
             </td>
         </tr>
     `}).join('');
+}
+
+// 教师审核通过
+async function approveTeacher(teacherId) {
+    if (!confirm('确认通过该教师的认证申请？')) return;
+    try {
+        await apiRequest(`/admin/teachers/${teacherId}/approve`, 'POST', {});
+        alert('审核通过成功');
+        loadTeachers();
+    } catch (error) {
+        console.error('审核失败:', error);
+        alert('操作失败: ' + (error.message || '未知错误'));
+    }
+}
+
+// 教师审核拒绝
+async function rejectTeacher(teacherId) {
+    const reason = prompt('请输入拒绝原因:');
+    if (!reason) return;
+    try {
+        await apiRequest(`/admin/teachers/${teacherId}/reject`, 'POST', { reason });
+        alert('已拒绝该教师申请');
+        loadTeachers();
+    } catch (error) {
+        console.error('操作失败:', error);
+        alert('操作失败: ' + (error.message || '未知错误'));
+    }
+}
+
+// 查看教师详情
+async function viewTeacherDetail(teacherId) {
+    try {
+        const teacher = await apiRequest(`/admin/teachers/${teacherId}`);
+        alert(`教师信息\n\n姓名: ${teacher.name || '未设置'}\n学历: ${teacher.education || '未设置'}\n科目: ${teacher.subject || '未设置'}\n教龄: ${teacher.teaching_years || 0}年\n时薪: ${teacher.hourly_rate_min || 0}-${teacher.hourly_rate_max || 0}元\n评分: ${teacher.rating || 0}\n简介: ${teacher.introduction || '暂无'}`);
+    } catch (error) {
+        console.error('获取教师详情失败:', error);
+        alert('获取教师详情失败');
+    }
 }
 
 // ========== 机构管理页面 ==========
