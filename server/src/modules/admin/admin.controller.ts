@@ -3212,6 +3212,129 @@ export class AdminController {
   // ==================== 商品管理 ====================
 
   /**
+   * 初始化商品相关表结构
+   */
+  @Post('init-products-tables')
+  @Public()
+  async initProductsTables() {
+    const results: string[] = [];
+    
+    // 1. 检查并更新 products 表，添加缺失的字段
+    const alterStatements = [
+      "ALTER TABLE products ADD COLUMN virtual_sales INT DEFAULT 0 COMMENT '虚拟销量'",
+      "ALTER TABLE products ADD COLUMN type TINYINT DEFAULT 1 COMMENT '商品类型: 1=实物 2=虚拟'",
+      "ALTER TABLE products ADD COLUMN delivery_type TINYINT DEFAULT 1 COMMENT '发货方式: 1=实物快递 2=虚拟发货'",
+      "ALTER TABLE products ADD COLUMN delivery_info TEXT COMMENT '发货信息JSON'",
+      "ALTER TABLE products ADD COLUMN commission_1_rate DECIMAL(5,2) DEFAULT 10.00 COMMENT '一级佣金比例'",
+      "ALTER TABLE products ADD COLUMN commission_2_rate DECIMAL(5,2) DEFAULT 5.00 COMMENT '二级佣金比例'",
+      "ALTER TABLE products ADD COLUMN detail_content TEXT COMMENT '富文本详情'",
+      "ALTER TABLE products ADD COLUMN video_url VARCHAR(500) DEFAULT '' COMMENT '视频链接'"
+    ];
+    
+    for (const sql of alterStatements) {
+      try {
+        await db.query(sql);
+        results.push(`成功: ${sql.substring(0, 50)}...`);
+      } catch (error: any) {
+        if (error.message.includes('Duplicate column')) {
+          results.push(`跳过(已存在): ${sql.substring(0, 50)}...`);
+        } else {
+          results.push(`失败: ${sql.substring(0, 50)}... - ${error.message}`);
+        }
+      }
+    }
+
+    try {
+      // 2. 创建商品分类表
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS product_categories (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(50) NOT NULL COMMENT '分类名称',
+          parent_id INT DEFAULT 0 COMMENT '父分类ID',
+          sort_order INT DEFAULT 0 COMMENT '排序',
+          icon VARCHAR(255) DEFAULT '' COMMENT '图标',
+          status TINYINT DEFAULT 1 COMMENT '状态: 0=禁用 1=启用',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_parent (parent_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表'
+      `);
+      console.log('product_categories表创建完成');
+    } catch (error) {
+      console.log('product_categories表创建失败或已存在');
+    }
+
+    try {
+      // 3. 创建商品订单表
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS product_orders (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_no VARCHAR(50) NOT NULL COMMENT '订单号',
+          user_id INT NOT NULL COMMENT '买家ID',
+          product_id INT NOT NULL COMMENT '商品ID',
+          product_name VARCHAR(200) NOT NULL COMMENT '商品名称',
+          product_image VARCHAR(500) DEFAULT '' COMMENT '商品图片',
+          sku_id INT COMMENT 'SKU ID',
+          sku_info TEXT COMMENT 'SKU信息JSON',
+          quantity INT DEFAULT 1 COMMENT '数量',
+          price DECIMAL(10,2) NOT NULL COMMENT '单价',
+          total_amount DECIMAL(10,2) NOT NULL COMMENT '总金额',
+          pay_amount DECIMAL(10,2) NOT NULL COMMENT '实付金额',
+          discount_amount DECIMAL(10,2) DEFAULT 0 COMMENT '优惠金额',
+          delivery_type TINYINT DEFAULT 1 COMMENT '发货方式: 1=实物 2=虚拟',
+          delivery_info TEXT COMMENT '发货信息JSON',
+          delivery_company VARCHAR(50) DEFAULT '' COMMENT '快递公司',
+          delivery_no VARCHAR(100) DEFAULT '' COMMENT '快递单号',
+          delivered_at TIMESTAMP NULL COMMENT '发货时间',
+          auto_confirm_at TIMESTAMP NULL COMMENT '自动确认时间',
+          confirmed_at TIMESTAMP NULL COMMENT '确认收货时间',
+          referrer_id INT COMMENT '推荐人ID',
+          commission_1 DECIMAL(10,2) DEFAULT 0 COMMENT '一级佣金',
+          commission_2 DECIMAL(10,2) DEFAULT 0 COMMENT '二级佣金',
+          status TINYINT DEFAULT 0 COMMENT '状态: 0=待付款 1=待发货 2=待收货 3=已完成 4=已取消 5=已退款',
+          remark VARCHAR(500) DEFAULT '' COMMENT '备注',
+          buyer_address TEXT COMMENT '收货地址JSON',
+          buyer_name VARCHAR(50) DEFAULT '' COMMENT '收货人',
+          buyer_phone VARCHAR(20) DEFAULT '' COMMENT '收货电话',
+          paid_at TIMESTAMP NULL COMMENT '支付时间',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_order_no (order_no),
+          INDEX idx_user (user_id),
+          INDEX idx_product (product_id),
+          INDEX idx_status (status),
+          INDEX idx_delivery_type (delivery_type),
+          INDEX idx_referrer (referrer_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品订单表'
+      `);
+      console.log('product_orders表创建完成');
+    } catch (error) {
+      console.log('product_orders表创建失败或已存在');
+    }
+
+    try {
+      // 4. 创建订单日志表
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS product_order_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          order_id INT NOT NULL COMMENT '订单ID',
+          action VARCHAR(50) NOT NULL COMMENT '操作类型',
+          content TEXT COMMENT '操作内容',
+          operator_id INT COMMENT '操作人ID',
+          operator_type TINYINT DEFAULT 0 COMMENT '操作人类型: 0=系统 1=用户 2=管理员',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单日志表'
+      `);
+      console.log('product_order_logs表创建完成');
+    } catch (error) {
+      console.log('product_order_logs表创建失败或已存在');
+    }
+
+    return { success: true, message: '商品相关表初始化完成', results };
+  }
+
+  /**
    * 获取商品列表
    */
   @Get('products')
