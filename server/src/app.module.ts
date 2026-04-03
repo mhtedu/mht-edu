@@ -44,6 +44,10 @@ import { ResourceModule } from '@/modules/resource/resource.module';
 import { ProductModule } from '@/modules/product/product.module';
 import { ExportModule } from '@/modules/export/export.module';
 import { ReportModule } from '@/modules/report/report.module';
+import { ParentModule } from '@/modules/parent/parent.module';
+import { TeacherAdminModule } from '@/modules/teacher-admin/teacher-admin.module';
+import { OrgAdminModule } from '@/modules/org-admin/org-admin.module';
+import { PayModule } from '@/modules/pay/pay.module';
 
 @Module({
   imports: [
@@ -104,6 +108,14 @@ import { ReportModule } from '@/modules/report/report.module';
     ExportModule,
     // 运营报表模块
     ReportModule,
+    // 家长模块
+    ParentModule,
+    // 教师管理模块
+    TeacherAdminModule,
+    // 机构管理模块
+    OrgAdminModule,
+    // 支付模块
+    PayModule,
     // 管理后台
     AdminModule,
   ],
