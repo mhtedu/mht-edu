@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Taro, { useLoad, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { useUserStore, CurrentView } from '@/stores/user'
@@ -92,17 +92,26 @@ const HomePage: FC = () => {
   const [eliteClasses, setEliteClasses] = useState<EliteClassItem[]>([])
 
   const { isLoggedIn, setLocation: setUserLocation, currentView, setCurrentView } = useUserStore()
-  const { getSiteName } = useConfigStore()
+  const { getSiteName, loaded: configLoaded } = useConfigStore()
 
   useLoad(() => {
     console.log('Home page loaded.')
   })
 
+  // 当配置加载完成后，动态设置导航栏标题
   useDidShow(() => {
-    // 动态设置导航栏标题
-    Taro.setNavigationBarTitle({ title: getSiteName() })
+    if (configLoaded) {
+      Taro.setNavigationBarTitle({ title: getSiteName() })
+    }
     loadInitData()
   })
+
+  // 监听配置加载状态变化，加载完成后更新标题
+  useEffect(() => {
+    if (configLoaded) {
+      Taro.setNavigationBarTitle({ title: getSiteName() })
+    }
+  }, [configLoaded, getSiteName])
 
   usePullDownRefresh(() => {
     loadInitData().finally(() => {

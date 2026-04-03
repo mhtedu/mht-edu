@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, HttpException, HttpStatus, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequirePermission } from '../auth/decorators/permission.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import * as bcrypt from 'bcrypt';
 import * as db from '@/storage/database/mysql-client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -3322,6 +3325,53 @@ export class AdminController {
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 上传图片（管理后台专用）
+   */
+  @Post('upload-image')
+  @Public()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('请上传文件');
+    }
+
+    // 检查文件类型
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException('只支持图片文件 (jpg, png, gif, webp)');
+    }
+
+    // 检查文件大小 (最大 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('图片大小不能超过 5MB');
+    }
+
+    try {
+      // 确保上传目录存在
+      const uploadDir = '/www/wwwroot/mht-edu/uploads/admin';
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // 生成文件名
+      const ext = file.originalname.split('.').pop() || 'png';
+      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
+      const filePath = path.join(uploadDir, fileName);
+
+      // 写入文件
+      fs.writeFileSync(filePath, file.buffer);
+
+      // 返回可访问的 URL
+      const url = `/uploads/admin/${fileName}`;
+      
+      return { url };
+    } catch (error) {
+      console.error('上传图片失败:', error);
+      throw new BadRequestException('上传失败: ' + error.message);
     }
   }
 }
