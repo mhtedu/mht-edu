@@ -631,7 +631,7 @@ const HomePage: FC = () => {
             <View key={teacher.id} className="mx-4 mb-3 p-3 bg-gray-50 rounded-xl" onClick={() => goToTeacherDetail(teacher.id)}>
               <View className="flex flex-row mb-3">
                 <View className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mr-3 shrink-0">
-                  <Text className="block text-xl font-semibold text-white">{teacher.name.charAt(0)}</Text>
+                  <Text className="block text-xl font-semibold text-white">{teacher.name?.charAt(0) || '师'}</Text>
                 </View>
                 <View className="flex-1 overflow-hidden">
                   <View className="flex flex-row items-center justify-between mb-1">

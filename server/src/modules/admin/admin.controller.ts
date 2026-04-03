@@ -3237,17 +3237,18 @@ export class AdminController {
     
     try {
       const [list] = await db.query(`
-        SELECT p.*, pc.name as category_name
+        SELECT p.*, pc.name as category_name,
+          (p.virtual_sales + p.sales) as total_sales
         FROM products p
         LEFT JOIN product_categories pc ON p.category_id = pc.id
         WHERE ${whereClause}
         ORDER BY p.created_at DESC
         LIMIT ? OFFSET ?
-      `, [...params, pageSizeNum, offset]);
+      `, [...params, pageSizeNum, offset]) as [any[], any];
       
       const [countResult] = await db.query(`
         SELECT COUNT(*) as total FROM products p WHERE ${whereClause}
-      `, params);
+      `, params) as [any[], any];
       
       return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
     } catch (error) {
@@ -3268,15 +3269,42 @@ export class AdminController {
     price: number;
     original_price?: number;
     image?: string;
+    images?: string;
     stock?: number;
+    virtual_sales?: number;
     type?: number;
     delivery_type?: number;
+    delivery_info?: string;
+    commission_1_rate?: number;
+    commission_2_rate?: number;
+    detail_content?: string;
+    video_url?: string;
   }) {
     try {
       const insertId = await db.insert(
-        `INSERT INTO products (name, category_id, description, price, original_price, image, stock, type, delivery_type, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
-        [body.name, body.category_id || null, body.description || '', body.price, body.original_price || body.price, body.image || '', body.stock || -1, body.type || 1, body.delivery_type || 1]
+        `INSERT INTO products (
+          name, category_id, description, price, original_price, image, images, 
+          stock, virtual_sales, type, delivery_type, delivery_info,
+          commission_1_rate, commission_2_rate, detail_content, video_url, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+        [
+          body.name, 
+          body.category_id || null, 
+          body.description || '', 
+          body.price, 
+          body.original_price || body.price, 
+          body.image || '', 
+          body.images || null,
+          body.stock ?? -1, 
+          body.virtual_sales || 0, 
+          body.type || 1, 
+          body.delivery_type || 1,
+          body.delivery_info || null,
+          body.commission_1_rate || 10.00,
+          body.commission_2_rate || 5.00,
+          body.detail_content || '',
+          body.video_url || ''
+        ]
       );
       
       return { success: true, id: insertId };
@@ -3296,10 +3324,23 @@ export class AdminController {
       const updates: string[] = [];
       const params: any[] = [];
       
-      if (body.name) { updates.push('name = ?'); params.push(body.name); }
+      if (body.name !== undefined) { updates.push('name = ?'); params.push(body.name); }
+      if (body.category_id !== undefined) { updates.push('category_id = ?'); params.push(body.category_id); }
+      if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description); }
       if (body.price !== undefined) { updates.push('price = ?'); params.push(body.price); }
+      if (body.original_price !== undefined) { updates.push('original_price = ?'); params.push(body.original_price); }
+      if (body.image !== undefined) { updates.push('image = ?'); params.push(body.image); }
+      if (body.images !== undefined) { updates.push('images = ?'); params.push(body.images); }
       if (body.stock !== undefined) { updates.push('stock = ?'); params.push(body.stock); }
+      if (body.virtual_sales !== undefined) { updates.push('virtual_sales = ?'); params.push(body.virtual_sales); }
       if (body.status !== undefined) { updates.push('status = ?'); params.push(body.status); }
+      if (body.type !== undefined) { updates.push('type = ?'); params.push(body.type); }
+      if (body.delivery_type !== undefined) { updates.push('delivery_type = ?'); params.push(body.delivery_type); }
+      if (body.delivery_info !== undefined) { updates.push('delivery_info = ?'); params.push(body.delivery_info); }
+      if (body.commission_1_rate !== undefined) { updates.push('commission_1_rate = ?'); params.push(body.commission_1_rate); }
+      if (body.commission_2_rate !== undefined) { updates.push('commission_2_rate = ?'); params.push(body.commission_2_rate); }
+      if (body.detail_content !== undefined) { updates.push('detail_content = ?'); params.push(body.detail_content); }
+      if (body.video_url !== undefined) { updates.push('video_url = ?'); params.push(body.video_url); }
       
       if (updates.length === 0) return { success: true };
       
@@ -3325,6 +3366,302 @@ export class AdminController {
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  }
+
+  // ==================== 商品订单管理 ====================
+
+  /**
+   * 获取商品订单列表
+   */
+  @Get('product-orders')
+  @Public()
+  async getProductOrders(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status = '',
+    @Query('keyword') keyword = '',
+    @Query('delivery_type') deliveryType = '',
+  ) {
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const conditions: string[] = ['1=1'];
+    const params: any[] = [];
+    
+    if (status !== '') {
+      conditions.push('po.status = ?');
+      params.push(parseInt(status));
+    }
+    
+    if (deliveryType) {
+      conditions.push('po.delivery_type = ?');
+      params.push(parseInt(deliveryType));
+    }
+    
+    if (keyword) {
+      conditions.push('(po.order_no LIKE ? OR po.product_name LIKE ? OR u.nickname LIKE ?)');
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    try {
+      const [list] = await db.query(`
+        SELECT po.*, u.nickname as buyer_name, u.avatar as buyer_avatar
+        FROM product_orders po
+        LEFT JOIN users u ON po.user_id = u.id
+        WHERE ${whereClause}
+        ORDER BY po.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]) as [any[], any];
+      
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM product_orders po
+        LEFT JOIN users u ON po.user_id = u.id
+        WHERE ${whereClause}
+      `, params) as [any[], any];
+      
+      return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
+    } catch (error) {
+      console.error('获取订单列表失败:', error);
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  /**
+   * 获取订单详情
+   */
+  @Get('product-orders/:id')
+  @Public()
+  async getProductOrderDetail(@Param('id') id: string) {
+    try {
+      const [orders] = await db.query(`
+        SELECT po.*, 
+          u.nickname as buyer_name, u.avatar as buyer_avatar, u.mobile as buyer_mobile
+        FROM product_orders po
+        LEFT JOIN users u ON po.user_id = u.id
+        WHERE po.id = ?
+      `, [parseInt(id)]) as [any[], any];
+      
+      if (orders.length === 0) {
+        return { success: false, message: '订单不存在' };
+      }
+      
+      return orders[0];
+    } catch (error) {
+      console.error('获取订单详情失败:', error);
+      return { success: false, message: '获取订单详情失败' };
+    }
+  }
+
+  /**
+   * 发货（实物商品）
+   */
+  @Post('product-orders/:id/deliver')
+  @Public()
+  async deliverProductOrder(
+    @Param('id') id: string,
+    @Body() body: {
+      express_company: string;
+      express_no: string;
+    }
+  ) {
+    try {
+      // 获取订单信息
+      const [orders] = await db.query(`
+        SELECT * FROM product_orders WHERE id = ? AND status = 1
+      `, [parseInt(id)]) as [any[], any];
+      
+      if (orders.length === 0) {
+        return { success: false, message: '订单不存在或状态不正确' };
+      }
+      
+      const order = orders[0] as any;
+      
+      // 计算自动收货时间（15天后）
+      const autoReceiveTime = new Date();
+      autoReceiveTime.setDate(autoReceiveTime.getDate() + 15);
+      
+      // 更新订单状态
+      await db.query(`
+        UPDATE product_orders 
+        SET status = 2, 
+            express_company = ?, 
+            express_no = ?,
+            deliver_time = NOW(),
+            auto_receive_time = ?
+        WHERE id = ?
+      `, [body.express_company, body.express_no, autoReceiveTime, parseInt(id)]);
+      
+      // 记录日志
+      await db.query(`
+        INSERT INTO product_order_logs (order_id, operator_type, action, content)
+        VALUES (?, 2, '发货', ?)
+      `, [parseInt(id), `已发货：${body.express_company} ${body.express_no}`]);
+      
+      return { success: true, message: '发货成功', auto_receive_time: autoReceiveTime };
+    } catch (error) {
+      console.error('发货失败:', error);
+      return { success: false, message: '发货失败' };
+    }
+  }
+
+  /**
+   * 发货（虚拟商品）
+   */
+  @Post('product-orders/:id/virtual-deliver')
+  @Public()
+  async virtualDeliverOrder(
+    @Param('id') id: string,
+    @Body() body: {
+      delivery_type: string; // 'baidu_pan' | 'direct_link' | 'code'
+      pan_url?: string;
+      pan_password?: string;
+      direct_link?: string;
+      code?: string;
+      note?: string;
+    }
+  ) {
+    try {
+      // 获取订单信息
+      const [orders] = await db.query(`
+        SELECT * FROM product_orders WHERE id = ? AND status = 1
+      `, [parseInt(id)]) as [any[], any];
+      
+      if (orders.length === 0) {
+        return { success: false, message: '订单不存在或状态不正确' };
+      }
+      
+      // 构建虚拟发货信息
+      const virtualDelivery = JSON.stringify({
+        type: body.delivery_type,
+        pan_url: body.pan_url,
+        pan_password: body.pan_password,
+        direct_link: body.direct_link,
+        code: body.code,
+        note: body.note,
+        deliver_time: new Date().toISOString()
+      });
+      
+      // 更新订单状态（虚拟商品直接完成）
+      await db.query(`
+        UPDATE product_orders 
+        SET status = 3, 
+            virtual_delivery = ?,
+            deliver_time = NOW(),
+            receive_time = NOW()
+        WHERE id = ?
+      `, [virtualDelivery, parseInt(id)]);
+      
+      // 记录日志
+      await db.query(`
+        INSERT INTO product_order_logs (order_id, operator_type, action, content)
+        VALUES (?, 2, '虚拟发货', ?)
+      `, [parseInt(id), `虚拟商品已发货：${body.delivery_type}`]);
+      
+      return { success: true, message: '发货成功' };
+    } catch (error) {
+      console.error('虚拟发货失败:', error);
+      return { success: false, message: '发货失败' };
+    }
+  }
+
+  /**
+   * 订单退款
+   */
+  @Post('product-orders/:id/refund')
+  @Public()
+  async refundProductOrder(@Param('id') id: string) {
+    try {
+      const [orders] = await db.query(`
+        SELECT * FROM product_orders WHERE id = ? AND status IN (1, 2)
+      `, [parseInt(id)]) as [any[], any];
+      
+      if (orders.length === 0) {
+        return { success: false, message: '订单不存在或无法退款' };
+      }
+      
+      await db.query(`
+        UPDATE product_orders SET status = 5, updated_at = NOW() WHERE id = ?
+      `, [parseInt(id)]);
+      
+      // 记录日志
+      await db.query(`
+        INSERT INTO product_order_logs (order_id, operator_type, action, content)
+        VALUES (?, 2, '退款', '订单已退款')
+      `, [parseInt(id)]);
+      
+      return { success: true, message: '退款成功' };
+    } catch (error) {
+      console.error('退款失败:', error);
+      return { success: false, message: '退款失败' };
+    }
+  }
+
+  /**
+   * 获取订单统计数据
+   */
+  @Get('product-orders/stats')
+  @Public()
+  async getProductOrderStats() {
+    try {
+      const [statusCounts] = await db.query(`
+        SELECT status, COUNT(*) as count 
+        FROM product_orders 
+        GROUP BY status
+      `) as [any[], any];
+      
+      const [todayOrders] = await db.query(`
+        SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as amount
+        FROM product_orders 
+        WHERE DATE(created_at) = CURDATE()
+      `) as [any[], any];
+      
+      const [pendingDeliver] = await db.query(`
+        SELECT COUNT(*) as count 
+        FROM product_orders 
+        WHERE status = 1 AND delivery_type = 1
+      `) as [any[], any];
+      
+      const stats = {
+        pending_payment: 0,
+        pending_deliver: 0,
+        pending_receive: 0,
+        completed: 0,
+        cancelled: 0,
+        refunded: 0,
+        today_count: todayOrders[0]?.count || 0,
+        today_amount: todayOrders[0]?.amount || 0,
+        waiting_deliver: pendingDeliver[0]?.count || 0
+      };
+      
+      statusCounts.forEach((item: any) => {
+        switch (item.status) {
+          case 0: stats.pending_payment = item.count; break;
+          case 1: stats.pending_deliver += item.count; break;
+          case 2: stats.pending_receive = item.count; break;
+          case 3: stats.completed = item.count; break;
+          case 4: stats.cancelled = item.count; break;
+          case 5: stats.refunded = item.count; break;
+        }
+      });
+      
+      return stats;
+    } catch (error) {
+      console.error('获取订单统计失败:', error);
+      return {
+        pending_payment: 0,
+        pending_deliver: 0,
+        pending_receive: 0,
+        completed: 0,
+        cancelled: 0,
+        refunded: 0,
+        today_count: 0,
+        today_amount: 0,
+        waiting_deliver: 0
+      };
     }
   }
 
