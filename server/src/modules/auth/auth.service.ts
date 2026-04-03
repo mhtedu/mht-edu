@@ -52,11 +52,12 @@ export class AuthService {
    * 登录
    */
   async login(user: any) {
+    const permissions = JSON.parse(user.permissions || '[]');
     const payload = {
       id: user.id,
       username: user.username,
       role: user.role_code,
-      permissions: JSON.parse(user.permissions || '[]'),
+      permissions: permissions,
     };
 
     return {
@@ -74,6 +75,7 @@ export class AuthService {
           code: user.role_code,
         },
       },
+      permissions: permissions,
     };
   }
 
