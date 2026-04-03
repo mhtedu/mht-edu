@@ -64,14 +64,6 @@ body.h5-navbar-visible .sheet-content:not([data-side="bottom"]) {
     top: 44px !important;
 }
 
-/*
- * H5 端 rem 适配：与小程序 rpx 缩放一致
- * 375px 屏幕：1rem = 16px，小程序 32rpx = 16px
- */
-html {
-    font-size: 4vw !important;
-}
-
 /* H5 端组件默认样式修复 */
 taro-view-core {
     display: block;
@@ -124,69 +116,78 @@ textarea.taro-textarea {
 
 const PC_WIDESCREEN_STYLES = `
 /* PC 宽屏适配 - 基础布局 */
-/* 通过 JS 检测触摸设备，只在非触摸设备（PC）上应用 */
-body.is-pc-device {
-  background-color: #f3f4f6 !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  min-height: 100vh !important;
+/* 使用媒体查询 + JS 设备检测双重判断，确保只在真正的 PC 宽屏上应用 */
+@media (min-width: 769px) {
+  body.is-pc-device {
+    background-color: #f3f4f6 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+  }
 }
 
-body.is-pc-device html,
-body.is-pc-device {
-  font-size: 15px !important;
+/* PC 宽屏下固定字体大小，避免 4vw 在大屏幕上过大 */
+@media (min-width: 769px) {
+  body.is-pc-device {
+    font-size: 16px !important;
+  }
 }
 `;
 
 const PC_WIDESCREEN_PHONE_FRAME = `
 /* PC 宽屏适配 - 手机框样式（有 TabBar 页面） */
-/* 通过 JS 检测触摸设备，只在非触摸设备（PC）上应用 */
-body.is-pc-device .taro-tabbar__container {
-  width: 375px !important;
-  max-width: 375px !important;
-  height: calc(100vh - 40px) !important;
-  max-height: 900px !important;
-  background-color: #fff !important;
-  transform: translateX(0) !important;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
-  border-radius: 20px !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
+@media (min-width: 769px) {
+  body.is-pc-device .taro-tabbar__container {
+    width: 375px !important;
+    max-width: 375px !important;
+    height: calc(100vh - 40px) !important;
+    max-height: 900px !important;
+    background-color: #fff !important;
+    transform: translateX(0) !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
 
-body.is-pc-device .taro-tabbar__panel {
-  height: 100% !important;
-  overflow: auto !important;
+  body.is-pc-device .taro-tabbar__panel {
+    height: 100% !important;
+    overflow: auto !important;
+  }
 }
 
 /* PC 宽屏适配 - Toast 定位到手机框范围内 */
-body.is-pc-device .toaster {
-  left: 50% !important;
-  right: auto !important;
-  width: 375px !important;
-  max-width: 375px !important;
-  transform: translateX(-50%) !important;
-  box-sizing: border-box !important;
+@media (min-width: 769px) {
+  body.is-pc-device .toaster {
+    left: 50% !important;
+    right: auto !important;
+    width: 375px !important;
+    max-width: 375px !important;
+    transform: translateX(-50%) !important;
+    box-sizing: border-box !important;
+  }
 }
 
 /* PC 宽屏适配 - 手机框样式（无 TabBar 页面） */
-body.is-pc-device.no-tabbar #app {
-  width: 375px !important;
-  max-width: 375px !important;
-  height: calc(100vh - 40px) !important;
-  max-height: 900px !important;
-  background-color: #fff !important;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
-  border-radius: 20px !important;
-  overflow: hidden !important;
-  position: relative !important;
-  transform: translateX(0) !important;
-}
+@media (min-width: 769px) {
+  body.is-pc-device.no-tabbar #app {
+    width: 375px !important;
+    max-width: 375px !important;
+    height: calc(100vh - 40px) !important;
+    max-height: 900px !important;
+    background-color: #fff !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    transform: translateX(0) !important;
+  }
 
-body.is-pc-device.no-tabbar #app .taro_router {
-  height: 100% !important;
-  overflow: auto !important;
+  body.is-pc-device.no-tabbar #app .taro_router {
+    height: 100% !important;
+    overflow: auto !important;
+  }
 }
 `;
 
@@ -207,16 +208,6 @@ function isPCDevice(): boolean {
     return false;
   }
 
-  // 检测屏幕宽度，移动设备通常宽度较小
-  const screenWidth = window.screen.width;
-  const screenHeight = window.screen.height;
-  const minDimension = Math.min(screenWidth, screenHeight);
-
-  // 如果最小尺寸小于 768px，很可能是移动设备
-  if (minDimension < 768) {
-    return false;
-  }
-
   // 检测 User Agent 中的移动设备标识
   const userAgent = navigator.userAgent.toLowerCase();
   const mobileKeywords = [
@@ -231,7 +222,6 @@ function isPCDevice(): boolean {
   }
 
   // 检测是否支持精确指针（鼠标）
-  // 但需要结合触摸点检测，因为一些支持触控笔的设备也可能报告支持
   const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
   const hasHover = window.matchMedia('(hover: hover)').matches;
 
