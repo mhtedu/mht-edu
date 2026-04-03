@@ -1,6 +1,6 @@
 import { View, Text, Image } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { useState, useEffect } from 'react';
+import Taro, { useDidShow } from '@tarojs/taro';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,10 +62,18 @@ const MallPage = () => {
   const [loading, setLoading] = useState(true);
   const [cartCount, setCartCount] = useState(0);
 
-  useEffect(() => {
+  // 使用 useDidShow 确保每次页面显示时都加载数据
+  useDidShow(() => {
     loadCategories();
     loadProducts();
-  }, [selectedCategory]);
+  });
+
+  // 当分类变化时重新加载商品
+  const handleCategoryChange = (categoryId: number | null) => {
+    setSelectedCategory(categoryId);
+    // 直接调用加载，不依赖 useEffect
+    loadProductsWithCategory(categoryId);
+  };
 
   const loadCategories = async () => {
     try {
@@ -87,8 +95,35 @@ const MallPage = () => {
     setLoading(true);
     try {
       const params: Record<string, any> = { page: 1, pageSize: 50 };
-      if (selectedCategory) {
-        params.category_id = selectedCategory;
+      console.log('加载商品列表请求:', { url: '/api/products/list', params });
+      const res = await Network.request({
+        url: '/api/products/list',
+        data: params,
+        method: 'GET'
+      });
+      console.log('加载商品列表响应:', res.data);
+      
+      if (res.data && res.data.list) {
+        setProducts(res.data.list);
+      } else if (Array.isArray(res.data)) {
+        setProducts(res.data);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error('加载商品失败:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProductsWithCategory = async (categoryId: number | null) => {
+    setLoading(true);
+    try {
+      const params: Record<string, any> = { page: 1, pageSize: 50 };
+      if (categoryId) {
+        params.category_id = categoryId;
       }
       console.log('加载商品列表请求:', { url: '/api/products/list', params });
       const res = await Network.request({
@@ -156,7 +191,7 @@ const MallPage = () => {
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
               selectedCategory === null ? 'bg-blue-500' : 'bg-gray-100'
             }`}
-            onClick={() => setSelectedCategory(null)}
+            onClick={() => handleCategoryChange(null)}
           >
             <Text className={selectedCategory === null ? 'text-white' : 'text-gray-700'}>
               全部
@@ -168,7 +203,7 @@ const MallPage = () => {
               className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
                 selectedCategory === cat.id ? 'bg-blue-500' : 'bg-gray-100'
               }`}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => handleCategoryChange(cat.id)}
             >
               <Text className={selectedCategory === cat.id ? 'text-white' : 'text-gray-700'}>
                 {cat.name}

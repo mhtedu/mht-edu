@@ -15,24 +15,27 @@ import {
 interface Activity {
   id: number
   title: string
-  type: 'visit' | 'training' | 'lecture' | 'other'
+  type: 'visit' | 'training' | 'lecture' | 'promotion' | 'activity' | 'other'
   cover_image: string
   start_time: string
   end_time: string
   address: string
-  is_online: boolean
-  online_price: number
-  offline_price: number
+  is_online: number | boolean
+  online_price: string | number
+  offline_price: string | number
   max_participants: number
   current_participants: number
-  target_roles: number[]
+  target_roles: number[] | string
   description: string
-  status: 'upcoming' | 'ongoing' | 'ended'
+  status: number | 'upcoming' | 'ongoing' | 'ended'
   contact_phone: string
   organizer: string
   schedule: string[]
   location_type: 'online' | 'offline'
   verification_code?: string
+  latitude?: number | string
+  longitude?: number | string
+  is_active?: number
 }
 
 /**
@@ -99,7 +102,43 @@ export default function ActivityDetailPage() {
       })
       console.log('加载活动详情响应:', res.data)
       if (res.data) {
-        setActivity(res.data)
+        // 转换后端数据格式以适配前端
+        const data = res.data
+        const now = new Date()
+        const start = new Date(data.start_time)
+        const end = new Date(data.end_time)
+        let activityStatus: 'upcoming' | 'ongoing' | 'ended' = 'upcoming'
+        if (now >= start && now <= end) activityStatus = 'ongoing'
+        else if (now > end) activityStatus = 'ended'
+
+        // 确定活动地点类型
+        const isOnline = data.is_online === 1 || data.is_online === true
+        const locType = isOnline ? 'online' : 'offline'
+
+        setActivity({
+          id: data.id,
+          title: data.title || '活动详情',
+          type: data.type || 'other',
+          cover_image: data.cover_image || '',
+          start_time: data.start_time,
+          end_time: data.end_time,
+          address: data.address || '待定',
+          is_online: isOnline,
+          online_price: parseFloat(String(data.online_price || 0)),
+          offline_price: parseFloat(String(data.offline_price || 0)),
+          max_participants: data.max_participants || 100,
+          current_participants: data.current_participants || 0,
+          target_roles: data.target_roles || [],
+          description: data.description || '暂无活动详情',
+          status: activityStatus,
+          contact_phone: data.contact_phone || '400-888-8888',
+          organizer: data.organizer || siteName,
+          schedule: data.schedule || [],
+          location_type: locType,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          is_active: data.is_active
+        })
       } else {
         // 使用模拟数据
         setActivity({
@@ -115,8 +154,8 @@ export default function ActivityDetailPage() {
           offline_price: 99,
           max_participants: 50,
           current_participants: 32,
-          target_roles: [0],
-          description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
+          target_roles: [],
+          description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。',
           status: 'upcoming',
           contact_phone: '400-888-8888',
           organizer: siteName,
@@ -140,8 +179,8 @@ export default function ActivityDetailPage() {
         offline_price: 99,
         max_participants: 50,
         current_participants: 32,
-        target_roles: [0],
-        description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。活动包含：\n\n1. 校园参观（约1小时）\n2. 学校介绍宣讲（约30分钟）\n3. 招生政策解读（约30分钟）\n4. 家长互动答疑（约30分钟）\n\n名额有限，报名从速！',
+        target_roles: [],
+        description: '带领家长深入参观北京四中校园环境，了解学校办学理念、师资力量、教学设施等。',
         status: 'upcoming',
         contact_phone: '400-888-8888',
         organizer: siteName,
@@ -173,7 +212,9 @@ export default function ActivityDetailPage() {
   const handleRegister = async () => {
     if (!activity) return
     
-    const price = activity.location_type === 'online' ? activity.online_price : activity.offline_price
+    const price = activity.location_type === 'online' 
+      ? (typeof activity.online_price === 'string' ? parseFloat(activity.online_price) : activity.online_price)
+      : (typeof activity.offline_price === 'string' ? parseFloat(activity.offline_price) : activity.offline_price)
     
     Taro.showModal({
       title: '确认报名',
@@ -249,9 +290,11 @@ export default function ActivityDetailPage() {
       visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
       training: { label: '研修', color: 'bg-green-100 text-green-600' },
       lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
-      other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
+      promotion: { label: '促销', color: 'bg-red-100 text-red-600' },
+      activity: { label: '活动', color: 'bg-orange-100 text-orange-600' },
+      other: { label: '其他', color: 'bg-gray-100 text-gray-600' },
     }
-    return typeMap[type]
+    return typeMap[type] || typeMap.other
   }
 
   if (loading || !activity) {
@@ -263,7 +306,13 @@ export default function ActivityDetailPage() {
   }
 
   const typeTag = getTypeTag(activity.type)
-  const remainingSpots = activity.max_participants - activity.current_participants
+  const maxParticipants = activity.max_participants || 100
+  const remainingSpots = maxParticipants - activity.current_participants
+  const progressPercent = activity.max_participants > 0 
+    ? Math.min((activity.current_participants / maxParticipants) * 100, 100) 
+    : 0
+  const onlinePrice = typeof activity.online_price === 'string' ? parseFloat(activity.online_price) : activity.online_price
+  const offlinePrice = typeof activity.offline_price === 'string' ? parseFloat(activity.offline_price) : activity.offline_price
 
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50 pb-24">
@@ -342,15 +391,19 @@ export default function ActivityDetailPage() {
               <Users size={20} color="#2563EB" />
               <Text className="font-semibold">报名人数</Text>
             </View>
-            <Text className="text-orange-500 font-semibold">{activity.current_participants}/{activity.max_participants}</Text>
+            <Text className="text-orange-500 font-semibold">{activity.current_participants}/{maxParticipants === 100 && activity.max_participants === 0 ? '不限' : maxParticipants}</Text>
           </View>
-          <View className="bg-gray-100 rounded-full h-2 mt-2">
-            <View 
-              className="bg-orange-500 rounded-full h-2"
-              style={{ width: `${(activity.current_participants / activity.max_participants) * 100}%` }}
-            />
-          </View>
-          <Text className="text-xs text-gray-500 mt-2">剩余 {remainingSpots} 个名额</Text>
+          {activity.max_participants > 0 && (
+            <>
+              <View className="bg-gray-100 rounded-full h-2 mt-2">
+                <View 
+                  className="bg-orange-500 rounded-full h-2"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </View>
+              <Text className="text-xs text-gray-500 mt-2">剩余 {remainingSpots} 个名额</Text>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -411,9 +464,9 @@ export default function ActivityDetailPage() {
         <View className="flex-1">
           <Text className="text-sm text-gray-500">费用</Text>
           <Text className="text-xl font-bold text-orange-500">
-            {activity.location_type === 'online' && activity.online_price === 0 ? '免费' : 
-             activity.location_type === 'offline' && activity.offline_price === 0 ? '免费' : 
-             `¥${activity.location_type === 'online' ? activity.online_price : activity.offline_price}`}
+            {activity.location_type === 'online' && onlinePrice === 0 ? '免费' : 
+             activity.location_type === 'offline' && offlinePrice === 0 ? '免费' : 
+             `¥${activity.location_type === 'online' ? onlinePrice : offlinePrice}`}
           </Text>
         </View>
         <View className="flex-1">
