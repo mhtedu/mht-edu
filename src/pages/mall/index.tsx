@@ -38,18 +38,10 @@ const getFullImageUrl = (imagePath: string | undefined): string => {
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
-  // 如果是本地路径，使用远程服务器地址（数据库中的图片存储在远程服务器）
-  // 开发环境下，静态文件会通过代理访问
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  // 尝试使用远程服务器地址
-  const remoteServer = 'http://119.91.193.179';
-  
-  // 如果是开发环境（localhost），使用远程服务器地址
-  if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || baseUrl.includes('dev.coze.site')) {
-    return `${remoteServer}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
-  }
-  
-  return `${baseUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  // 如果是本地路径，使用相对路径，通过代理访问后端静态文件
+  // 开发环境下，vite代理会将 /uploads 请求转发到后端
+  // 生产环境下，PROJECT_DOMAIN 会自动处理
+  return imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
 };
 
 /**
