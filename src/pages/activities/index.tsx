@@ -3,25 +3,28 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Network } from '@/network'
 import { 
-  Calendar, Clock, MapPin, Users
+  Calendar, Clock, MapPin, Users, Loader
 } from 'lucide-react-taro'
 
 interface Activity {
   id: number
   title: string
-  type: 'visit' | 'training' | 'lecture' | 'other'
+  type: string
   cover_image: string
   start_time: string
   end_time: string
   address: string
-  is_online: boolean
-  online_price: number
-  offline_price: number
+  is_online: number
+  online_price: string
+  offline_price: string
   max_participants: number
   current_participants: number
-  target_roles: number[]
-  status: 'upcoming' | 'ongoing' | 'ended'
+  target_roles: number[] | string[]
+  status: number
+  is_active: number
 }
 
 /**
@@ -30,103 +33,65 @@ interface Activity {
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'ended'>('all')
-  const [userRole, setUserRole] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useDidShow(() => {
-    const savedRole = Taro.getStorageSync('userRole')
-    const role = typeof savedRole === 'string' ? parseInt(savedRole, 10) : (savedRole || 0)
-    setUserRole(role)
     loadActivities()
   })
 
   const loadActivities = async () => {
-    // 模拟数据
-    const mockActivities: Activity[] = [
-      {
-        id: 1,
-        title: '北京四中探校活动',
-        type: 'visit',
-        cover_image: 'https://placehold.co/400x200/2563EB/white?text=探校活动',
-        start_time: '2024-04-15 09:00',
-        end_time: '2024-04-15 12:00',
-        address: '北京市西城区北京四中',
-        is_online: false,
-        online_price: 0,
-        offline_price: 99,
-        max_participants: 50,
-        current_participants: 32,
-        target_roles: [0],
-        status: 'upcoming',
-      },
-      {
-        id: 2,
-        title: '新高考政策解读讲座',
-        type: 'lecture',
-        cover_image: 'https://placehold.co/400x200/10B981/white?text=政策讲座',
-        start_time: '2024-04-20 14:00',
-        end_time: '2024-04-20 16:00',
-        address: '线上直播',
-        is_online: true,
-        online_price: 29,
-        offline_price: 0,
-        max_participants: 200,
-        current_participants: 156,
-        target_roles: [0, 1],
-        status: 'upcoming',
-      },
-      {
-        id: 3,
-        title: '牛师教学技能提升研修',
-        type: 'training',
-        cover_image: 'https://placehold.co/400x200/EC4899/white?text=牛师研修',
-        start_time: '2024-04-25 09:00',
-        end_time: '2024-04-26 17:00',
-        address: '海淀区牛师进修学校',
-        is_online: false,
-        online_price: 0,
-        offline_price: 299,
-        max_participants: 30,
-        current_participants: 28,
-        target_roles: [1],
-        status: 'upcoming',
-      },
-      {
-        id: 4,
-        title: '家庭教育方法分享会',
-        type: 'lecture',
-        cover_image: 'https://placehold.co/400x200/8B5CF6/white?text=家庭讲座',
-        start_time: '2024-03-20 14:00',
-        end_time: '2024-03-20 16:00',
-        address: '线上直播',
-        is_online: true,
-        online_price: 0,
-        offline_price: 0,
-        max_participants: 100,
-        current_participants: 98,
-        target_roles: [0],
-        status: 'ended',
-      },
-    ]
-    
-    // 过滤当前角色可见的活动
-    const visibleActivities = mockActivities.filter(a => a.target_roles.includes(userRole))
-    setActivities(visibleActivities)
+    setLoading(true)
+    try {
+      console.log('加载活动列表请求:', { url: '/api/activities/list' })
+      const res = await Network.request({
+        url: '/api/activities/list',
+        data: { page: 1, pageSize: 50 },
+        method: 'GET'
+      })
+      console.log('加载活动列表响应:', res.data)
+      
+      if (res.data && res.data.list) {
+        setActivities(res.data.list)
+      } else if (Array.isArray(res.data)) {
+        setActivities(res.data)
+      } else {
+        setActivities([])
+      }
+    } catch (error) {
+      console.error('加载活动失败:', error)
+      setActivities([])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getTypeTag = (type: Activity['type']) => {
-    const typeMap = {
+  const getTypeTag = (type: string) => {
+    const typeMap: Record<string, { label: string; color: string }> = {
       visit: { label: '探校', color: 'bg-blue-100 text-blue-600' },
       training: { label: '研修', color: 'bg-green-100 text-green-600' },
       lecture: { label: '讲座', color: 'bg-purple-100 text-purple-600' },
-      other: { label: '活动', color: 'bg-gray-100 text-gray-600' },
+      activity: { label: '活动', color: 'bg-orange-100 text-orange-600' },
+      promotion: { label: '促销', color: 'bg-red-100 text-red-600' },
+      other: { label: '其他', color: 'bg-gray-100 text-gray-600' },
     }
-    return typeMap[type]
+    return typeMap[type] || typeMap.other
+  }
+
+  const getActivityStatus = (startTime: string, endTime: string) => {
+    const now = new Date()
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    
+    if (now < start) return 'upcoming'
+    if (now >= start && now <= end) return 'ongoing'
+    return 'ended'
   }
 
   const filteredActivities = activities.filter(a => {
+    const status = getActivityStatus(a.start_time, a.end_time)
     if (activeTab === 'all') return true
-    if (activeTab === 'upcoming') return a.status === 'upcoming' || a.status === 'ongoing'
-    if (activeTab === 'ended') return a.status === 'ended'
+    if (activeTab === 'upcoming') return status === 'upcoming' || status === 'ongoing'
+    if (activeTab === 'ended') return status === 'ended'
     return true
   })
 
@@ -138,12 +103,12 @@ export default function ActivitiesPage() {
     <View className="min-h-screen bg-gray-50">
       {/* Tab 切换 */}
       <View className="bg-white border-b border-gray-200">
-        <View className="flex">
+        <View className="flex flex-row">
           <View 
             className={`flex-1 py-3 text-center ${activeTab === 'all' ? 'border-b-2 border-blue-500' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            <Text className={activeTab === 'all' ? 'text-blue-500 font-semibold' : 'text-gray-600'}>
+            <Text className={`text-base ${activeTab === 'all' ? 'text-blue-500 font-semibold' : 'text-gray-600'}`}>
               全部活动
             </Text>
           </View>
@@ -151,7 +116,7 @@ export default function ActivitiesPage() {
             className={`flex-1 py-3 text-center ${activeTab === 'upcoming' ? 'border-b-2 border-blue-500' : ''}`}
             onClick={() => setActiveTab('upcoming')}
           >
-            <Text className={activeTab === 'upcoming' ? 'text-blue-500 font-semibold' : 'text-gray-600'}>
+            <Text className={`text-base ${activeTab === 'upcoming' ? 'text-blue-500 font-semibold' : 'text-gray-600'}`}>
               即将开始
             </Text>
           </View>
@@ -159,7 +124,7 @@ export default function ActivitiesPage() {
             className={`flex-1 py-3 text-center ${activeTab === 'ended' ? 'border-b-2 border-blue-500' : ''}`}
             onClick={() => setActiveTab('ended')}
           >
-            <Text className={activeTab === 'ended' ? 'text-blue-500 font-semibold' : 'text-gray-600'}>
+            <Text className={`text-base ${activeTab === 'ended' ? 'text-blue-500 font-semibold' : 'text-gray-600'}`}>
               已结束
             </Text>
           </View>
@@ -168,16 +133,35 @@ export default function ActivitiesPage() {
 
       {/* 活动列表 */}
       <ScrollView scrollY className="p-4" style={{ height: 'calc(100vh - 50px)' }}>
-        {filteredActivities.length === 0 ? (
+        {loading ? (
+          <View className="flex flex-col gap-4">
+            {[1, 2, 3].map(i => (
+              <View key={i} className="bg-white rounded-lg overflow-hidden">
+                <Skeleton className="w-full h-40" />
+                <View className="p-4">
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-3 w-1/2 mb-2" />
+                  <Skeleton className="h-3 w-2/3" />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : filteredActivities.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-20">
             <Calendar size={48} color="#D1D5DB" />
-            <Text className="text-gray-400 mt-4">暂无活动</Text>
+            <Text className="text-gray-400 mt-4 text-lg">暂无活动</Text>
           </View>
         ) : (
           <View className="flex flex-col gap-4">
             {filteredActivities.map((activity) => {
               const typeTag = getTypeTag(activity.type)
-              const price = activity.is_online ? activity.online_price : activity.offline_price
+              const status = getActivityStatus(activity.start_time, activity.end_time)
+              const price = activity.is_online ? parseFloat(activity.online_price) : parseFloat(activity.offline_price)
+              
+              // 格式化时间
+              const startDate = new Date(activity.start_time)
+              const formatDate = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
+              const formatTime = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
               
               return (
                 <Card 
@@ -185,23 +169,25 @@ export default function ActivitiesPage() {
                   className="bg-white overflow-hidden"
                   onClick={() => handleActivityClick(activity.id)}
                 >
-                  <Image 
-                    src={activity.cover_image}
-                    className="w-full h-40"
-                    mode="aspectFill"
-                  />
+                  {activity.cover_image && (
+                    <Image 
+                      src={activity.cover_image}
+                      className="w-full h-40"
+                      mode="aspectFill"
+                    />
+                  )}
                   <CardContent className="p-4">
                     <View className="flex flex-row items-center gap-2 mb-2">
                       <Badge className={typeTag.color}>
                         <Text className="text-xs">{typeTag.label}</Text>
                       </Badge>
-                      {activity.is_online && (
+                      {activity.is_online === 1 && (
                         <Badge className="bg-blue-100 text-blue-600">
                           <Text className="text-xs">线上</Text>
                         </Badge>
                       )}
-                      <Badge className={activity.status === 'upcoming' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}>
-                        <Text className="text-xs">{activity.status === 'upcoming' ? '即将开始' : activity.status === 'ongoing' ? '进行中' : '已结束'}</Text>
+                      <Badge className={status === 'upcoming' ? 'bg-green-100 text-green-600' : status === 'ongoing' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}>
+                        <Text className="text-xs">{status === 'upcoming' ? '即将开始' : status === 'ongoing' ? '进行中' : '已结束'}</Text>
                       </Badge>
                     </View>
                     
@@ -210,24 +196,26 @@ export default function ActivitiesPage() {
                     <View className="flex flex-row items-center gap-4 mt-2">
                       <View className="flex flex-row items-center gap-1">
                         <Calendar size={14} color="#6B7280" />
-                        <Text className="text-sm text-gray-600">{activity.start_time.split(' ')[0]}</Text>
+                        <Text className="text-sm text-gray-600">{formatDate}</Text>
                       </View>
                       <View className="flex flex-row items-center gap-1">
                         <Clock size={14} color="#6B7280" />
-                        <Text className="text-sm text-gray-600">{activity.start_time.split(' ')[1]}</Text>
+                        <Text className="text-sm text-gray-600">{formatTime}</Text>
                       </View>
                     </View>
                     
-                    <View className="flex flex-row items-center gap-1 mt-1">
-                      <MapPin size={14} color="#6B7280" />
-                      <Text className="text-sm text-gray-600">{activity.address}</Text>
-                    </View>
+                    {activity.address && (
+                      <View className="flex flex-row items-center gap-1 mt-1">
+                        <MapPin size={14} color="#6B7280" />
+                        <Text className="text-sm text-gray-600">{activity.address}</Text>
+                      </View>
+                    )}
                     
                     <View className="flex flex-row items-center justify-between mt-3">
                       <View className="flex flex-row items-center gap-1">
                         <Users size={14} color="#6B7280" />
                         <Text className="text-sm text-gray-500">
-                          {activity.current_participants}/{activity.max_participants}人已报名
+                          {activity.current_participants}/{activity.max_participants || '不限'}人已报名
                         </Text>
                       </View>
                       <Text className="text-orange-500 font-semibold">
