@@ -417,16 +417,16 @@ export class AdminController {
     const params: any[] = [];
 
     if (status === 'pending') {
-      whereClause += ' AND o.verify_status = 0';
+      whereClause += ' AND o.status = 0';
     } else if (status === 'approved') {
-      whereClause += ' AND o.verify_status = 1';
+      whereClause += ' AND o.status = 1';
     }
 
     try {
       const [orgs] = await db.query(`
         SELECT 
-          o.id, o.user_id, o.name, o.contact_person, o.contact_phone,
-          o.address, o.description, o.verify_status, o.created_at,
+          o.id, o.user_id, o.org_name as name, o.contact_person, o.contact_phone,
+          o.address, o.intro as description, o.status as verify_status, o.created_at,
           u.nickname, u.avatar
         FROM organizations o
         LEFT JOIN users u ON o.user_id = u.id
@@ -1950,8 +1950,8 @@ export class AdminController {
     try {
       const [orgs] = await db.query(`
         SELECT 
-          o.id, o.name, o.contact_person, o.contact_phone, o.address, o.description,
-          CASE o.verify_status WHEN 0 THEN '待审核' WHEN 1 THEN '已认证' WHEN 2 THEN '已拒绝' END as verify_status_name,
+          o.id, o.org_name as name, o.contact_person, o.contact_phone, o.address, o.intro as description,
+          CASE o.status WHEN 0 THEN '待审核' WHEN 1 THEN '已认证' WHEN 2 THEN '已拒绝' END as verify_status_name,
           (SELECT COUNT(*) FROM users WHERE affiliated_org_id = o.user_id) as teacher_count,
           u.membership_type, u.membership_expire_at, o.created_at
         FROM organizations o
@@ -2909,6 +2909,33 @@ export class AdminController {
     } catch (error) {
       console.error('获取财务流水失败:', error);
       return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum, stats: {} };
+    }
+  }
+
+  // ==================== 会员使用记录 ====================
+
+  /**
+   * 创建会员使用记录表
+   */
+  @Public()
+  @Post('create-member-usage-table')
+  async createMemberUsageTable() {
+    try {
+      await db.update(`
+        CREATE TABLE IF NOT EXISTS member_usage_log (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL COMMENT '用户ID',
+          type VARCHAR(50) NOT NULL COMMENT '使用类型: view_contact, send_message等',
+          target_id INT DEFAULT NULL COMMENT '目标ID',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_user_created (user_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员使用记录表'
+      `);
+      
+      return { success: true, message: 'member_usage_log表创建成功' };
+    } catch (error) {
+      console.error('创建member_usage_log表失败:', error);
+      return { success: false, message: '创建失败' };
     }
   }
 

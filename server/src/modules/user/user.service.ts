@@ -15,7 +15,7 @@ export class UserService {
     const users = await executeQuery(`
       SELECT u.*, 
         tp.real_name, tp.subjects, tp.rating as teacher_rating,
-        o.name as org_name, o.verify_status as org_status
+        o.org_name, o.status as org_status
       FROM users u
       LEFT JOIN teacher_profiles tp ON u.id = tp.user_id
       LEFT JOIN organizations o ON u.id = o.user_id
@@ -125,13 +125,19 @@ export class UserService {
                      new Date(user.membership_expire_at) > now;
 
     // 获取会员权益使用情况
-    const usage = await executeQuery(`
-      SELECT 
-        SUM(CASE WHEN type = 'view_contact' THEN 1 ELSE 0 END) as view_count,
-        SUM(CASE WHEN type = 'send_message' THEN 1 ELSE 0 END) as message_count
-      FROM member_usage_log
-      WHERE user_id = ? AND DATE(created_at) = CURDATE()
-    `, [userId]);
+    let usage = { view_count: 0, message_count: 0 };
+    try {
+      const usageResult = await executeQuery(`
+        SELECT 
+          SUM(CASE WHEN type = 'view_contact' THEN 1 ELSE 0 END) as view_count,
+          SUM(CASE WHEN type = 'send_message' THEN 1 ELSE 0 END) as message_count
+        FROM member_usage_log
+        WHERE user_id = ? AND DATE(created_at) = CURDATE()
+      `, [userId]);
+      usage = usageResult[0] || { view_count: 0, message_count: 0 };
+    } catch (error) {
+      console.log('获取会员使用记录失败，使用默认值:', error.message);
+    }
 
     return {
       is_member: isMember,
