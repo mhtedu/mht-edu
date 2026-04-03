@@ -12,6 +12,20 @@ import {
   Calendar, Clock, MapPin, Users, Phone, CircleCheck, Share2
 } from 'lucide-react-taro'
 
+// 格式化日期
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+// 格式化时间
+const formatTime = (dateStr: string): string => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
 interface Activity {
   id: number
   title: string
@@ -317,11 +331,17 @@ export default function ActivityDetailPage() {
   return (
     <ScrollView scrollY className="min-h-screen bg-gray-50 pb-24">
       {/* 封面图 */}
-      <Image 
-        src={activity.cover_image}
-        className="w-full h-52"
-        mode="aspectFill"
-      />
+      {activity.cover_image ? (
+        <Image 
+          src={activity.cover_image}
+          className="w-full h-52"
+          mode="aspectFill"
+        />
+      ) : (
+        <View className="w-full h-52 bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+          <Text className="text-white text-xl font-bold">{activity.title}</Text>
+        </View>
+      )}
 
       {/* 活动信息 */}
       <View className="bg-white p-4">
@@ -349,11 +369,11 @@ export default function ActivityDetailPage() {
         <View className="flex flex-row items-center gap-4 mt-3">
           <View className="flex flex-row items-center gap-1">
             <Calendar size={14} color="#6B7280" />
-            <Text className="text-sm text-gray-600">{activity.start_time.split(' ')[0]}</Text>
+            <Text className="text-sm text-gray-600">{formatDate(activity.start_time)}</Text>
           </View>
           <View className="flex flex-row items-center gap-1">
             <Clock size={14} color="#6B7280" />
-            <Text className="text-sm text-gray-600">{activity.start_time.split(' ')[1]}</Text>
+            <Text className="text-sm text-gray-600">{formatTime(activity.start_time)}</Text>
           </View>
         </View>
         

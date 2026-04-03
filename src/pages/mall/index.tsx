@@ -239,6 +239,9 @@ const MallPage = () => {
                       src={imageUrl}
                       className="w-full h-36"
                       mode="aspectFill"
+                      onError={(e) => {
+                        console.log('图片加载失败:', imageUrl, e)
+                      }}
                     />
                   ) : (
                     <View className="w-full h-36 bg-gray-200 flex items-center justify-center">
