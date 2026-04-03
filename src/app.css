@@ -8,23 +8,6 @@ page {
   height: 100%;
 }
 
-/* H5 端限制根字体大小，避免 Tailwind rem 单位字体过大 */
-/* 仅在 PC 宽屏模式下限制，移动端保持 Taro 默认的响应式字体 */
-@media (min-width: 769px) {
-  html.is-pc-device {
-    font-size: 16px !important;
-  }
-}
-
-/* 移动端 H5：限制根字体大小最大值，确保 Tailwind 字体不会过大 */
-/* Taro 计算公式: screenWidth / 7.5，375px 屏幕约为 50px */
-/* 我们将其限制在 20px 以内，保证字体大小合理 */
-@media (max-width: 768px) {
-  html {
-    font-size: min(5.333vw, 18px) !important;
-  }
-}
-
 :root,
 page,
 root-portal {
