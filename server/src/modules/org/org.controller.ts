@@ -35,11 +35,11 @@ export class OrgController {
       }
 
       const [orgs] = await db.query(`
-        SELECT id, name, logo, description, teacher_count, rating, review_count,
-               address, latitude, longitude, contact_phone, subjects
+        SELECT id, name, logo, description, teacher_count, student_count,
+               address, latitude, longitude, contact_phone
         FROM organizations
         ${whereClause}
-        ORDER BY rating DESC, created_at DESC
+        ORDER BY created_at DESC
         LIMIT ? OFFSET ?
       `, [...params, pageSizeNum, offset]);
 
@@ -61,7 +61,6 @@ export class OrgController {
         return {
           ...org,
           distance_text,
-          subjects: org.subjects ? (typeof org.subjects === 'string' ? JSON.parse(org.subjects) : org.subjects) : []
         };
       });
 

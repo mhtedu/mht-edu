@@ -22,6 +22,7 @@ export class SeedController {
       orders: { success: false, count: 0, message: '' },
       activities: { success: false, count: 0, message: '' },
       invitations: { success: false, count: 0, message: '' },
+      orgs: { success: false, count: 0, message: '' },
     };
 
     try {
@@ -57,6 +58,13 @@ export class SeedController {
       results.invitations = await this.seedInvitations(force === 'true');
     } catch (e: any) {
       results.invitations.message = e.message;
+    }
+
+    try {
+      // 6. 填充机构数据
+      results.orgs = await this.seedOrgs(force === 'true');
+    } catch (e: any) {
+      results.orgs.message = e.message;
     }
 
     return {
@@ -580,6 +588,7 @@ export class SeedController {
     const [orders] = await db.query('SELECT status, COUNT(*) as count FROM orders GROUP BY status');
     const [activities] = await db.query('SELECT COUNT(*) as count FROM activities WHERE status = 1');
     const [invitations] = await db.query('SELECT status, COUNT(*) as count FROM invitations GROUP BY status');
+    const [orgs] = await db.query('SELECT COUNT(*) as count FROM organizations WHERE verify_status = 1');
 
     return {
       users,
@@ -587,6 +596,111 @@ export class SeedController {
       orders,
       activities: (activities as any[])[0]?.count || 0,
       invitations,
+      orgs: (orgs as any[])[0]?.count || 0,
     };
+  }
+
+  /**
+   * 单独填充机构数据
+   * GET /api/seed/orgs?force=true
+   */
+  @Get('orgs')
+  @Public()
+  async seedOrgsOnly(@Query('force') force: string = 'false') {
+    return this.seedOrgs(force === 'true');
+  }
+
+  /**
+   * 填充机构数据
+   */
+  private async seedOrgs(force: boolean): Promise<{ success: boolean; count: number; message: string }> {
+    // 检查现有数据
+    const [existing] = await db.query('SELECT COUNT(*) as count FROM organizations WHERE verify_status = 1');
+    if (!force && (existing as any[])[0].count > 3) {
+      return { success: true, count: (existing as any[])[0].count, message: '机构数据已存在，跳过初始化' };
+    }
+
+    // 机构数据模板
+    const orgTemplates = [
+      {
+        name: '优学教育',
+        description: '专注中小学全科辅导，师资力量雄厚，教学环境优良',
+        address: '北京市海淀区中关村大街1号',
+        teacher_count: 50,
+        rating: 4.8,
+        review_count: 156,
+        subjects: ['数学', '语文', '英语', '物理', '化学'],
+      },
+      {
+        name: '启航教育',
+        description: '专业中高考辅导，提分效果显著，多年办学经验',
+        address: '北京市朝阳区建国路88号',
+        teacher_count: 35,
+        rating: 4.6,
+        review_count: 98,
+        subjects: ['数学', '英语', '物理'],
+      },
+      {
+        name: '智慧树教育',
+        description: '幼小衔接、小学全科辅导，培养学习习惯',
+        address: '北京市西城区西单北大街100号',
+        teacher_count: 28,
+        rating: 4.7,
+        review_count: 82,
+        subjects: ['语文', '数学', '英语'],
+      },
+      {
+        name: '学而思培优',
+        description: '知名教育品牌，科学课程体系，助力学生成长',
+        address: '北京市东城区东直门外大街',
+        teacher_count: 80,
+        rating: 4.9,
+        review_count: 245,
+        subjects: ['数学', '物理', '化学', '生物'],
+      },
+      {
+        name: '新东方教育',
+        description: '综合性教育机构，提供语言培训、学科辅导等服务',
+        address: '北京市海淀区海淀中街',
+        teacher_count: 120,
+        rating: 4.8,
+        review_count: 312,
+        subjects: ['英语', '语文', '数学'],
+      },
+    ];
+
+    let count = 0;
+    for (const org of orgTemplates) {
+      try {
+        // 生成唯一的openid
+        const openid = `org_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // 创建机构用户（使用insert获取insertId）
+        const userId = await db.insert(
+          `INSERT INTO users (openid, nickname, avatar, role, status, city_name, created_at)
+           VALUES (?, ?, ?, 2, 1, '北京', NOW())`,
+          [openid, org.name, `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(org.name)}`]
+        );
+
+        if (!userId) {
+          console.error(`创建机构用户失败: ${org.name}`);
+          continue;
+        }
+
+        // 创建机构档案
+        await db.update(
+          `INSERT INTO organizations (user_id, name, description, address, teacher_count, verify_status, rating, review_count, subjects, created_at)
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, NOW())`,
+          [userId, org.name, org.description, org.address, org.teacher_count, org.rating, org.review_count, JSON.stringify(org.subjects)]
+        );
+
+        count++;
+        console.log(`成功创建机构: ${org.name}, userId: ${userId}`);
+      } catch (error: any) {
+        console.error(`创建机构 ${org.name} 失败:`, error.message);
+      }
+    }
+
+    return { success: true, count, message: `成功创建 ${count} 个机构` };
   }
 }

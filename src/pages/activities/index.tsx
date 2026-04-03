@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Network } from '@/network'
 import { 
-  Calendar, Clock, MapPin, Users, Loader
+  Calendar, Clock, MapPin, Users
 } from 'lucide-react-taro'
 
 interface Activity {
