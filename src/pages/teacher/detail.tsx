@@ -305,20 +305,20 @@ const TeacherDetailPage: FC = () => {
                 <Image src={teacher.avatar} className="avatar-img" mode="aspectFill" />
               ) : (
                 <View className="avatar-placeholder">
-                  <Text className="avatar-text">{teacher.real_name?.[0]}</Text>
+                  <Text className="avatar-text">{teacher.real_name?.charAt(0) || teacher.nickname?.charAt(0) || '师'}</Text>
                 </View>
               )}
             </View>
             <View className="teacher-basic">
               <View className="name-row">
-                <Text className="teacher-name">{teacher.real_name}</Text>
+                <Text className="teacher-name">{teacher.real_name || teacher.nickname || '老师'}</Text>
                 <View className="rating-row">
                   <Star size={16} color="#F59E0B" />
-                  <Text className="rating-text">{teacher.rating}</Text>
-                  <Text className="review-count">({teacher.review_count}条评价)</Text>
+                  <Text className="rating-text">{teacher.rating || '5.0'}</Text>
+                  <Text className="review-count">({teacher.review_count || 0}条评价)</Text>
                 </View>
               </View>
-              <Text className="teacher-intro">{teacher.one_line_intro}</Text>
+              <Text className="teacher-intro">{teacher.one_line_intro || `${teacher.education || ''} · ${teacher.teaching_years || 0}年教学经验`}</Text>
               <View className="tag-row">
                 {teacher.subjects?.map((s, idx) => (
                   <Badge key={idx} className="subject-tag">{s}</Badge>
@@ -353,15 +353,15 @@ const TeacherDetailPage: FC = () => {
             {/* 统计数据 */}
             <View className="stats-row">
               <View className="stat-item">
-                <Text className="stat-value">{teacher.view_count}</Text>
+                <Text className="stat-value">{teacher.view_count || 0}</Text>
                 <Text className="stat-label">浏览</Text>
               </View>
               <View className="stat-item">
-                <Text className="stat-value">{teacher.success_count}</Text>
+                <Text className="stat-value">{teacher.success_count || 0}</Text>
                 <Text className="stat-label">成功接单</Text>
               </View>
               <View className="stat-item">
-                <Text className="stat-value">{teacher.review_count}</Text>
+                <Text className="stat-value">{teacher.review_count || 0}</Text>
                 <Text className="stat-label">评价</Text>
               </View>
             </View>
@@ -377,27 +377,27 @@ const TeacherDetailPage: FC = () => {
               <CardContent className="card-content">
                 <View className="info-item">
                   <Text className="info-label">教学年限</Text>
-                  <Text className="info-value">{teacher.teaching_years}年</Text>
+                  <Text className="info-value">{teacher.teaching_years || 0}年</Text>
                 </View>
                 <View className="info-item">
                   <Text className="info-label">授课年级</Text>
-                  <Text className="info-value">{teacher.grades?.join('、')}</Text>
+                  <Text className="info-value">{teacher.grades?.join('、') || '未设置'}</Text>
                 </View>
                 <View className="info-item">
                   <Text className="info-label">授课方式</Text>
-                  <Text className="info-value">{teacher.teaching_mode}</Text>
+                  <Text className="info-value">{teacher.teaching_mode || '线上/线下'}</Text>
                 </View>
                 <View className="info-item">
                   <Text className="info-label">可授课时间</Text>
-                  <Text className="info-value">{teacher.available_time}</Text>
+                  <Text className="info-value">{teacher.available_time || '请咨询老师'}</Text>
                 </View>
                 <View className="info-item">
                   <Text className="info-label">学历背景</Text>
-                  <Text className="info-value">{teacher.education} · {teacher.school}</Text>
+                  <Text className="info-value">{teacher.education || '未填写'} · {teacher.school || '未填写'}</Text>
                 </View>
                 <View className="info-item">
                   <Text className="info-label">授课地点</Text>
-                  <Text className="info-value">{teacher.address}</Text>
+                  <Text className="info-value">{teacher.address || '未填写'}</Text>
                 </View>
               </CardContent>
             </Card>
@@ -411,7 +411,7 @@ const TeacherDetailPage: FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="card-content">
-                <Text className="bio-text">{teacher.bio}</Text>
+                <Text className="bio-text">{teacher.bio || '暂无简介'}</Text>
               </CardContent>
             </Card>
 
