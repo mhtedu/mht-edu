@@ -124,13 +124,25 @@ const AddCourseSchedulePage = () => {
 
   const handleSubmit = async () => {
     // 验证
-    if (scheduleType === 'student' && !formData.student_name && students.length > 0) {
-      Taro.showToast({ title: '请选择学员', icon: 'none' })
-      return
+    if (scheduleType === 'student') {
+      if (students.length > 0 && !formData.student_name) {
+        Taro.showToast({ title: '请选择学员', icon: 'none' })
+        return
+      }
+      if (students.length === 0 && !formData.student_name) {
+        Taro.showToast({ title: '请输入学员姓名', icon: 'none' })
+        return
+      }
     }
-    if (scheduleType === 'class' && !formData.class_title && classes.length > 0) {
-      Taro.showToast({ title: '请选择班级', icon: 'none' })
-      return
+    if (scheduleType === 'class') {
+      if (classes.length > 0 && !formData.class_title) {
+        Taro.showToast({ title: '请选择班级', icon: 'none' })
+        return
+      }
+      if (classes.length === 0 && !formData.class_title) {
+        Taro.showToast({ title: '请输入班级名称', icon: 'none' })
+        return
+      }
     }
     if (!formData.date) {
       Taro.showToast({ title: '请选择日期', icon: 'none' })
@@ -217,32 +229,50 @@ const AddCourseSchedulePage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 选择学员 */}
-          {scheduleType === 'student' && students.length > 0 && (
+          {scheduleType === 'student' && (
             <View className="form-item">
               <View className="form-label">
                 <User size={16} color="#6B7280" />
                 <Text className="ml-2 text-gray-600">学员</Text>
               </View>
-              <Picker mode="selector" range={students.map(s => s.name)} value={studentIndex} onChange={handleStudentChange}>
-                <View className="form-value">
-                  <Text>{students[studentIndex]?.name || '请选择'}</Text>
-                </View>
-              </Picker>
+              {students.length > 0 ? (
+                <Picker mode="selector" range={students.map(s => s.name)} value={studentIndex} onChange={handleStudentChange}>
+                  <View className="form-value">
+                    <Text>{students[studentIndex]?.name || '请选择学员'}</Text>
+                  </View>
+                </Picker>
+              ) : (
+                <Input
+                  className="form-input"
+                  placeholder="请输入学员姓名"
+                  value={formData.student_name}
+                  onInput={(e) => setFormData(prev => ({ ...prev, student_name: e.detail.value }))}
+                />
+              )}
             </View>
           )}
 
           {/* 选择班级 */}
-          {scheduleType === 'class' && classes.length > 0 && (
+          {scheduleType === 'class' && (
             <View className="form-item">
               <View className="form-label">
                 <Users size={16} color="#6B7280" />
                 <Text className="ml-2 text-gray-600">班级</Text>
               </View>
-              <Picker mode="selector" range={classes.map(c => c.title)} value={classIndex} onChange={handleClassChange}>
-                <View className="form-value">
-                  <Text>{classes[classIndex]?.title || '请选择'}</Text>
-                </View>
-              </Picker>
+              {classes.length > 0 ? (
+                <Picker mode="selector" range={classes.map(c => c.title)} value={classIndex} onChange={handleClassChange}>
+                  <View className="form-value">
+                    <Text>{classes[classIndex]?.title || '请选择班级'}</Text>
+                  </View>
+                </Picker>
+              ) : (
+                <Input
+                  className="form-input"
+                  placeholder="请输入班级名称"
+                  value={formData.class_title}
+                  onInput={(e) => setFormData(prev => ({ ...prev, class_title: e.detail.value }))}
+                />
+              )}
             </View>
           )}
 
