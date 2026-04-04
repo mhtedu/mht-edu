@@ -9,7 +9,7 @@ import { useUserStore, CurrentView } from '@/stores/user'
 import { Network } from '@/network'
 import {
   User, Settings, Star, CreditCard,
-  ChevronRight, LogOut, Award, FileText, Bell, Info, Calendar,
+  ChevronRight, LogOut, Award, Bell, Info, Calendar,
   Users, Briefcase, Wallet, ClipboardList, Building2, BookOpen,
   GraduationCap, Plus, Store
 } from 'lucide-react-taro'

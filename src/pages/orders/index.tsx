@@ -127,8 +127,8 @@ const OrdersPage = () => {
       } else if (Array.isArray(res)) {
         // 兼容直接返回数组的情况
         orderList = res;
-      } else if (res && Array.isArray(res.list)) {
-        orderList = res.list;
+      } else if (res && Array.isArray((res as any).list)) {
+        orderList = (res as any).list;
       }
 
       console.log('解析后的订单列表:', orderList, '数量:', orderList.length);

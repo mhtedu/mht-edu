@@ -1,15 +1,12 @@
 import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Network } from '@/network'
-import { useUserStore } from '@/stores/user'
-import {
-  User, Plus, Pencil, Trash2, Calendar, BookOpen, School
-} from 'lucide-react-taro'
+import { User, Plus, Pencil, Trash2, Calendar, BookOpen, School } from 'lucide-react-taro'
 
 interface Child {
   id: number
@@ -41,7 +38,6 @@ const gradeOptions = [
  * 个人资料编辑页面
  */
 export default function ProfileEditPage() {
-  const { userInfo: storeUserInfo, fetchUserInfo } = useUserStore()
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [children, setChildren] = useState<Child[]>([])
   const [loading, setLoading] = useState(false)
@@ -66,7 +62,7 @@ export default function ProfileEditPage() {
   const loadData = async () => {
     try {
       // 获取用户信息
-      const userRes = await Network.request({ url: '/api/user/info' })
+      const userRes = await Network.request({ url: '/api/user/info' }) as any
       if (userRes) {
         setUserInfo({
           id: userRes.id,
@@ -101,7 +97,6 @@ export default function ProfileEditPage() {
       })
 
       Taro.showToast({ title: '保存成功', icon: 'success' })
-      fetchUserInfo()
     } catch (error) {
       console.error('保存失败:', error)
       Taro.showToast({ title: '保存失败', icon: 'none' })

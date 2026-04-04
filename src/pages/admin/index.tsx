@@ -130,6 +130,7 @@ const MENUS = [
   { id: 'withdrawals', label: '提现审核', icon: CreditCard },
   { id: 'refunds', label: '退费管理', icon: RotateCcw },
   { id: 'agents', label: '代理商管理', icon: MapPin },
+  { id: 'miniprogram', label: '小程序发布', icon: Upload },
   { id: 'demo', label: '演示数据', icon: Users },
   { id: 'config', label: '系统配置', icon: Settings },
   { id: 'payment', label: '支付配置', icon: DollarSign },
@@ -2722,6 +2723,209 @@ const AdminPage = () => {
     </View>
   );
 
+  // 小程序发布管理
+  const [mpUploading, setMpUploading] = useState(false);
+  const [mpVersion, setMpVersion] = useState('');
+  const [mpDesc, setMpDesc] = useState('');
+  const [mpLogs, setMpLogs] = useState<string[]>([]);
+
+  const renderMiniprogram = () => {
+    // 自动生成版本号
+    const autoVersion = (() => {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `1.0.${month}${day}`;
+    })();
+
+    const handleBuild = async () => {
+      setMpLogs([]);
+      addLog('开始构建小程序...');
+      try {
+        const res = await Network.request({
+          url: '/api/admin/miniprogram/build',
+          method: 'POST',
+        });
+        if (res.data?.success) {
+          addLog('✅ 构建成功！');
+        } else {
+          addLog('❌ 构建失败: ' + (res.data?.message || '未知错误'));
+        }
+      } catch (error: any) {
+        addLog('❌ 构建失败: ' + error.message);
+      }
+    };
+
+    const handleUpload = async () => {
+      if (!mpVersion && !mpDesc) {
+        Taro.showToast({ title: '请填写版本号和描述', icon: 'none' });
+        return;
+      }
+      
+      setMpUploading(true);
+      addLog('开始上传小程序...');
+      try {
+        const res = await Network.request({
+          url: '/api/admin/miniprogram/upload',
+          method: 'POST',
+          data: {
+            version: mpVersion || autoVersion,
+            desc: mpDesc || `自动构建 - ${new Date().toLocaleString('zh-CN')}`,
+          },
+        });
+        if (res.data?.success) {
+          addLog('✅ 上传成功！');
+          addLog(`📦 版本: ${res.data.version}`);
+          addLog('📱 请在微信公众平台查看');
+        } else {
+          addLog('❌ 上传失败: ' + (res.data?.message || '未知错误'));
+        }
+      } catch (error: any) {
+        addLog('❌ 上传失败: ' + error.message);
+      } finally {
+        setMpUploading(false);
+      }
+    };
+
+    const handlePreview = async () => {
+      addLog('生成预览二维码...');
+      try {
+        const res = await Network.request({
+          url: '/api/admin/miniprogram/preview',
+          method: 'POST',
+        });
+        if (res.data?.success) {
+          addLog('✅ 预览二维码已生成');
+          addLog('请查看控制台或微信公众平台');
+        } else {
+          addLog('❌ 生成失败: ' + (res.data?.message || '未知错误'));
+        }
+      } catch (error: any) {
+        addLog('❌ 生成失败: ' + error.message);
+      }
+    };
+
+    const addLog = (msg: string) => {
+      const time = new Date().toLocaleTimeString('zh-CN');
+      setMpLogs(prev => [...prev, `[${time}] ${msg}`]);
+    };
+
+    return (
+      <View className="p-6">
+        <Text className="text-lg font-semibold mb-4">小程序发布管理</Text>
+        
+        {/* 配置状态 */}
+        <Card className="mb-4">
+          <CardHeader>
+            <Text className="font-medium">配置状态</Text>
+          </CardHeader>
+          <CardContent>
+            <View className="flex flex-col gap-3">
+              <View className="flex items-center justify-between py-2 border-b border-gray-100">
+                <Text className="text-gray-600">AppID</Text>
+                <Badge variant="outline">需要配置</Badge>
+              </View>
+              <View className="flex items-center justify-between py-2 border-b border-gray-100">
+                <Text className="text-gray-600">上传密钥</Text>
+                <Badge variant="outline">需要配置</Badge>
+              </View>
+              <View className="flex items-center justify-between py-2">
+                <Text className="text-gray-600">IP白名单</Text>
+                <Badge variant="outline">119.91.193.179</Badge>
+              </View>
+            </View>
+          </CardContent>
+        </Card>
+
+        {/* 发布操作 */}
+        <Card className="mb-4">
+          <CardHeader>
+            <Text className="font-medium">发布操作</Text>
+          </CardHeader>
+          <CardContent>
+            <View className="flex flex-col gap-4">
+              <View className="flex flex-row gap-4">
+                <View className="flex-1">
+                  <Text className="text-gray-600 mb-1 text-sm">版本号</Text>
+                  <Input
+                    value={mpVersion}
+                    placeholder={autoVersion}
+                    onInput={(e) => setMpVersion(e.detail.value)}
+                    className="bg-gray-50"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-600 mb-1 text-sm">版本描述</Text>
+                  <Input
+                    value={mpDesc}
+                    placeholder="如：修复订单列表问题"
+                    onInput={(e) => setMpDesc(e.detail.value)}
+                    className="bg-gray-50"
+                  />
+                </View>
+              </View>
+              
+              <View className="flex flex-row gap-3">
+                <Button onClick={handleBuild} className="flex-1">
+                  <Package size={16} color="#fff" className="mr-1" />
+                  构建小程序
+                </Button>
+                <Button 
+                  onClick={handleUpload} 
+                  disabled={mpUploading}
+                  className="flex-1"
+                >
+                  <Upload size={16} color="#fff" className="mr-1" />
+                  {mpUploading ? '上传中...' : '上传发布'}
+                </Button>
+                <Button variant="outline" onClick={handlePreview}>
+                  <Eye size={16} color="#666" className="mr-1" />
+                  预览
+                </Button>
+              </View>
+            </View>
+          </CardContent>
+        </Card>
+
+        {/* 操作日志 */}
+        <Card>
+          <CardHeader>
+            <Text className="font-medium">操作日志</Text>
+          </CardHeader>
+          <CardContent>
+            <View className="bg-gray-900 rounded-lg p-4 min-h-48 max-h-96 overflow-y-auto font-mono text-sm">
+              {mpLogs.length === 0 ? (
+                <Text className="text-gray-500">暂无日志</Text>
+              ) : (
+                mpLogs.map((log, i) => (
+                  <View key={i} className="mb-1">
+                    <Text className="text-green-400">{log}</Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </CardContent>
+        </Card>
+
+        {/* 配置说明 */}
+        <Card className="mt-4">
+          <CardHeader>
+            <Text className="font-medium">配置说明</Text>
+          </CardHeader>
+          <CardContent>
+            <View className="text-sm text-gray-600 flex flex-col gap-2">
+              <Text>1. 登录微信公众平台 https://mp.weixin.qq.com</Text>
+              <Text>2. 开发 → 开发管理 → 开发设置</Text>
+              <Text>3. 生成上传密钥并下载，保存到服务器 scripts/private.wxkey</Text>
+              <Text>4. 配置 IP 白名单：添加 119.91.193.179</Text>
+              <Text>5. 在 project.config.json 中配置 AppID</Text>
+            </View>
+          </CardContent>
+        </Card>
+      </View>
+    );
+  };
+
   const renderContent = () => {
     switch (currentMenu) {
       case 'dashboard': return renderDashboard();
@@ -2743,6 +2947,7 @@ const AdminPage = () => {
       case 'commissions': return renderCommissions();
       case 'withdrawals': return renderWithdrawals();
       case 'agents': return renderAgents();
+      case 'miniprogram': return renderMiniprogram();
       default: return renderDashboard();
     }
   };

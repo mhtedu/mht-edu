@@ -50,6 +50,7 @@ import { ParentModule } from '@/modules/parent/parent.module';
 import { TeacherAdminModule } from '@/modules/teacher-admin/teacher-admin.module';
 import { OrgAdminModule } from '@/modules/org-admin/org-admin.module';
 import { PayModule } from '@/modules/pay/pay.module';
+import { MiniprogramModule } from '@/modules/miniprogram/miniprogram.module';
 
 @Module({
   imports: [
@@ -118,6 +119,8 @@ import { PayModule } from '@/modules/pay/pay.module';
     OrgAdminModule,
     // 支付模块
     PayModule,
+    // 小程序发布模块
+    MiniprogramModule,
     // 管理后台
     AdminModule,
   ],
