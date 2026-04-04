@@ -256,12 +256,19 @@ export const useUserStore = create<UserState>()(
       name: 'user-storage',
       storage: createJSONStorage(() => taroStorage),
       partialize: (state) => ({
+        isLoggedIn: state.isLoggedIn,
         token: state.token,
         userInfo: state.userInfo,
         currentView: state.currentView,
         platform: state.platform,
         roleMemberships: state.roleMemberships
-      })
+      }),
+      // 恢复存储后，确保状态一致性
+      onRehydrateStorage: () => (state) => {
+        if (state?.token && !state.isLoggedIn) {
+          state.isLoggedIn = true
+        }
+      }
     }
   )
 )
