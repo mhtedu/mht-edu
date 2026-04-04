@@ -1,5 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import * as db from '@/storage/database/mysql-client';
+import Dysmsapi20170525, { SendSmsRequest } from '@alicloud/dysmsapi20170525';
+import * as OpenApi from '@alicloud/openapi-client';
 
 interface SmsConfig {
   access_key_id: string;
@@ -161,10 +163,6 @@ export class SmsService {
     code: string
   ): Promise<{ success: boolean; message?: string }> {
     try {
-      // 使用新版阿里云短信SDK
-      const Dysmsapi20170525 = require('@alicloud/dysmsapi20170525');
-      const OpenApi = require('@alicloud/openapi-client');
-      
       const clientConfig = new OpenApi.Config({
         accessKeyId: config.access_key_id,
         accessKeySecret: config.access_key_secret,
@@ -173,7 +171,7 @@ export class SmsService {
 
       const client = new Dysmsapi20170525(clientConfig);
 
-      const sendSmsRequest = new Dysmsapi20170525.SendSmsRequest({
+      const sendSmsRequest = new SendSmsRequest({
         phoneNumbers: mobile,
         signName: config.sign_name,
         templateCode: config.template_code,
