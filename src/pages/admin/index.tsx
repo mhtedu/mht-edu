@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { 
   LayoutDashboard, Users, FileText, Building, MapPin, Image as ImageIcon, 
   Settings, LogOut, DollarSign, UserPlus, Gift, Percent,
   ShoppingBag, Calendar, ChevronRight, Search, Eye, Pencil, Trash2,
   Check, X, Plus, Download, Upload, Award, CreditCard, Crown,
-  Receipt, RotateCcw
+  Receipt, RotateCcw, Package
 } from 'lucide-react-taro';
 import './index.css';
 
@@ -121,6 +123,7 @@ const MENUS = [
   { id: 'membership', label: '会员套餐', icon: Gift },
   { id: 'activities', label: '活动管理', icon: Calendar },
   { id: 'products', label: '商品管理', icon: ShoppingBag },
+  { id: 'product-orders', label: '商品订单', icon: Package },
   { id: 'banners', label: '广告位管理', icon: ImageIcon },
   { id: 'commissions', label: '分佣管理', icon: Percent },
   { id: 'finance', label: '财务流水', icon: Receipt },
@@ -167,10 +170,29 @@ const AdminPage = () => {
   const [financeStats, setFinanceStats] = useState<any>({});
   const [refunds, setRefunds] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [productOrders, setProductOrders] = useState<any[]>([]);
+  const [productOrderStats, setProductOrderStats] = useState<any>({});
   const [commissions, setCommissions] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [showProductDialog, setShowProductDialog] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', description: '' });
+  const [newProduct, setNewProduct] = useState({ 
+    name: '', 
+    price: '', 
+    stock: '', 
+    description: '',
+    virtual_sales: '',
+    commission_level1: '',
+    commission_level2: '',
+    product_type: 'physical',
+    delivery_type: '1'
+  });
+  
+  // 发货弹窗状态
+  const [showDeliverDialog, setShowDeliverDialog] = useState(false);
+  const [showVirtualDeliverDialog, setShowVirtualDeliverDialog] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [deliverForm, setDeliverForm] = useState({ express_company: '', express_no: '' });
+  const [virtualDeliverForm, setVirtualDeliverForm] = useState({ pan_url: '', pan_code: '' });
   
   // 会员弹窗状态
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -212,6 +234,9 @@ const AdminPage = () => {
           break;
         case 'products':
           await loadProducts();
+          break;
+        case 'product-orders':
+          await loadProductOrders();
           break;
         case 'banners':
           await loadBanners();
@@ -540,12 +565,27 @@ const AdminPage = () => {
           name: newProduct.name,
           price: parseFloat(newProduct.price),
           stock: newProduct.stock ? parseInt(newProduct.stock) : -1,
-          description: newProduct.description
+          description: newProduct.description,
+          virtual_sales: newProduct.virtual_sales ? parseInt(newProduct.virtual_sales) : 0,
+          commission_level1: newProduct.commission_level1 ? parseFloat(newProduct.commission_level1) : 0,
+          commission_level2: newProduct.commission_level2 ? parseFloat(newProduct.commission_level2) : 0,
+          product_type: newProduct.product_type,
+          delivery_type: parseInt(newProduct.delivery_type)
         }
       });
       Taro.showToast({ title: '创建成功', icon: 'success' });
       setShowProductDialog(false);
-      setNewProduct({ name: '', price: '', stock: '', description: '' });
+      setNewProduct({ 
+        name: '', 
+        price: '', 
+        stock: '', 
+        description: '',
+        virtual_sales: '',
+        commission_level1: '',
+        commission_level2: '',
+        product_type: 'physical',
+        delivery_type: '1'
+      });
       loadProducts();
     } catch (error) {
       Taro.showToast({ title: '创建失败', icon: 'error' });
@@ -585,6 +625,63 @@ const AdminPage = () => {
         }
       }
     });
+  };
+
+  // ==================== 商品订单管理 ====================
+
+  const loadProductOrders = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/product-orders',
+        method: 'GET',
+        data: { page, pageSize, status: statusFilter, keyword }
+      });
+      console.log('[Admin] Product orders response:', res.data);
+      if (res.data) {
+        const data = res.data.data || res.data;
+        setProductOrders(data.list || []);
+        setTotal(data.total || 0);
+      }
+      // 加载统计
+      const statsRes = await Network.request({
+        url: '/api/admin/product-orders/stats',
+        method: 'GET'
+      });
+      if (statsRes.data) {
+        setProductOrderStats(statsRes.data.data || statsRes.data || {});
+      }
+    } catch (error) {
+      console.error('加载商品订单失败:', error);
+      setProductOrders([]);
+    }
+  };
+
+  const handleDeliverOrder = async (orderId: number, expressCompany: string, expressNo: string) => {
+    try {
+      await Network.request({
+        url: `/api/admin/product-orders/${orderId}/deliver`,
+        method: 'POST',
+        data: { express_company: expressCompany, express_no: expressNo }
+      });
+      Taro.showToast({ title: '发货成功', icon: 'success' });
+      loadProductOrders();
+    } catch (error) {
+      Taro.showToast({ title: '发货失败', icon: 'error' });
+    }
+  };
+
+  const handleVirtualDeliver = async (orderId: number, deliveryData: any) => {
+    try {
+      await Network.request({
+        url: `/api/admin/product-orders/${orderId}/virtual-deliver`,
+        method: 'POST',
+        data: deliveryData
+      });
+      Taro.showToast({ title: '发货成功', icon: 'success' });
+      loadProductOrders();
+    } catch (error) {
+      Taro.showToast({ title: '发货失败', icon: 'error' });
+    }
   };
 
   // ==================== 分佣管理 ====================
@@ -1410,38 +1507,44 @@ const AdminPage = () => {
               <Text className="w-20">状态</Text>
               <Text className="w-40">操作</Text>
             </View>
-            {teachers.map((teacher) => (
-              <View key={teacher.id} className="admin-table-row">
-                <Text className="w-16">{teacher.id}</Text>
-                <View className="flex-1 flex items-center gap-2">
-                  <View className="w-8 h-8 rounded-full bg-gray-200" />
-                  <View>
-                    <Text className="font-medium">{teacher.name}</Text>
-                    <Text className="text-xs text-gray-500">{teacher.phone}</Text>
+            {teachers.length > 0 ? (
+              teachers.map((teacher) => (
+                <View key={teacher.id} className="admin-table-row">
+                  <Text className="w-16">{teacher.id}</Text>
+                  <View className="flex-1 flex items-center gap-2">
+                    <View className="w-8 h-8 rounded-full bg-gray-200" />
+                    <View>
+                      <Text className="font-medium">{teacher.name}</Text>
+                      <Text className="text-xs text-gray-500">{teacher.phone}</Text>
+                    </View>
+                  </View>
+                  <Text className="w-32">{teacher.subjects && teacher.subjects.join(', ')}</Text>
+                  <Text className="w-20">{teacher.rating || '-'}</Text>
+                  <Text className="w-20">{teacher.order_count}</Text>
+                  <View className="w-20">
+                    <Badge variant={teacher.verify_status === 1 ? 'default' : teacher.verify_status === 0 ? 'secondary' : 'destructive'}>
+                      <Text className="text-xs">{teacher.verify_status === 1 ? '已认证' : teacher.verify_status === 0 ? '待审核' : '已拒绝'}</Text>
+                    </Badge>
+                  </View>
+                  <View className="w-40 flex gap-2">
+                    <Button size="sm" variant="outline"><Eye size={14} color="#666" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => openMemberDialog({ id: teacher.user_id, nickname: teacher.name, is_member: false })}>
+                      <Crown size={14} color="#666" />
+                    </Button>
+                    {teacher.verify_status === 0 && (
+                      <>
+                        <Button size="sm" onClick={() => verifyTeacher(teacher.id, 1)}><Check size={14} color="#fff" /></Button>
+                        <Button size="sm" variant="destructive" onClick={() => verifyTeacher(teacher.id, 2)}><X size={14} color="#fff" /></Button>
+                      </>
+                    )}
                   </View>
                 </View>
-                <Text className="w-32">{teacher.subjects && teacher.subjects.join(', ')}</Text>
-                <Text className="w-20">{teacher.rating || '-'}</Text>
-                <Text className="w-20">{teacher.order_count}</Text>
-                <View className="w-20">
-                  <Badge variant={teacher.verify_status === 1 ? 'default' : teacher.verify_status === 0 ? 'secondary' : 'destructive'}>
-                    <Text className="text-xs">{teacher.verify_status === 1 ? '已认证' : teacher.verify_status === 0 ? '待审核' : '已拒绝'}</Text>
-                  </Badge>
-                </View>
-                <View className="w-40 flex gap-2">
-                  <Button size="sm" variant="outline"><Eye size={14} color="#666" /></Button>
-                  <Button size="sm" variant="outline" onClick={() => openMemberDialog({ id: teacher.user_id, nickname: teacher.name, is_member: false })}>
-                    <Crown size={14} color="#666" />
-                  </Button>
-                  {teacher.verify_status === 0 && (
-                    <>
-                      <Button size="sm" onClick={() => verifyTeacher(teacher.id, 1)}><Check size={14} color="#fff" /></Button>
-                      <Button size="sm" variant="destructive" onClick={() => verifyTeacher(teacher.id, 2)}><X size={14} color="#fff" /></Button>
-                    </>
-                  )}
-                </View>
+              ))
+            ) : (
+              <View className="p-12 text-center">
+                <Text className="text-gray-400">暂无牛师数据</Text>
               </View>
-            ))}
+            )}
           </View>
         </CardContent>
       </Card>
@@ -2377,6 +2480,220 @@ const AdminPage = () => {
     </View>
   );
 
+  const renderProductOrders = () => (
+    <View className="p-6">
+      {/* 统计卡片 */}
+      <View className="grid grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-blue-500">{productOrderStats.total_orders || 0}</Text>
+            <Text className="text-sm text-gray-500 mt-1">总订单</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-orange-500">{productOrderStats.pending_orders || 0}</Text>
+            <Text className="text-sm text-gray-500 mt-1">待发货</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-green-500">{productOrderStats.delivered_orders || 0}</Text>
+            <Text className="text-sm text-gray-500 mt-1">已发货</Text>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Text className="text-2xl font-bold text-purple-500">{productOrderStats.completed_orders || 0}</Text>
+            <Text className="text-sm text-gray-500 mt-1">已完成</Text>
+          </CardContent>
+        </Card>
+      </View>
+
+      {/* 筛选栏 */}
+      <View className="flex gap-4 mb-4">
+        <View className="flex-1 flex items-center gap-2">
+          <Search size={16} color="#999" />
+          <Input
+            className="flex-1"
+            placeholder="搜索订单号/商品名/买家"
+            value={keyword}
+            onInput={(e) => setKeyword(e.detail.value)}
+          />
+        </View>
+        <View className="flex items-center gap-2">
+          <Text className="text-gray-600">状态：</Text>
+          <View className="flex gap-2">
+            <Button size="sm" variant={statusFilter === '' ? 'default' : 'outline'} onClick={() => setStatusFilter('')}>全部</Button>
+            <Button size="sm" variant={statusFilter === '1' ? 'default' : 'outline'} onClick={() => setStatusFilter('1')}>待发货</Button>
+            <Button size="sm" variant={statusFilter === '2' ? 'default' : 'outline'} onClick={() => setStatusFilter('2')}>已发货</Button>
+            <Button size="sm" variant={statusFilter === '3' ? 'default' : 'outline'} onClick={() => setStatusFilter('3')}>已完成</Button>
+          </View>
+        </View>
+      </View>
+
+      {/* 订单列表 */}
+      <Card>
+        <CardContent className="p-0">
+          <View className="admin-table">
+            <View className="admin-table-header">
+              <Text className="w-40">订单号</Text>
+              <Text className="w-48">商品</Text>
+              <Text className="w-24">买家</Text>
+              <Text className="w-20">金额</Text>
+              <Text className="w-20">类型</Text>
+              <Text className="w-20">状态</Text>
+              <Text className="w-32">创建时间</Text>
+              <Text className="w-40">操作</Text>
+            </View>
+            {productOrders.length > 0 ? productOrders.map(order => (
+              <View key={order.id} className="admin-table-row">
+                <Text className="w-40 text-sm">{order.order_no}</Text>
+                <Text className="w-48 truncate">{order.product_name}</Text>
+                <Text className="w-24">{order.buyer_name || '-'}</Text>
+                <Text className="w-20 text-red-600">¥{order.total_amount || order.price}</Text>
+                <Text className="w-20">{order.delivery_type === 1 ? '实物' : '虚拟'}</Text>
+                <View className="w-20">
+                  <Badge variant={order.status === 3 ? 'default' : order.status === 1 ? 'secondary' : 'outline'}>
+                    <Text className="text-xs">
+                      {order.status === 1 ? '待发货' : order.status === 2 ? '已发货' : order.status === 3 ? '已完成' : '已取消'}
+                    </Text>
+                  </Badge>
+                </View>
+                <Text className="w-32 text-sm text-gray-500">{order.created_at}</Text>
+                <View className="w-40 flex gap-1">
+                  <Button size="sm" variant="outline"><Eye size={14} color="#666" /></Button>
+                  {order.status === 1 && (
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        if (order.delivery_type === 1) {
+                          // 实物发货 - 使用 Dialog
+                          setEditingOrder(order);
+                          setDeliverForm({ express_company: '', express_no: '' });
+                          setShowDeliverDialog(true);
+                        } else {
+                          // 虚拟发货 - 使用 Dialog
+                          setEditingOrder(order);
+                          setVirtualDeliverForm({ pan_url: '', pan_code: '' });
+                          setShowVirtualDeliverDialog(true);
+                        }
+                      }}
+                    >
+                      发货
+                    </Button>
+                  )}
+                </View>
+              </View>
+            )) : (
+              <View className="p-12 text-center">
+                <Package size={48} color="#9ca3af" />
+                <Text className="mt-4 block text-gray-400">暂无订单数据</Text>
+              </View>
+            )}
+          </View>
+        </CardContent>
+      </Card>
+
+      {/* 分页 */}
+      <View className="flex justify-between items-center mt-4">
+        <Text className="text-gray-500">共 {total} 条记录</Text>
+        <View className="flex gap-2">
+          <Button size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</Button>
+          <Button size="sm" disabled={page * pageSize >= total} onClick={() => setPage(page + 1)}>下一页</Button>
+        </View>
+      </View>
+
+      {/* 实物发货弹窗 */}
+      <Dialog open={showDeliverDialog} onOpenChange={setShowDeliverDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>填写快递信息</DialogTitle>
+          </DialogHeader>
+          <View className="space-y-4">
+            <View>
+              <Label>快递公司</Label>
+              <Input 
+                value={deliverForm.express_company}
+                onInput={(e) => setDeliverForm({ ...deliverForm, express_company: e.detail.value })}
+                placeholder="如：顺丰快递"
+              />
+            </View>
+            <View>
+              <Label>快递单号</Label>
+              <Input 
+                value={deliverForm.express_no}
+                onInput={(e) => setDeliverForm({ ...deliverForm, express_no: e.detail.value })}
+                placeholder="请输入快递单号"
+              />
+            </View>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeliverDialog(false)}>取消</Button>
+            <Button
+              onClick={() => {
+                if (!deliverForm.express_company || !deliverForm.express_no) {
+                  Taro.showToast({ title: '请填写完整信息', icon: 'error' });
+                  return;
+                }
+                handleDeliverOrder(editingOrder.id, deliverForm.express_company, deliverForm.express_no);
+                setShowDeliverDialog(false);
+              }}
+            >
+              确认发货
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 虚拟发货弹窗 */}
+      <Dialog open={showVirtualDeliverDialog} onOpenChange={setShowVirtualDeliverDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>虚拟发货</DialogTitle>
+          </DialogHeader>
+          <View className="space-y-4">
+            <View>
+              <Label>网盘链接</Label>
+              <Input 
+                value={virtualDeliverForm.pan_url}
+                onInput={(e) => setVirtualDeliverForm({ ...virtualDeliverForm, pan_url: e.detail.value })}
+                placeholder="请输入网盘链接"
+              />
+            </View>
+            <View>
+              <Label>提取码（选填）</Label>
+              <Input 
+                value={virtualDeliverForm.pan_code}
+                onInput={(e) => setVirtualDeliverForm({ ...virtualDeliverForm, pan_code: e.detail.value })}
+                placeholder="如：abcd"
+              />
+            </View>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowVirtualDeliverDialog(false)}>取消</Button>
+            <Button
+              onClick={() => {
+                if (!virtualDeliverForm.pan_url) {
+                  Taro.showToast({ title: '请填写网盘链接', icon: 'error' });
+                  return;
+                }
+                handleVirtualDeliver(editingOrder.id, { 
+                  delivery_type: 'baidu_pan', 
+                  pan_url: virtualDeliverForm.pan_url,
+                  pan_code: virtualDeliverForm.pan_code
+                });
+                setShowVirtualDeliverDialog(false);
+              }}
+            >
+              确认发货
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </View>
+  );
+
   const renderAgents = () => (
     <View className="p-6">
       <View className="flex justify-between items-center mb-4">
@@ -2415,6 +2732,7 @@ const AdminPage = () => {
       case 'membership': return renderMembership();
       case 'activities': return renderActivities();
       case 'products': return renderProducts();
+      case 'product-orders': return renderProductOrders();
       case 'banners': return renderBanners();
       case 'finance': return renderFinanceRecords();
       case 'refunds': return renderRefunds();
@@ -2489,7 +2807,7 @@ const AdminPage = () => {
       {/* 商品添加弹窗 */}
       {showProductDialog && (
         <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <View className="bg-white rounded-lg w-96 p-6">
+          <View className="bg-white rounded-lg w-96 p-6 max-h-screen overflow-y-auto">
             <Text className="text-lg font-semibold mb-4">添加商品</Text>
             <View className="space-y-4">
               <View>
@@ -2500,23 +2818,99 @@ const AdminPage = () => {
                   onInput={(e) => setNewProduct({ ...newProduct, name: e.detail.value })}
                 />
               </View>
+              <View className="flex gap-2">
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-600 mb-1">价格 *</Text>
+                  <Input
+                    value={newProduct.price}
+                    type="number"
+                    placeholder="销售价格"
+                    onInput={(e) => setNewProduct({ ...newProduct, price: e.detail.value })}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-600 mb-1">库存</Text>
+                  <Input
+                    value={newProduct.stock}
+                    type="number"
+                    placeholder="-1无限"
+                    onInput={(e) => setNewProduct({ ...newProduct, stock: e.detail.value })}
+                  />
+                </View>
+              </View>
+              <View className="flex gap-2">
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-600 mb-1">虚拟销量</Text>
+                  <Input
+                    value={newProduct.virtual_sales}
+                    type="number"
+                    placeholder="展示销量"
+                    onInput={(e) => setNewProduct({ ...newProduct, virtual_sales: e.detail.value })}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-600 mb-1">发货类型</Text>
+                  <View className="flex gap-2 mt-1">
+                    <Button 
+                      size="sm" 
+                      variant={newProduct.delivery_type === '1' ? 'default' : 'outline'}
+                      onClick={() => setNewProduct({ ...newProduct, delivery_type: '1' })}
+                    >
+                      实物
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant={newProduct.delivery_type === '2' ? 'default' : 'outline'}
+                      onClick={() => setNewProduct({ ...newProduct, delivery_type: '2' })}
+                    >
+                      虚拟
+                    </Button>
+                  </View>
+                </View>
+              </View>
               <View>
-                <Text className="text-sm text-gray-600 mb-1">价格 *</Text>
+                <Text className="text-sm text-gray-600 mb-1">一级佣金（元）</Text>
                 <Input
-                  value={newProduct.price}
+                  value={newProduct.commission_level1}
                   type="number"
-                  placeholder="请输入价格"
-                  onInput={(e) => setNewProduct({ ...newProduct, price: e.detail.value })}
+                  placeholder="推荐人佣金"
+                  onInput={(e) => setNewProduct({ ...newProduct, commission_level1: e.detail.value })}
                 />
               </View>
               <View>
-                <Text className="text-sm text-gray-600 mb-1">库存</Text>
+                <Text className="text-sm text-gray-600 mb-1">二级佣金（元）</Text>
                 <Input
-                  value={newProduct.stock}
+                  value={newProduct.commission_level2}
                   type="number"
-                  placeholder="留空或-1表示无限"
-                  onInput={(e) => setNewProduct({ ...newProduct, stock: e.detail.value })}
+                  placeholder="间接推荐人佣金"
+                  onInput={(e) => setNewProduct({ ...newProduct, commission_level2: e.detail.value })}
                 />
+              </View>
+              <View>
+                <Text className="text-sm text-gray-600 mb-1">商品类型</Text>
+                <View className="flex gap-2 mt-1">
+                  <Button 
+                    size="sm" 
+                    variant={newProduct.product_type === 'physical' ? 'default' : 'outline'}
+                    onClick={() => setNewProduct({ ...newProduct, product_type: 'physical' })}
+                  >
+                    实体商品
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={newProduct.product_type === 'virtual' ? 'default' : 'outline'}
+                    onClick={() => setNewProduct({ ...newProduct, product_type: 'virtual' })}
+                  >
+                    虚拟商品
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={newProduct.product_type === 'service' ? 'default' : 'outline'}
+                    onClick={() => setNewProduct({ ...newProduct, product_type: 'service' })}
+                  >
+                    服务类
+                  </Button>
+                </View>
               </View>
               <View>
                 <Text className="text-sm text-gray-600 mb-1">描述</Text>

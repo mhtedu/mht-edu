@@ -6,9 +6,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 function parsePort(): number {
-  // 优先使用环境变量 PORT
-  if (process.env.PORT) {
-    const port = parseInt(process.env.PORT, 10);
+  // 优先使用 SERVER_PORT 环境变量（专用于后端服务）
+  if (process.env.SERVER_PORT) {
+    const port = parseInt(process.env.SERVER_PORT, 10);
     if (!isNaN(port) && port > 0 && port < 65536) {
       return port;
     }
@@ -19,6 +19,13 @@ function parsePort(): number {
   if (portIndex !== -1 && args[portIndex + 1]) {
     const port = parseInt(args[portIndex + 1], 10);
     if (!isNaN(port) && port > 0 && port < 65536) {
+      return port;
+    }
+  }
+  // 最后检查 PORT 环境变量（但排除 5000，因为那是前端端口）
+  if (process.env.PORT) {
+    const port = parseInt(process.env.PORT, 10);
+    if (!isNaN(port) && port > 0 && port < 65536 && port !== 5000) {
       return port;
     }
   }
