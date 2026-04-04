@@ -82,10 +82,10 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/home-active.png',
       },
       {
-        pagePath: 'pages/mall/index',
-        text: '商城',
-        iconPath: './assets/tabbar/mall.png',
-        selectedIconPath: './assets/tabbar/mall-active.png',
+        pagePath: 'pages/activities/index',
+        text: '活动',
+        iconPath: './assets/tabbar/square.png',
+        selectedIconPath: './assets/tabbar/square-active.png',
       },
       {
         pagePath: 'pages/message/index',
