@@ -12,27 +12,68 @@
 | 宝塔用户 | 02aec246 |
 | 宝塔密码 | 779363371f3c |
 
-## 目录结构
+---
 
-### 服务器目录（统一）
-```
-/www/wwwroot/mht-edu/          # 项目根目录
-├── dist-web/                  # H5前端编译产物
-├── dist/                      # 小程序编译产物
-├── admin/dist/                # 管理后台编译产物
-├── server/                    # 后端服务
-│   ├── dist/                  # 后端编译产物
-│   ├── src/                   # 后端源码
-│   └── .env                   # 环境配置
-├── src/                       # 前端源码
-├── config/                    # Taro配置
-└── node_modules/              # 依赖
-```
+## 目录结构（本地与服务器一致）
 
 ### 本地目录
 ```
-/workspace/projects/           # 项目根目录（与服务器结构一致）
+/workspace/projects/              # 项目根目录
+├── src/                         # 前端源码 (253个文件)
+├── server/                      # 后端服务
+│   ├── src/                     # 后端源码 (138个文件)
+│   └── .env                     # 后端环境配置
+├── config/                      # Taro构建配置
+├── dist-web/                    # H5编译产物
+├── admin/                       # 管理后台
+├── .env.local                   # 本地开发环境变量
+├── .env.production              # 生产环境变量
+└── deploy/                      # 部署脚本
+    └── sync-to-server.sh        # 一键同步脚本
 ```
+
+### 服务器目录
+```
+/www/wwwroot/mht-edu/            # 项目根目录（与本地结构一致）
+├── src/                         # 前端源码
+├── server/                      # 后端服务
+│   ├── src/                     # 后端源码
+│   ├── dist/                    # 后端编译产物
+│   └── .env                     # 后端环境配置
+├── config/                      # Taro构建配置
+├── dist-web/                    # H5编译产物
+├── admin/dist/                  # 管理后台编译产物
+├── .env.production              # 生产环境变量
+└── SERVER_CONFIG.md             # 本配置文件副本
+```
+
+---
+
+## 环境变量配置
+
+| 文件 | 用途 | PROJECT_DOMAIN |
+|------|------|----------------|
+| `.env.local` | 本地开发 | `http://localhost:3000` |
+| `.env.production` | 生产环境 | `https://wx.dajiaopei.com` |
+| `server/.env` | 后端配置 | 数据库连接等 |
+
+### server/.env 内容
+```env
+NODE_ENV=production
+PORT=3002
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USERNAME=mht_edu
+DB_PASSWORD=mht2026edu
+DB_DATABASE=mht_edu
+JWT_SECRET=mht-edu-jwt-secret-2026-change-this-in-production
+UPLOAD_DIR=/www/wwwroot/mht-edu/uploads
+LOG_DIR=/www/wwwroot/mht-edu/logs
+```
+
+> ⚠️ **注意**：`DB_HOST` 必须为 `127.0.0.1`，因为 MySQL 用户权限是 `mht_edu@localhost`
+
+---
 
 ## 服务配置
 
@@ -42,105 +83,75 @@
 | Node.js API | 3002 | PM2管理 |
 | MySQL | 3306 | 运行中 |
 
-## 数据库配置
-
-| 项目 | 值 |
-|------|-----|
-| 数据库地址 | 127.0.0.1:3306（服务器本地连接） |
-| 数据库名 | mht_edu |
-| 用户名 | mht_edu |
-| 密码 | mht2026edu |
-
-> ⚠️ 注意：服务器上的 `.env` 文件中 `DB_HOST` 必须设置为 `127.0.0.1`，因为 MySQL 用户权限是 `mht_edu@localhost`
-
-### ⚠️ MySQL密码设置（首次部署必做）
-
-1. 登录宝塔面板：http://119.91.193.179:8888/tencentcloud
-2. 进入【数据库】菜单
-3. 点击【添加数据库】，创建数据库 `mht_edu`
-4. 设置用户名 `mht_edu`，密码 `mht2026edu`
-5. 或者修改现有用户的密码为 `mht2026edu`
-6. 重启PM2服务：`ssh root@服务器 "pm2 restart mht-edu-api"`
-
-## 域名配置
-
-| 域名 | 指向 | SSL |
-|------|------|-----|
-| wx.dajiaopei.com | 服务器IP | 需配置 |
-
-## Nginx配置文件
-路径: `/www/server/panel/vhost/nginx/wx.dajiaopei.com.conf`
+---
 
 ## 一键同步命令
 
-### 快速同步（推荐）
+### 完整同步（推荐）
 ```bash
-# 在项目根目录执行
-./deploy/sync-to-server.sh
+./deploy/sync-to-server.sh --full
 ```
 
-### 手动同步
-
-#### 同步前端代码
+### 手动同步步骤
 ```bash
-rsync -avz --exclude 'node_modules' --exclude '.git' \
-  -e "ssh -i ~/.ssh/server_key" \
-  /workspace/projects/src/ root@119.91.193.179:/www/wwwroot/mht-edu/src/
+# 1. 同步前端源码
+scp -i ~/.ssh/server_key -r /workspace/projects/src/* root@119.91.193.179:/www/wwwroot/mht-edu/src/
+
+# 2. 同步后端源码
+scp -i ~/.ssh/server_key -r /workspace/projects/server/src/* root@119.91.193.179:/www/wwwroot/mht-edu/server/src/
+
+# 3. 同步配置文件
+scp -i ~/.ssh/server_key -r /workspace/projects/config/* root@119.91.193.179:/www/wwwroot/mht-edu/config/
+scp -i ~/.ssh/server_key /workspace/projects/.env.production root@119.91.193.179:/www/wwwroot/mht-edu/.env.production
+scp -i ~/.ssh/server_key /workspace/projects/server/.env root@119.91.193.179:/www/wwwroot/mht-edu/server/.env
+
+# 4. 同步前端编译产物
+scp -i ~/.ssh/server_key -r /workspace/projects/dist-web/* root@119.91.193.179:/www/wwwroot/mht-edu/dist-web/
+
+# 5. 重启后端服务
+ssh -i ~/.ssh/server_key root@119.91.193.179 "pm2 restart mht-edu-api"
 ```
 
-#### 同步后端代码
-```bash
-rsync -avz --exclude 'node_modules' --exclude '.git' \
-  -e "ssh -i ~/.ssh/server_key" \
-  /workspace/projects/server/src/ root@119.91.193.179:/www/wwwroot/mht-edu/server/src/
-```
-
-#### 同步并重启后端
-```bash
-rsync -avz --exclude 'node_modules' \
-  -e "ssh -i ~/.ssh/server_key" \
-  /workspace/projects/server/ root@119.91.193.179:/www/wwwroot/mht-edu/server/
-ssh -i ~/.ssh/server_key root@119.91.193.179 "cd /www/wwwroot/mht-edu/server && npm run build && pm2 restart mht-edu-api"
-```
+---
 
 ## 访问地址
 
 | 服务 | URL |
 |------|-----|
-| H5前端 | https://wx.dajiaopei.com/ |
+| H5首页 | https://wx.dajiaopei.com/ |
+| 商城 | https://wx.dajiaopei.com/#/pages/mall/index |
+| 活动中心 | https://wx.dajiaopei.com/#/pages/activities/index |
 | 管理后台 | https://wx.dajiaopei.com/admin/ |
-| API接口 | https://wx.dajiaopei.com/api/ |
+| API接口 | https://wx.dajiaopei.com/api/hello |
+
+---
 
 ## 开发流程
 
-### 本地开发 → 测试 → 部署
-
 1. **本地开发**
    ```bash
-   pnpm dev           # 启动开发环境（前端5000端口 + 后端3000端口）
-   pnpm build         # 构建所有产物
+   pnpm dev           # 启动开发环境
+   pnpm build:web     # 构建H5前端（生产环境）
    pnpm validate      # 代码检查
    ```
 
-2. **本地测试**
-   - 访问 http://localhost:5000 测试H5前端
-   - 访问 http://localhost:3000/api/hello 测试后端API
-
-3. **同步到服务器**
+2. **同步到服务器**
    ```bash
-   ./deploy/sync-to-server.sh --full    # 完整同步（推荐）
+   ./deploy/sync-to-server.sh --full
    ```
 
-4. **验证线上服务**
+3. **验证线上服务**
    ```bash
    curl https://wx.dajiaopei.com/api/hello
    ```
 
-### 环境变量配置
+---
 
-| 文件 | 用途 | PROJECT_DOMAIN |
-|------|------|----------------|
-| `.env.local` | 本地开发 | `http://localhost:3000` |
-| `.env.production` | 生产环境 | `https://wx.dajiaopei.com` |
+## Nginx配置
 
-> ⚠️ **重要**：生产环境构建时会自动加载 `.env.production`，确保此文件配置正确
+路径: `/www/server/panel/vhost/nginx/wx.dajiaopei.com.conf`
+
+关键配置：
+- H5前端: `root /www/wwwroot/mht-edu/dist-web;`
+- 管理后台: `alias /www/wwwroot/mht-edu/admin/dist;`
+- API代理: `proxy_pass http://127.0.0.1:3002;`
