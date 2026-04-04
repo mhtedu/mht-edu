@@ -32,40 +32,55 @@ const statusConfig: Record<number, { text: string; variant: 'default' | 'seconda
 };
 
 /**
- * 订单管理页面 - 家长/牛师不同视图
+ * 订单管理页面 - 根据用户角色显示不同内容
+ * 家长：显示自己发布的订单
+ * 牛师：显示可抢单的订单
  */
 const OrdersPage = () => {
-  const [currentRole, setCurrentRole] = useState(0); // 0: 家长, 1: 牛师
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'ongoing' | 'completed'>('all');
-  const { location: userLocation } = useUserStore();
+  const { location: userLocation, currentView, isLoggedIn } = useUserStore();
+
+  // 根据用户角色确定视角
+  const isParentView = currentView === 'parent';
+  const isTeacherView = currentView === 'teacher';
 
   useEffect(() => {
+    // 未登录时提示登录
+    if (!isLoggedIn) {
+      Taro.showModal({
+        title: '提示',
+        content: '请先登录后查看订单',
+        showCancel: false,
+        success: () => Taro.navigateBack()
+      });
+      return;
+    }
     loadOrders();
-  }, [currentRole, activeTab]);
+  }, [activeTab, currentView, isLoggedIn]);
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      // 家长视角调用 /api/order/list，牛师视角调用 /api/order/nearby
-      const url = currentRole === 0 
-        ? '/api/order/list' 
-        : '/api/order/nearby';
-      
+      // 根据角色调用不同接口
+      let url = '';
       const params: any = {
         page: 1,
         pageSize: 20,
       };
 
-      if (currentRole === 0) {
-        params.parentId = 1;
-      } else {
-        // 牛师视角：获取附近的待抢单订单
+      if (isParentView) {
+        // 家长视角：获取自己发布的订单
+        url = '/api/order/list';
+        // 后端会从 token 中获取用户ID，不需要前端传递
+      } else if (isTeacherView) {
+        // 牛师视角：获取附近可抢单的订单
+        url = '/api/order/nearby';
+        
         let lat = userLocation?.latitude;
         let lng = userLocation?.longitude;
 
-        // 如果没有位置信息，尝试获取
         if (!lat || !lng) {
           const loc = await getLocation();
           if (loc) {
@@ -77,8 +92,11 @@ const OrdersPage = () => {
         if (lat && lng) {
           params.latitude = lat;
           params.longitude = lng;
-          params.radius = 50; // 50km范围内
+          params.radius = 50;
         }
+      } else {
+        // 机构视角：显示机构的订单
+        url = '/api/order/list';
       }
 
       // 根据tab筛选状态
@@ -90,7 +108,7 @@ const OrdersPage = () => {
         params.status = 4;
       }
 
-      console.log('加载订单请求:', { url, params });
+      console.log('加载订单请求:', { url, params, currentView });
       const res = await Network.request({
         url,
         method: 'GET',
@@ -126,24 +144,26 @@ const OrdersPage = () => {
     return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
+  // 获取当前视角的标签文本
+  const getTabLabel = (tabKey: string) => {
+    if (tabKey === 'pending') {
+      return isParentView ? '待接单' : '可抢单';
+    }
+    const labels: Record<string, string> = {
+      'all': '全部',
+      'ongoing': '进行中',
+      'completed': '已完成',
+    };
+    return labels[tabKey] || tabKey;
+  };
+
   return (
     <View className="min-h-screen bg-gray-50">
-      {/* 角色切换 */}
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
-        <View className="flex flex-row gap-2">
-          <View
-            className={`px-4 py-2 rounded-full ${currentRole === 0 ? 'bg-blue-500' : 'bg-gray-100'}`}
-            onClick={() => setCurrentRole(0)}
-          >
-            <Text className={currentRole === 0 ? 'text-white' : 'text-gray-600'}>家长端</Text>
-          </View>
-          <View
-            className={`px-4 py-2 rounded-full ${currentRole === 1 ? 'bg-blue-500' : 'bg-gray-100'}`}
-            onClick={() => setCurrentRole(1)}
-          >
-            <Text className={currentRole === 1 ? 'text-white' : 'text-gray-600'}>牛师端</Text>
-          </View>
-        </View>
+      {/* 当前视角提示 */}
+      <View className="bg-blue-50 px-4 py-2 border-b border-blue-100">
+        <Text className="text-sm text-blue-600">
+          当前视角：{isParentView ? '家长 - 我的订单' : isTeacherView ? '牛师 - 可抢单订单' : '机构 - 订单管理'}
+        </Text>
       </View>
 
       {/* 状态Tab */}
@@ -151,7 +171,7 @@ const OrdersPage = () => {
         <View className="flex flex-row gap-4">
           {[
             { key: 'all', label: '全部' },
-            { key: 'pending', label: currentRole === 0 ? '待接单' : '可抢单' },
+            { key: 'pending', label: getTabLabel('pending') },
             { key: 'ongoing', label: '进行中' },
             { key: 'completed', label: '已完成' },
           ].map((tab) => (
@@ -176,7 +196,9 @@ const OrdersPage = () => {
           </View>
         ) : orders.length === 0 ? (
           <View className="flex flex-col items-center justify-center py-16">
-            <Text className="text-gray-400">暂无订单</Text>
+            <Text className="text-gray-400">
+              {isParentView ? '暂无订单，去发布需求吧' : '暂无可抢单订单'}
+            </Text>
           </View>
         ) : (
           <View className="flex flex-col gap-3">
