@@ -64,7 +64,7 @@
   flex-shrink: 0;
   margin-left: 12px;
   padding: 10px 16px;
-  font-size: 16px;
+  font-size: 20px;
   white-space: nowrap;
 }
 
@@ -74,7 +74,7 @@
   border-radius: 12px;
   background: #2563EB;
   color: #fff;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 500;
   margin-top: 8px;
 }
@@ -100,12 +100,12 @@
 }
 
 .switch-text {
-  font-size: 14px;
+  font-size: 18px;
   color: #6B7280;
 }
 
 .switch-link {
-  font-size: 14px;
+  font-size: 18px;
   color: #2563EB;
   margin-left: 4px;
 }
@@ -117,7 +117,7 @@
 }
 
 .footer-text {
-  font-size: 12px;
+  font-size: 16px;
   color: #9CA3AF;
 }
 
