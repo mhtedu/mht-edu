@@ -358,6 +358,12 @@ const HomePage: FC = () => {
   const goToEliteClassList = () => Taro.navigateTo({ url: '/pages/elite-class/index' })
   const goToEliteClassDetail = (id: number) => Taro.navigateTo({ url: `/pages/elite-class-detail/index?id=${id}` })
 
+  // 分享需求 - 跳转到订单详情页
+  const handleShareDemand = (demand: DemandItem) => {
+    // 跳转到订单详情页，那里有完整的分享功能
+    Taro.navigateTo({ url: `/pages/order-detail/index?id=${demand.id}` })
+  }
+
   const handleGrabOrder = (demand: DemandItem) => {
     if (!isLoggedIn) {
       Taro.showModal({ title: '提示', content: '请先登录后再抢单', confirmText: '去登录', success: (res) => { if (res.confirm) goToLogin() } })
@@ -607,7 +613,7 @@ const HomePage: FC = () => {
                 </View>
               </View>
               <View className="flex flex-row items-center justify-end gap-2 border-t border-gray-200 pt-3">
-                <View className="flex flex-row items-center px-3 py-1 border border-gray-200 rounded-full">
+                <View className="flex flex-row items-center px-3 py-1 border border-gray-200 rounded-full" onClick={(e) => { e.stopPropagation(); handleShareDemand(demand) }}>
                   <Share2 size={14} color="#6B7280" />
                   <Text className="block text-xs text-gray-500 ml-1">分享</Text>
                 </View>

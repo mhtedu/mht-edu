@@ -149,6 +149,11 @@ const DemandListPage: FC = () => {
     })
   }
 
+  // 分享需求 - 跳转到订单详情页
+  const handleShareDemand = (demand: DemandItem) => {
+    Taro.navigateTo({ url: `/pages/order-detail/index?id=${demand.id}` })
+  }
+
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject)
     setTimeout(() => loadDemands(true), 100)
@@ -213,7 +218,7 @@ const DemandListPage: FC = () => {
                   </View>
                 </View>
                 <View className="flex flex-row items-center justify-end gap-2 border-t border-gray-200 pt-3">
-                  <View className="flex flex-row items-center px-3 py-1 border border-gray-200 rounded-full" onClick={(e) => { e.stopPropagation(); Taro.showToast({ title: '已分享', icon: 'success' }) }}>
+                  <View className="flex flex-row items-center px-3 py-1 border border-gray-200 rounded-full" onClick={(e) => { e.stopPropagation(); handleShareDemand(demand) }}>
                     <Share2 size={14} color="#6B7280" />
                     <Text className="block text-xs text-gray-500 ml-1">分享</Text>
                   </View>
