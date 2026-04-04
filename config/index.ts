@@ -10,7 +10,12 @@ import devConfig from './dev';
 import prodConfig from './prod';
 import pkg from '../package.json';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+// 生产环境优先加载生产环境变量
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../.env.production'), override: true });
+} else {
+  dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+}
 
 const generateTTProjectConfig = (outputRoot: string) => {
   const config = {

@@ -45,9 +45,9 @@ if [ "$1" == "--full" ]; then
     echo -e "${YELLOW}=== 完整同步模式：编译前端和后端 ===${NC}"
     
     echo ""
-    echo -e "${YELLOW}编译H5前端...${NC}"
+    echo -e "${YELLOW}编译H5前端（生产环境）...${NC}"
     cd $LOCAL_DIR
-    pnpm build:web
+    NODE_ENV=production pnpm build:web
     echo -e "${GREEN}✅ 前端编译完成${NC}"
     
     echo ""

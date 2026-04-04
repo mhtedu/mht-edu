@@ -128,10 +128,19 @@ ssh -i ~/.ssh/server_key root@119.91.193.179 "cd /www/wwwroot/mht-edu/server && 
 
 3. **同步到服务器**
    ```bash
-   ./deploy/sync-to-server.sh    # 一键同步
+   ./deploy/sync-to-server.sh --full    # 完整同步（推荐）
    ```
 
 4. **验证线上服务**
    ```bash
    curl https://wx.dajiaopei.com/api/hello
    ```
+
+### 环境变量配置
+
+| 文件 | 用途 | PROJECT_DOMAIN |
+|------|------|----------------|
+| `.env.local` | 本地开发 | `http://localhost:3000` |
+| `.env.production` | 生产环境 | `https://wx.dajiaopei.com` |
+
+> ⚠️ **重要**：生产环境构建时会自动加载 `.env.production`，确保此文件配置正确
