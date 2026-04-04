@@ -6,7 +6,7 @@ import { useUserStore, CurrentView } from '@/stores/user'
 import { useConfigStore } from '@/stores/config'
 import { Network } from '@/network'
 import { getLocation } from '@/utils'
-import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Crown, Star, Phone, Heart, Calendar, Share2, BookOpen, Users, UsersRound } from 'lucide-react-taro'
+import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Star, Phone, Heart, Calendar, Share2, BookOpen, Users, UsersRound } from 'lucide-react-taro'
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 
 // 广告数据类型
@@ -459,7 +459,7 @@ const HomePage: FC = () => {
     { icon: <Search size={22} color="#2563EB" />, text: '找牛师', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/teacher/list' }) },
     { icon: <Building2 size={22} color="#10B981" />, text: '找机构', bgColor: 'bg-green-100', action: goToOrgList },
     { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
-    { icon: <Crown size={22} color="#8B5CF6" />, text: '会员中心', bgColor: 'bg-purple-100', action: goToMember },
+    { icon: <Star size={22} color="#8B5CF6" />, text: '发布需求', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/publish-demand/index' }) },
   ]
 
   // 机构端快捷入口

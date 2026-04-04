@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { getLocation } from '@/utils'
@@ -500,18 +501,17 @@ const PublishDemandPage: FC = () => {
                   <Text className="text-sm text-gray-700">需求描述 *</Text>
                 </View>
               </Label>
-              <View className="bg-gray-50 rounded-xl p-4">
-                <textarea
-                  style={{ width: '100%', minHeight: '120px', backgroundColor: 'transparent', fontSize: '14px' }}
-                  placeholder="请详细描述您的辅导需求，例如：&#10;1. 学生的学习情况和薄弱环节&#10;2. 希望牛师具备的教学特点&#10;3. 特殊的时间安排要求&#10;4. 其他需要说明的事项"
-                  value={formData.description}
-                  onInput={(e: any) => setFormData(prev => ({ ...prev, description: e.detail.value }))}
-                  maxLength={500}
-                />
-                <View className="flex justify-end mt-2">
-                  <Text className="text-xs text-gray-400">{formData.description.length}/500</Text>
-                </View>
-              </View>
+              <Textarea
+                className="min-h-[120px]"
+                placeholder="请详细描述您的辅导需求，例如：
+1. 学生的学习情况和薄弱环节
+2. 希望牛师具备的教学特点
+3. 特殊的时间安排要求
+4. 其他需要说明的事项"
+                value={formData.description}
+                onInput={(e) => setFormData(prev => ({ ...prev, description: e.detail.value }))}
+                maxlength={500}
+              />
             </View>
           </CardContent>
         </Card>
