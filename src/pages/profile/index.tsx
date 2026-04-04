@@ -29,8 +29,6 @@ const parentMenuItems = [
 ]
 
 const parentSettingItems = [
-  { icon: Award, title: '牛师认证', path: '/pages/teacher-auth/index', color: '#10B981' },
-  { icon: Building2, title: '机构认证', path: '/pages/org-auth/index', color: '#8B5CF6' },
   { icon: Settings, title: '账号设置', path: '/pages/settings/index', color: '#6B7280' },
   { icon: Bell, title: '消息设置', path: '/pages/settings/index', color: '#F59E0B' },
   { icon: Info, title: '帮助中心', path: '/pages/settings/index', color: '#3B82F6' },
