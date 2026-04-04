@@ -24,7 +24,9 @@
     "preview:tt": "taro build --type tt --preview",
     "preview:weapp": "taro build --type weapp --preview",
     "tsc": "npx tsc --noEmit --skipLibCheck",
-    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"pnpm lint:build\" \"pnpm tsc\""
+    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"pnpm lint:build\" \"pnpm tsc\"",
+    "upload": "node scripts/upload.js",
+    "upload:preview": "node scripts/upload.js --preview"
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,css}": [
