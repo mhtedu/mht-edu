@@ -1,10 +1,7 @@
-import { Controller, Get, Post, Body, Query, Param, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('order')
-@UseGuards(JwtAuthGuard)  // 整个控制器都需要认证
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
@@ -43,7 +40,10 @@ export class OrderController {
   ) {
     // 从 JWT token 中获取用户ID，确保只能查看自己的订单
     const userId = req.user?.id;
+    console.log('【订单列表请求】用户ID:', userId, '用户信息:', JSON.stringify(req.user));
+    
     if (!userId) {
+      console.log('【订单列表请求】未获取到用户ID，返回空列表');
       return { list: [], total: 0, page: 1, pageSize: 20 };
     }
     return this.orderService.getOrdersByParent(

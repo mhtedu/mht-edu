@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { ConfigModule } from '@/modules/config/config.module';
@@ -12,6 +13,7 @@ import { AdminModule } from '@/modules/admin/admin.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { VisionModule } from '@/modules/vision/vision.module';
 import { MomentModule } from '@/modules/moment/moment.module';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 // 新增模块导入
 import { ActivityModule } from '@/modules/activity/activity.module';
 import { PaymentModule } from '@/modules/payment/payment.module';
@@ -120,6 +122,13 @@ import { PayModule } from '@/modules/pay/pay.module';
     AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // 全局 JWT 认证守卫
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}
