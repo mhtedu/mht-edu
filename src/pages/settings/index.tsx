@@ -7,6 +7,7 @@ import {
   Shield, Bell, Lock, Smartphone, Eye, EyeOff,
   ChevronRight, LogOut, Trash2, FileText
 } from 'lucide-react-taro'
+import { useUserStore } from '@/stores/user'
 
 interface SettingItem {
   icon: typeof Shield
@@ -18,11 +19,14 @@ interface SettingItem {
 }
 
 export default function SettingsPage() {
-  const [userInfo] = useState({
-    nickname: '用户昵称',
-    phone: '138****8888',
+  const { userInfo: user, logout } = useUserStore()
+  
+  // 从真实用户信息中获取数据
+  const userInfo = {
+    nickname: user?.nickname || '用户',
+    phone: user?.mobile ? `${user.mobile.slice(0, 3)}****${user.mobile.slice(-4)}` : '未绑定',
     wechat: '未绑定'
-  })
+  }
   const [notifications, setNotifications] = useState({
     order: true,
     message: true,
@@ -40,7 +44,7 @@ export default function SettingsPage() {
       content: '确定要退出登录吗？',
       success: (res) => {
         if (res.confirm) {
-          Taro.clearStorageSync()
+          logout()
           Taro.redirectTo({ url: '/pages/login/index' })
         }
       }
