@@ -2403,6 +2403,27 @@ export class AdminController {
   // ==================== 牛师班管理 ====================
 
   /**
+   * 获取牛师班统计
+   */
+  @Get('elite-classes/stats')
+  @Public()
+  async getEliteClassStats() {
+    try {
+      const [stats] = await db.query(`
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active,
+          SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as inactive
+        FROM elite_classes
+      `);
+      return stats[0] || { total: 0, active: 0, inactive: 0 };
+    } catch (error) {
+      console.error('获取牛师班统计失败:', error);
+      return { total: 0, active: 0, inactive: 0 };
+    }
+  }
+
+  /**
    * 获取牛师班列表
    */
   @Get('elite-classes')

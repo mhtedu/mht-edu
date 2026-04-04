@@ -63,8 +63,13 @@
 - 短信发送状态: 阿里云短信已配置且启用，正常发送（无Mock日志说明发送成功）
 - 后端服务状态: ✅ 运行中 (PM2: mht-edu-api, PID: 135137, 端口: 3002)
 
+## 已完成的修复
+- [x] 添加缺失的 `elite-classes/stats` 接口（解决控制台404错误）
+- [x] 修复后端服务编译问题
+- [x] 修复短信服务降级逻辑
+
 ## TODO
-- [ ] 用户重新登录PC后台（清除localStorage后使用admin/admin123登录）
+- [ ] 用户刷新PC后台页面（`https://wx.dajiaopei.com/admin/`）验证404错误已消失
 - [ ] 用户重新登录小程序获取新JWT token
 - [ ] 如H5端收不到验证码，通过SSH查看后端日志：
   ```bash
