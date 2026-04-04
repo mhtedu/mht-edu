@@ -63,6 +63,7 @@ export default defineAppConfig({
     'pages/withdraw/index',
     'pages/commission/index',
     'pages/team/index',
+    'pages/profile-edit/index',
   ],
   window: {
     backgroundTextStyle: 'light',

@@ -913,4 +913,127 @@ export class UserService {
       };
     }
   }
+
+  /**
+   * 获取孩子列表
+   */
+  async getChildren(userId: number) {
+    const children = await executeQuery(`
+      SELECT * FROM children WHERE parent_id = ? ORDER BY created_at DESC
+    `, [userId]);
+
+    return children;
+  }
+
+  /**
+   * 添加孩子
+   */
+  async addChild(userId: number, data: {
+    name: string;
+    gender?: number;
+    birth_date?: string;
+    grade?: string;
+    school?: string;
+    subjects?: string;
+    notes?: string;
+  }) {
+    const result = await executeQuery(`
+      INSERT INTO children (parent_id, name, gender, birth_date, grade, school, subjects, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      userId,
+      data.name,
+      data.gender || 0,
+      data.birth_date || null,
+      data.grade || '',
+      data.school || '',
+      data.subjects || '',
+      data.notes || '',
+    ]);
+
+    return { success: true, id: (result as any).insertId };
+  }
+
+  /**
+   * 更新孩子信息
+   */
+  async updateChild(userId: number, childId: number, data: {
+    name?: string;
+    gender?: number;
+    birth_date?: string;
+    grade?: string;
+    school?: string;
+    subjects?: string;
+    notes?: string;
+  }) {
+    // 验证孩子属于当前用户
+    const children = await executeQuery(`
+      SELECT id FROM children WHERE id = ? AND parent_id = ?
+    `, [childId, userId]);
+
+    if (children.length === 0) {
+      throw new Error('孩子不存在或无权操作');
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      values.push(data.name);
+    }
+    if (data.gender !== undefined) {
+      updates.push('gender = ?');
+      values.push(data.gender);
+    }
+    if (data.birth_date !== undefined) {
+      updates.push('birth_date = ?');
+      values.push(data.birth_date);
+    }
+    if (data.grade !== undefined) {
+      updates.push('grade = ?');
+      values.push(data.grade);
+    }
+    if (data.school !== undefined) {
+      updates.push('school = ?');
+      values.push(data.school);
+    }
+    if (data.subjects !== undefined) {
+      updates.push('subjects = ?');
+      values.push(data.subjects);
+    }
+    if (data.notes !== undefined) {
+      updates.push('notes = ?');
+      values.push(data.notes);
+    }
+
+    if (updates.length > 0) {
+      values.push(childId);
+      await executeQuery(`
+        UPDATE children SET ${updates.join(', ')} WHERE id = ?
+      `, values);
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * 删除孩子
+   */
+  async deleteChild(userId: number, childId: number) {
+    // 验证孩子属于当前用户
+    const children = await executeQuery(`
+      SELECT id FROM children WHERE id = ? AND parent_id = ?
+    `, [childId, userId]);
+
+    if (children.length === 0) {
+      throw new Error('孩子不存在或无权操作');
+    }
+
+    await executeQuery(`
+      DELETE FROM children WHERE id = ?
+    `, [childId]);
+
+    return { success: true };
+  }
 }

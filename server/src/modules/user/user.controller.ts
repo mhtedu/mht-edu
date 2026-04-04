@@ -351,4 +351,66 @@ export class UserController {
     const userId = req.user?.id || 1;
     return this.userService.updateSettings(userId, body.key, body.value);
   }
+
+  /**
+   * 获取孩子列表
+   */
+  @Get('children')
+  async getChildren(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.userService.getChildren(userId);
+  }
+
+  /**
+   * 添加孩子
+   */
+  @Post('children')
+  async addChild(
+    @Body() body: {
+      name: string;
+      gender?: number;
+      birth_date?: string;
+      grade?: string;
+      school?: string;
+      subjects?: string;
+      notes?: string;
+    },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.addChild(userId, body);
+  }
+
+  /**
+   * 更新孩子信息
+   */
+  @Put('children/:id')
+  async updateChild(
+    @Param('id') id: string,
+    @Body() body: {
+      name?: string;
+      gender?: number;
+      birth_date?: string;
+      grade?: string;
+      school?: string;
+      subjects?: string;
+      notes?: string;
+    },
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.updateChild(userId, parseInt(id), body);
+  }
+
+  /**
+   * 删除孩子
+   */
+  @Post('children/:id/delete')
+  async deleteChild(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    const userId = req.user?.id || 1;
+    return this.userService.deleteChild(userId, parseInt(id));
+  }
 }

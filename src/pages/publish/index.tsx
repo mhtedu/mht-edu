@@ -1,17 +1,26 @@
 import { View, Text, Picker } from '@tarojs/components';
 import { useState, useEffect } from 'react';
-import Taro, { useRouter } from '@tarojs/taro';
+import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { MapPin, DollarSign, User, BookOpen, Building2, Share2 } from 'lucide-react-taro';
+import { MapPin, DollarSign, User, BookOpen, Building2, Share2, Users } from 'lucide-react-taro';
+import { Network } from '@/network';
 import './index.css';
 
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
 const grades = ['小学一年级', '小学二年级', '小学三年级', '小学四年级', '小学五年级', '小学六年级', '初一', '初二', '初三', '高一', '高二', '高三'];
 const genderOptions = ['男', '女'];
+
+interface Child {
+  id: number;
+  name: string;
+  gender: number;
+  birth_date: string;
+  grade: string;
+}
 
 /**
  * 发布需求页面 - 支持家长发布和机构代录
@@ -20,6 +29,8 @@ const PublishPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [isOrgMode, setIsOrgMode] = useState(false); // 是否机构代录模式
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildIndex, setSelectedChildIndex] = useState(-1); // -1表示手动输入
   
   const [formData, setFormData] = useState({
     subject: '数学',
@@ -38,12 +49,48 @@ const PublishPage = () => {
   const [gradeIndex, setGradeIndex] = useState(7);
   const [genderIndex, setGenderIndex] = useState(0);
 
+  useDidShow(() => {
+    loadChildren();
+  });
+
   useEffect(() => {
     // 检查是否是机构代录模式
     if (router.params.mode === 'org') {
       setIsOrgMode(true);
     }
   }, [router.params]);
+
+  const loadChildren = async () => {
+    try {
+      const res = await Network.request({ url: '/api/user/children' });
+      if (Array.isArray(res)) {
+        setChildren(res);
+      }
+    } catch (error) {
+      console.log('获取孩子列表失败:', error);
+    }
+  };
+
+  const handleSelectChild = (index: number) => {
+    setSelectedChildIndex(index);
+    if (index >= 0 && children[index]) {
+      const child = children[index];
+      // 自动填充性别和年级
+      const newGenderIndex = child.gender === 2 ? 1 : 0; // 2=女，1=男
+      setGenderIndex(newGenderIndex);
+      
+      // 自动填充年级
+      const gradeIdx = grades.indexOf(child.grade);
+      if (gradeIdx >= 0) {
+        setGradeIndex(gradeIdx);
+        setFormData(prev => ({
+          ...prev,
+          student_grade: child.grade,
+          student_gender: newGenderIndex === 0 ? '男' : '女',
+        }));
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     // 验证
@@ -82,35 +129,30 @@ const PublishPage = () => {
         console.log('获取位置失败，使用默认位置');
       }
 
-      // 提交数据（模拟）
-      // 实际项目中应调用后端API：
-      // await Network.request({
-      //   url: '/api/orders',
-      //   method: 'POST',
-      //   data: {
-      //     parent_id: isOrgMode ? 0 : 1,
-      //     subject: formData.subject,
-      //     ...
-      //   }
-      // });
-      console.log('发布数据:', {
-        parent_id: isOrgMode ? 0 : 1, // 机构代录时parent_id为0，由机构承接
-        subject: formData.subject,
-        hourly_rate: formData.hourly_rate,
-        student_gender: genderIndex === 0 ? 1 : 2,
-        student_grade: formData.student_grade,
-        address: formData.address,
-        latitude: latitude.toString(),
-        longitude: longitude.toString(),
-        description: formData.description,
-        // 机构代录额外数据
-        is_org_proxy: isOrgMode,
-        parent_name: formData.parent_name,
-        parent_phone: formData.parent_phone,
-        share_to_parent: formData.share_to_parent,
+      // 调用后端API创建订单
+      const result = await Network.request({
+        url: '/api/order/create',
+        method: 'POST',
+        data: {
+          subject: formData.subject,
+          student_grade: formData.student_grade,
+          student_gender: genderIndex === 0 ? 1 : 2, // 1=男，2=女
+          hourly_rate: parseFloat(formData.hourly_rate) || 0,
+          address: formData.address,
+          latitude: latitude,
+          longitude: longitude,
+          description: formData.description,
+          // 机构代录额外数据
+          is_org_proxy: isOrgMode,
+          parent_name: formData.parent_name,
+          parent_phone: formData.parent_phone,
+          share_to_parent: formData.share_to_parent,
+        },
       });
 
-      // 模拟提交成功
+      console.log('订单创建结果:', result);
+
+      // 显示成功提示
       Taro.showModal({
         title: isOrgMode ? '代录成功' : '发布成功',
         content: isOrgMode 
@@ -229,6 +271,56 @@ const PublishPage = () => {
             </Picker>
           </CardContent>
         </Card>
+
+        {/* 选择孩子（仅家长模式且有孩子时显示） */}
+        {!isOrgMode && children.length > 0 && (
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <View className="flex flex-row items-center">
+                <Users size={18} color="#2563EB" className="mr-2" />
+                <CardTitle>选择孩子</CardTitle>
+              </View>
+            </CardHeader>
+            <CardContent>
+              <View className="flex flex-col gap-3">
+                <View className="flex flex-row flex-wrap gap-2">
+                  <View
+                    className={`px-3 py-2 rounded-lg border ${
+                      selectedChildIndex === -1
+                        ? 'bg-blue-50 border-blue-500'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                    onClick={() => handleSelectChild(-1)}
+                  >
+                    <Text className={selectedChildIndex === -1 ? 'text-blue-600' : 'text-gray-600'}>
+                      手动输入
+                    </Text>
+                  </View>
+                  {children.map((child, index) => (
+                    <View
+                      key={child.id}
+                      className={`px-3 py-2 rounded-lg border ${
+                        selectedChildIndex === index
+                          ? 'bg-blue-50 border-blue-500'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                      onClick={() => handleSelectChild(index)}
+                    >
+                      <Text className={selectedChildIndex === index ? 'text-blue-600' : 'text-gray-600'}>
+                        {child.name} ({child.grade})
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                {selectedChildIndex >= 0 && (
+                  <Text className="text-xs text-gray-400">
+                    已自动填充该孩子的年级和性别
+                  </Text>
+                )}
+              </View>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 学生信息 */}
         <Card className="mb-4">

@@ -22,6 +22,7 @@ interface MembershipInfo {
 
 // 家长端菜单
 const parentMenuItems = [
+  { icon: User, title: '个人资料', path: '/pages/profile-edit/index', color: '#2563EB' },
   { icon: Star, title: '我的收藏', path: '/pages/favorites/index', color: '#F59E0B' },
   { icon: FileText, title: '我的需求', path: '/pages/demand/list', color: '#10B981' },
   { icon: Calendar, title: '我的活动', path: '/pages/my-activities/index', color: '#EC4899' },
