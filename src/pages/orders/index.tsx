@@ -114,14 +114,24 @@ const OrdersPage = () => {
         method: 'GET',
         data: params,
       });
-      console.log('加载订单响应:', res.data);
+      console.log('加载订单响应:', res);
 
+      // Network.request 返回 Taro.request 的结果，数据在 res.data 中
       let orderList: Order[] = [];
-      if (res.data && Array.isArray(res.data)) {
-        orderList = res.data;
-      } else if (res.data && res.data.list) {
-        orderList = res.data.list;
+      const responseData = res.data;
+      
+      if (responseData && Array.isArray(responseData.list)) {
+        orderList = responseData.list;
+      } else if (responseData && Array.isArray(responseData)) {
+        orderList = responseData;
+      } else if (Array.isArray(res)) {
+        // 兼容直接返回数组的情况
+        orderList = res;
+      } else if (res && Array.isArray(res.list)) {
+        orderList = res.list;
       }
+
+      console.log('解析后的订单列表:', orderList, '数量:', orderList.length);
 
       // 格式化距离显示
       orderList = orderList.map((order: any) => ({
