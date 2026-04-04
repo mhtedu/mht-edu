@@ -4,6 +4,31 @@
   padding-bottom: 40px;
 }
 
+.type-switch {
+  display: flex;
+  flex-direction: row;
+  background-color: #fff;
+  margin: 16px;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.type-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.type-tab.active {
+  background-color: #EFF6FF;
+}
+
 .form-item {
   display: flex;
   flex-direction: column;
