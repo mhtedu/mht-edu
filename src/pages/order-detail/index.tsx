@@ -171,9 +171,29 @@ const OrderDetailPage = () => {
 
   // 分享订单
   const handleShare = () => {
-    Taro.showShareMenu({
-      withShareTicket: true,
-    } as any);
+    // 判断平台
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+      // 小程序端：显示分享菜单
+      Taro.showShareMenu({
+        withShareTicket: true,
+      } as any);
+    } else {
+      // H5端：复制链接或弹出分享提示
+      const shareUrl = `https://wx.dajiaopei.com/#/pages/order-detail/index?id=${order?.id}`;
+      Taro.setClipboardData({
+        data: shareUrl,
+        success: () => {
+          Taro.showToast({ title: '链接已复制，去分享吧', icon: 'success' });
+        },
+        fail: () => {
+          Taro.showModal({
+            title: '分享链接',
+            content: shareUrl,
+            showCancel: false,
+          });
+        }
+      });
+    }
   };
 
   // 获取性别文本
@@ -314,12 +334,7 @@ const OrderDetailPage = () => {
           </View>
           <View
             className="bg-white px-4 py-2 rounded-lg"
-            onClick={() => {
-              // 微信小程序会自动弹出分享面板，因为已配置useShareAppMessage
-              Taro.showShareMenu({
-                withShareTicket: true,
-              } as any);
-            }}
+            onClick={handleShare}
           >
             <Text className="text-green-600 text-sm font-medium">立即分享</Text>
           </View>
