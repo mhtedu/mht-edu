@@ -17,7 +17,8 @@ import { PermissionGuard } from './guards/permission.guard';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
+        // 统一使用 mht-edu-jwt-secret-2026 作为默认值
+        secret: configService.get<string>('JWT_SECRET') || 'mht-edu-jwt-secret-2026',
         signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],

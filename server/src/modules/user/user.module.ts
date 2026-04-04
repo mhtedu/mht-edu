@@ -1,20 +1,13 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { SmsModule } from '../sms/sms.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     SmsModule,
-    ConfigModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'mht-edu-jwt-secret-2026',
-      signOptions: {
-        expiresIn: '7d',
-      },
-    }),
+    AuthModule,  // 使用 AuthModule 导出的 JwtModule（统一secret配置）
   ],
   controllers: [UserController],
   providers: [UserService],

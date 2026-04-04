@@ -31,12 +31,14 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
+      // 使用与 JwtModule 相同的 secret
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+        secret: this.configService.get<string>('JWT_SECRET') || 'mht-edu-jwt-secret-2026',
       });
 
       request.user = payload;
     } catch (error) {
+      console.error('[JWT验证失败]', error.message);
       throw new UnauthorizedException('无效的访问令牌');
     }
 
