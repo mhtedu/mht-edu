@@ -3,7 +3,6 @@ import { useState } from 'react'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import type { FC } from 'react'
 import { Network } from '@/network'
-import { useConfigStore } from '@/stores/config'
 import { useUserStore } from '@/stores/user'
 import { Bell, Megaphone, ShoppingCart, Heart, MessageCircle, ChevronRight, Phone, MessageSquare, Calendar, Clock, User, Check, X } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
@@ -69,7 +68,6 @@ const MessagePage: FC = () => {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'order' | 'interact' | 'invitation'>('all')
 
-  const { getSiteName } = useConfigStore()
   const { userInfo } = useUserStore()
   const userId = userInfo?.id
 
@@ -90,7 +88,6 @@ const MessagePage: FC = () => {
   }
 
   const loadMessages = async () => {
-    const siteName = getSiteName()
     try {
       // 调用消息提醒接口，传递用户ID（确保 userId 是数字类型）
       const effectiveUserId = userId || 401
@@ -134,55 +131,13 @@ const MessagePage: FC = () => {
         })
         setMessages(list)
       } else {
-        // 如果没有数据，为当前用户初始化演示数据
-        console.log('无消息数据，为用户初始化演示数据:', effectiveUserId)
-        try {
-          await Network.request({
-            url: '/api/admin/init-messages',
-            method: 'POST',
-            data: { userId: effectiveUserId }
-          })
-          // 重新加载消息
-          const retryRes = await Network.request({
-            url: `/api/message/reminders?userId=${effectiveUserId}&page=1&pageSize=50`
-          })
-          if (retryRes.data && retryRes.data.list) {
-            const list = retryRes.data.list.map((item: any) => {
-              const typeMap: Record<number, 'system' | 'order' | 'interact'> = {
-                1: 'order', 2: 'interact', 3: 'interact', 4: 'system',
-              }
-              const typeTitleMap: Record<number, string> = {
-                1: '订单消息', 2: '评价消息', 3: '互动消息', 4: '系统通知',
-              }
-              return {
-                id: item.id,
-                type: typeMap[item.type] || 'system',
-                title: typeTitleMap[item.type] || '消息通知',
-                content: item.content,
-                time: formatTime(item.created_at),
-                read: item.is_read === 1,
-              }
-            })
-            setMessages(list)
-          }
-        } catch (initError) {
-          console.error('初始化演示数据失败:', initError)
-          // 使用本地演示数据
-          setMessages([
-            { id: 1, type: 'system', title: '系统通知', content: `欢迎使用${siteName}平台，祝您使用愉快！`, time: '10:30', read: false },
-            { id: 2, type: 'order', title: '订单消息', content: '您的订单已被老师接单，请及时确认。', time: '昨天', read: false },
-            { id: 3, type: 'interact', title: '互动消息', content: '张老师回复了您的评价：感谢您的认可！', time: '2天前', read: true }
-          ])
-        }
+        // 没有消息数据，显示空列表
+        setMessages([])
       }
     } catch (error) {
       console.error('加载消息失败:', error)
-      // 如果未登录或请求失败，使用演示数据
-      setMessages([
-        { id: 1, type: 'system', title: '系统通知', content: `欢迎使用${siteName}平台，祝您使用愉快！`, time: '10:30', read: false },
-        { id: 2, type: 'order', title: '订单消息', content: '您的订单已被老师接单，请及时确认。', time: '昨天', read: false },
-        { id: 3, type: 'interact', title: '互动消息', content: '张老师回复了您的评价：感谢您的认可！', time: '2天前', read: true }
-      ])
+      // 请求失败时显示空列表，不使用演示数据
+      setMessages([])
     }
   }
 
@@ -205,7 +160,8 @@ const MessagePage: FC = () => {
     setActiveTab(tab)
   }
 
-  const handleItemClick = (item: MessageItem) => {
+  const handleItemClick = (item: MessageItem & { target_id?: number; from_nickname?: string; from_avatar?: string }) => {
+    // 标记已读
     if (!item.read) {
       Network.request({
         url: `/api/messages/${item.id}/read`,
@@ -217,8 +173,33 @@ const MessagePage: FC = () => {
       ))
     }
 
-    if (item.type === 'order') {
-      Taro.navigateTo({ url: '/pages/orders/index' })
+    // 根据消息类型跳转
+    switch (item.type) {
+      case 'order':
+        // 订单消息 -> 跳转到订单详情（如果有 target_id）或订单列表
+        if (item.target_id) {
+          Taro.navigateTo({ url: `/pages/order-detail/index?id=${item.target_id}` })
+        } else {
+          Taro.navigateTo({ url: '/pages/orders/index' })
+        }
+        break
+      case 'interact':
+        // 互动消息 -> 跳转到订单详情（评价相关）
+        if (item.target_id) {
+          Taro.navigateTo({ url: `/pages/order-detail/index?id=${item.target_id}` })
+        }
+        break
+      case 'system':
+        // 系统消息 -> 显示详情弹窗
+        Taro.showModal({
+          title: item.title,
+          content: item.content,
+          showCancel: false,
+          confirmText: '我知道了'
+        })
+        break
+      default:
+        break
     }
   }
 
