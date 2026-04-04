@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, Request, UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('order')
+@UseGuards(JwtAuthGuard)  // 整个控制器都需要认证
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
@@ -29,6 +32,7 @@ export class OrderController {
 
   /**
    * 获取订单列表（家长视角）
+   * 只返回当前用户自己发布的订单
    */
   @Get('list')
   async getOrders(
@@ -37,7 +41,11 @@ export class OrderController {
     @Query('page') page: string = '1',
     @Query('pageSize') pageSize: string = '20',
   ) {
-    const userId = req.user?.id || 1;
+    // 从 JWT token 中获取用户ID，确保只能查看自己的订单
+    const userId = req.user?.id;
+    if (!userId) {
+      return { list: [], total: 0, page: 1, pageSize: 20 };
+    }
     return this.orderService.getOrdersByParent(
       userId,
       parseInt(page),
