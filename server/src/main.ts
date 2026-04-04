@@ -6,6 +6,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 function parsePort(): number {
+  // 优先使用环境变量 PORT
+  if (process.env.PORT) {
+    const port = parseInt(process.env.PORT, 10);
+    if (!isNaN(port) && port > 0 && port < 65536) {
+      return port;
+    }
+  }
+  // 其次检查命令行参数 -p
   const args = process.argv.slice(2);
   const portIndex = args.indexOf('-p');
   if (portIndex !== -1 && args[portIndex + 1]) {
@@ -80,6 +88,6 @@ async function bootstrap() {
       throw err;
     }
   }
-  console.log(`Application is running on: http://localhost:3000`);
+  console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();
