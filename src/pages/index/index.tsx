@@ -472,15 +472,6 @@ const HomePage: FC = () => {
 
   const entries = currentView === 'teacher' ? teacherEntries : currentView === 'org' ? orgEntries : parentEntries
 
-  // 获取当前视角名称
-  const getViewName = () => {
-    switch (currentView) {
-      case 'teacher': return '牛师端'
-      case 'org': return '机构端'
-      default: return '家长端'
-    }
-  }
-
   return (
     <View className="min-h-screen bg-gray-100">
       {/* 顶部导航栏 */}
@@ -491,10 +482,7 @@ const HomePage: FC = () => {
           <ChevronDown size={14} color="#2563EB" />
         </View>
         <Text className="block text-base font-semibold text-gray-900">首页</Text>
-        <View className="flex flex-row items-center bg-blue-50 px-2 py-1 rounded-full" onClick={handleSwitchRole}>
-          <Text className="block text-sm text-blue-600 mr-1">{getViewName()}</Text>
-          <ChevronDown size={14} color="#2563EB" />
-        </View>
+        <View className="w-20" />
       </View>
 
       <ScrollView scrollY className="h-screen box-border">

@@ -111,16 +111,75 @@ export class UserService {
   }
 
   /**
-   * 获取会员信息
+   * 获取会员信息（支持按角色类型查询）
+   * 不同角色的会员权益独立
    */
-  async getMembershipInfo(userId: number) {
+  async getMembershipInfo(userId: number, roleType?: string) {
+    const now = new Date();
+
+    // 如果指定了角色类型，查询该角色的会员状态
+    if (roleType) {
+      const roleMap: { [key: string]: number } = {
+        'parent': 0,
+        'teacher': 1,
+        'org': 2,
+      };
+      const role = roleMap[roleType] ?? 0;
+
+      try {
+        const roleMemberships = await executeQuery(`
+          SELECT membership_type, expire_at 
+          FROM user_role_memberships 
+          WHERE user_id = ? AND role = ?
+        `, [userId, role]);
+
+        const membership = roleMemberships[0] as any;
+        const isMember = membership?.membership_type === 1 && 
+                        membership?.expire_at && 
+                        new Date(membership.expire_at) > now;
+
+        // 获取该角色的会员权益使用情况
+        let usage = { view_count: 0, message_count: 0 };
+        try {
+          const usageResult = await executeQuery(`
+            SELECT 
+              SUM(CASE WHEN type = 'view_contact' THEN 1 ELSE 0 END) as view_count,
+              SUM(CASE WHEN type = 'send_message' THEN 1 ELSE 0 END) as message_count
+            FROM member_usage_log
+            WHERE user_id = ? AND role = ? AND DATE(created_at) = CURDATE()
+          `, [userId, role]);
+          usage = usageResult[0] || { view_count: 0, message_count: 0 };
+        } catch (error) {
+          console.log('获取会员使用记录失败，使用默认值:', error.message);
+        }
+
+        return {
+          is_member: isMember,
+          expire_at: membership?.expire_at,
+          remaining_days: isMember && membership?.expire_at ? 
+            Math.ceil((new Date(membership.expire_at).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0,
+          today_usage: usage[0] || { view_count: 0, message_count: 0 },
+          membership_type: membership?.membership_type || 0,
+        };
+      } catch (error) {
+        console.log('查询角色会员信息失败:', error.message);
+        // 如果表不存在，返回默认值
+        return {
+          is_member: false,
+          expire_at: null,
+          remaining_days: 0,
+          today_usage: { view_count: 0, message_count: 0 },
+          membership_type: 0,
+        };
+      }
+    }
+
+    // 未指定角色类型，查询用户的通用会员状态（向后兼容）
     const users = await executeQuery(`
       SELECT membership_type, membership_expire_at FROM users WHERE id = ?
     `, [userId]);
 
     const user = users[0] as any;
-    const now = new Date();
-
     const isMember = user?.membership_type === 1 && 
                      new Date(user.membership_expire_at) > now;
 

@@ -163,12 +163,15 @@ export class UserController {
   }
 
   /**
-   * 获取会员信息
+   * 获取会员信息（按角色类型查询）
    */
   @Get('membership')
-  async getMembershipInfo(@Request() req: any) {
+  async getMembershipInfo(
+    @Request() req: any,
+    @Query('role_type') roleType?: string,
+  ) {
     const userId = req.user?.id || 1;
-    return this.userService.getMembershipInfo(userId);
+    return this.userService.getMembershipInfo(userId, roleType);
   }
 
   /**

@@ -86,9 +86,11 @@ const ProfilePage: FC = () => {
 
   const loadMembershipInfo = async () => {
     try {
-      console.log('加载会员信息请求:', { url: '/api/user/membership' })
+      // 根据角色类型获取会员信息（不同角色会员不互通）
+      const roleType = currentView === 'teacher' ? 'teacher' : currentView === 'org' ? 'org' : 'parent'
+      console.log('加载会员信息请求:', { url: `/api/user/membership?role_type=${roleType}` })
       const res = await Network.request({
-        url: '/api/user/membership'
+        url: `/api/user/membership?role_type=${roleType}`
       })
       console.log('加载会员信息响应:', res.data)
       if (res.data) {
