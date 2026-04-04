@@ -348,7 +348,7 @@ export default function CourseManagePage() {
 
       {/* 底部操作栏 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
-        <Button className="w-full" onClick={() => Taro.navigateTo({ url: '/pages/publish/index' })}>
+        <Button className="w-full" onClick={() => Taro.navigateTo({ url: '/pages/add-course-schedule/index' })}>
           <Plus size={18} color="white" />
           <Text className="text-white ml-2">新增课时安排</Text>
         </Button>

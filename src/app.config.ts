@@ -46,6 +46,7 @@ export default defineAppConfig({
     'pages/parent-profile/index',
     'pages/product-detail/index',
     'pages/course-manage/index',
+    'pages/add-course-schedule/index',
     'pages/publish/index',
     'pages/agent-apply/index',
     'pages/agent-dashboard/index',
