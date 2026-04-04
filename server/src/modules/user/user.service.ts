@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { query, insert, update } from '@/storage/database/mysql-client';
 
 async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
@@ -8,6 +10,10 @@ async function executeQuery(sql: string, params: any[] = []): Promise<any[]> {
 
 @Injectable()
 export class UserService {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
   /**
    * 获取用户信息
    */
@@ -816,8 +822,13 @@ export class UserService {
 
       const user = users[0] as any;
 
-      // 生成简单token（实际项目应使用JWT）
-      const token = `token_${user.id}_${Date.now()}`;
+      // 生成JWT token
+      const payload = {
+        id: user.id,
+        mobile: user.mobile,
+        role: user.role,
+      };
+      const token = this.jwtService.sign(payload);
 
       return {
         success: true,
@@ -876,8 +887,13 @@ export class UserService {
         VALUES (?, ?, ?, ?, ?, NOW())
       `, [mobile, nickname || `用户${mobile.slice(-4)}`, role || 0, inviteCode, platform || 'h5']);
 
-      // 生成token
-      const token = `token_${userId}_${Date.now()}`;
+      // 生成JWT token
+      const payload = {
+        id: userId,
+        mobile,
+        role: role || 0,
+      };
+      const token = this.jwtService.sign(payload);
 
       return {
         success: true,
@@ -897,10 +913,19 @@ export class UserService {
       // 数据库错误时，开发模式返回模拟用户
       console.log('[User Mock] 数据库错误，开发模式返回模拟用户');
       const mockUserId = Math.floor(Math.random() * 10000) + 1;
+      
+      // 生成JWT token
+      const payload = {
+        id: mockUserId,
+        mobile,
+        role: role || 0,
+      };
+      const token = this.jwtService.sign(payload);
+      
       return {
         success: true,
         data: {
-          token: `token_${mockUserId}_${Date.now()}`,
+          token,
           user: {
             id: mockUserId,
             nickname: nickname || `用户${mobile.slice(-4)}`,
