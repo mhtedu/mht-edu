@@ -1593,7 +1593,7 @@ export class AdminController {
     
     try {
       const [list] = await db.query(
-        `SELECT id, title, type, cover_image, start_time, end_time, address, 
+        `SELECT id, title, description, type, cover_image, start_time, end_time, address, 
           online_price, offline_price, max_participants, current_participants, 
           status, is_online, is_recommended, sort_order, created_at 
         FROM activities ${whereClause} 
