@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, RichText } from '@tarojs/components'
 import Taro, { useDidShow, useRouter, useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -431,7 +431,14 @@ export default function ActivityDetailPage() {
       <Card className="mx-4 mt-4">
         <CardContent className="p-4">
           <Text className="font-semibold mb-3">活动详情</Text>
-          <Text className="text-sm text-gray-600 whitespace-pre-line">{activity.description}</Text>
+          {activity.description ? (
+            <RichText 
+              nodes={activity.description} 
+              className="text-sm text-gray-600 rich-text-content"
+            />
+          ) : (
+            <Text className="text-sm text-gray-400">暂无活动详情</Text>
+          )}
         </CardContent>
       </Card>
 
