@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('order')
 export class OrderController {
@@ -57,7 +58,9 @@ export class OrderController {
   /**
    * 获取附近的订单（教师视角）
    * 注意：此路由必须放在 :id 路由之前，否则 'nearby' 会被当成 id 参数
+   * 标记为公开接口，允许小程序体验版未登录用户访问
    */
+  @Public()
   @Get('nearby')
   async getNearbyOrders(
     @Query('latitude') latitude: string,

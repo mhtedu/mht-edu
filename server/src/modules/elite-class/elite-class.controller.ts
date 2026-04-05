@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
 import { EliteClassService } from './elite-class.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('elite-class')
 export class EliteClassController {
@@ -25,7 +26,9 @@ export class EliteClassController {
 
   /**
    * 获取牛师班列表（家长端）
+   * 标记为公开接口，允许小程序体验版未登录用户访问
    */
+  @Public()
   @Get('list')
   async getClassList(
     @Query('latitude') latitude?: string,
@@ -49,7 +52,9 @@ export class EliteClassController {
 
   /**
    * 获取牛师班详情
+   * 标记为公开接口，允许小程序体验版未登录用户访问
    */
+  @Public()
   @Get('detail/:id')
   async getClassDetail(@Param('id') id: string, @Request() req: any) {
     const userId = req.user?.id || 1;

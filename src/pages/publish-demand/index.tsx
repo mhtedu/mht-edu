@@ -1,242 +1,189 @@
-import { useState } from 'react'
-import { Upload, Eye, Package, RefreshCw } from 'lucide-react'
-import { miniprogramApi } from '../services/miniprogram'
+import { View, Text, Picker } from '@tarojs/components';
+import { useState } from 'react';
+import Taro from '@tarojs/taro';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { MapPin, DollarSign } from 'lucide-react-taro';
+import { Network } from '@/network';
 
-interface LogEntry {
-  time: string
-  message: string
-  type: 'info' | 'success' | 'error'
-}
+const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
+const grades = ['小学一年级', '小学二年级', '小学三年级', '小学四年级', '小学五年级', '小学六年级', '初一', '初二', '初三', '高一', '高二', '高三'];
 
-export default function MiniprogramPublish() {
-  const [version, setVersion] = useState('')
-  const [desc, setDesc] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [logs, setLogs] = useState<LogEntry[]>([])
+/**
+ * 发布需求页面
+ */
+const PublishDemandPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [subjectIndex, setSubjectIndex] = useState(1);
+  const [gradeIndex, setGradeIndex] = useState(7);
+  
+  const [formData, setFormData] = useState({
+    subject: '数学',
+    student_grade: '初二',
+    hourly_rate: '',
+    address: '',
+    description: '',
+  });
 
-  // 自动生成版本号
-  const autoVersion = (() => {
-    const now = new Date()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    return `1.0.${month}${day}`
-  })()
-
-  const addLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
-    const time = new Date().toLocaleTimeString('zh-CN')
-    setLogs(prev => [...prev, { time, message, type }])
-  }
-
-  const handleBuild = async () => {
-    setLogs([])
-    addLog('开始构建小程序...', 'info')
-    
-    try {
-      const res = await miniprogramApi.build()
-      if (res.success) {
-        addLog('✅ 构建成功！', 'success')
-      } else {
-        addLog(`❌ 构建失败: ${res.message || '未知错误'}`, 'error')
-      }
-    } catch (error: any) {
-      addLog(`❌ 构建失败: ${error.message}`, 'error')
+  const handleSubmit = async () => {
+    if (!formData.hourly_rate) {
+      Taro.showToast({ title: '请输入课时费', icon: 'none' });
+      return;
     }
-  }
-
-  const handleUpload = async () => {
-    if (!version && !desc) {
-      alert('请填写版本号或描述')
-      return
+    if (!formData.address) {
+      Taro.showToast({ title: '请输入上课地址', icon: 'none' });
+      return;
     }
 
-    setUploading(true)
-    addLog('开始上传小程序...', 'info')
-    
+    setLoading(true);
     try {
-      const res = await miniprogramApi.upload({
-        version: version || autoVersion,
-        desc: desc || `自动构建 - ${new Date().toLocaleString('zh-CN')}`
-      })
+      let latitude = 39.995;
+      let longitude = 116.473;
       
-      if (res.success) {
-        addLog('✅ 上传成功！', 'success')
-        addLog(`📦 版本: ${res.version}`, 'info')
-        addLog('📱 请在微信公众平台查看并提交审核', 'info')
-      } else {
-        addLog(`❌ 上传失败: ${res.message || '未知错误'}`, 'error')
+      try {
+        const location = await Taro.getLocation({ type: 'gcj02' });
+        latitude = location.latitude;
+        longitude = location.longitude;
+      } catch (e) {
+        console.log('获取位置失败，使用默认位置');
+      }
+
+      const result = await Network.request({
+        url: '/api/order/create',
+        method: 'POST',
+        data: {
+          subject: formData.subject,
+          student_grade: formData.student_grade,
+          hourly_rate: parseFloat(formData.hourly_rate) || 0,
+          address: formData.address,
+          latitude: latitude,
+          longitude: longitude,
+          description: formData.description,
+        },
+      });
+
+      if (result.data) {
+        Taro.showToast({ title: '发布成功', icon: 'success' });
+        setTimeout(() => {
+          Taro.navigateBack();
+        }, 1500);
       }
     } catch (error: any) {
-      addLog(`❌ 上传失败: ${error.message}`, 'error')
+      Taro.showToast({ title: error.message || '发布失败', icon: 'none' });
     } finally {
-      setUploading(false)
+      setLoading(false);
     }
-  }
-
-  const handlePreview = async () => {
-    addLog('生成预览二维码...', 'info')
-    setQrcodeUrl(null)
-    
-    try {
-      const res = await miniprogramApi.preview()
-      if (res.success) {
-        addLog('✅ 预览二维码已生成', 'success')
-        if (res.qrcodeUrl) {
-          setQrcodeUrl(res.qrcodeUrl)
-          addLog(`📱 请扫描下方二维码预览`, 'info')
-        }
-      } else {
-        addLog(`❌ 生成失败: ${res.message || '未知错误'}`, 'error')
-      }
-    } catch (error: any) {
-      addLog(`❌ 生成失败: ${error.message}`, 'error')
-    }
-  }
-
-  const handleClearLogs = () => {
-    setLogs([])
-  }
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">小程序发布管理</h1>
+    <View className="min-h-screen bg-gray-50 p-4">
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>基本信息</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <View className="flex items-center justify-between">
+            <Text className="text-gray-600">科目</Text>
+            <Picker
+              mode="selector"
+              range={subjects}
+              value={subjectIndex}
+              onChange={(e) => {
+                const index = Number(e.detail.value);
+                setSubjectIndex(index);
+                setFormData(prev => ({ ...prev, subject: subjects[index] }));
+              }}
+            >
+              <View className="flex items-center text-blue-600">
+                <Text>{formData.subject}</Text>
+                <Text className="ml-2">▼</Text>
+              </View>
+            </Picker>
+          </View>
 
-      {/* 配置状态 */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">配置状态</h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-600">AppID</span>
-            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">需配置 project.config.json</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-600">上传密钥</span>
-            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">需配置 scripts/private.wxkey</span>
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-600">IP白名单</span>
-            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">119.91.193.179</span>
-          </div>
-        </div>
-      </div>
+          <View className="flex items-center justify-between">
+            <Text className="text-gray-600">年级</Text>
+            <Picker
+              mode="selector"
+              range={grades}
+              value={gradeIndex}
+              onChange={(e) => {
+                const index = Number(e.detail.value);
+                setGradeIndex(index);
+                setFormData(prev => ({ ...prev, student_grade: grades[index] }));
+              }}
+            >
+              <View className="flex items-center text-blue-600">
+                <Text>{formData.student_grade}</Text>
+                <Text className="ml-2">▼</Text>
+              </View>
+            </Picker>
+          </View>
+        </CardContent>
+      </Card>
 
-      {/* 发布操作 */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">发布操作</h2>
-        
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-gray-600 mb-1 text-sm">版本号（留空自动生成）</label>
-            <input
-              type="text"
-              value={version}
-              placeholder={autoVersion}
-              onChange={(e) => setVersion(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>课时费</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <View className="flex items-center">
+            <DollarSign size={20} color="#666" className="mr-2" />
+            <Input
+              type="number"
+              placeholder="请输入课时费（元/小时）"
+              value={formData.hourly_rate}
+              onInput={(e) => setFormData(prev => ({ ...prev, hourly_rate: e.detail.value }))}
+              className="flex-1"
             />
-          </div>
-          <div>
-            <label className="block text-gray-600 mb-1 text-sm">版本描述</label>
-            <input
-              type="text"
-              value={desc}
-              placeholder="如：修复订单列表问题"
-              onChange={(e) => setDesc(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Text className="ml-2 text-gray-500">元/小时</Text>
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>上课地址</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <View className="flex items-start">
+            <MapPin size={20} color="#666" className="mr-2 mt-2" />
+            <Textarea
+              placeholder="请输入上课地址"
+              value={formData.address}
+              onInput={(e) => setFormData(prev => ({ ...prev, address: e.detail.value }))}
+              className="flex-1"
+              style={{ minHeight: '60px' }}
             />
-          </div>
-        </div>
+          </View>
+        </CardContent>
+      </Card>
 
-        <div className="flex gap-3">
-          <button
-            onClick={handleBuild}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            <Package size={18} />
-            构建小程序
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-          >
-            {uploading ? (
-              <>
-                <RefreshCw size={18} className="animate-spin" />
-                上传中...
-              </>
-            ) : (
-              <>
-                <Upload size={18} />
-                上传发布
-              </>
-            )}
-          </button>
-          <button
-            onClick={handlePreview}
-            className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-          >
-            <Eye size={18} />
-            预览
-          </button>
-        </div>
-      </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>补充说明</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="请输入补充说明（选填）"
+            value={formData.description}
+            onInput={(e) => setFormData(prev => ({ ...prev, description: e.detail.value }))}
+            style={{ minHeight: '100px' }}
+          />
+        </CardContent>
+      </Card>
 
-      {/* 操作日志 */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">操作日志</h2>
-          <button
-            onClick={handleClearLogs}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            清空日志
-          </button>
-        </div>
-        
-        <div className="bg-gray-900 rounded-lg p-4 min-h-48 max-h-96 overflow-y-auto font-mono text-sm">
-          {logs.length === 0 ? (
-            <div className="text-gray-500">暂无日志</div>
-          ) : (
-            logs.map((log, i) => (
-              <div key={i} className={`mb-1 ${
-                log.type === 'success' ? 'text-green-400' :
-                log.type === 'error' ? 'text-red-400' :
-                'text-gray-300'
-              }`}>
-                <span className="text-gray-500">[{log.time}]</span> {log.message}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <Button
+        className="w-full py-3"
+        onClick={handleSubmit}
+        disabled={loading}
+      >
+        {loading ? '发布中...' : '发布需求'}
+      </Button>
+    </View>
+  );
+};
 
-      {/* 配置说明 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">配置说明</h2>
-        <div className="text-sm text-gray-600 space-y-2">
-          <p>1. 登录微信公众平台 <a href="https://mp.weixin.qq.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">https://mp.weixin.qq.com</a></p>
-          <p>2. 开发 → 开发管理 → 开发设置</p>
-          <p>3. 生成上传密钥并下载，保存到服务器 <code className="bg-gray-100 px-1 rounded">scripts/private.wxkey</code></p>
-          <p>4. 配置 IP 白名单：添加 <code className="bg-gray-100 px-1 rounded">119.91.193.179</code></p>
-          <p>5. 在 <code className="bg-gray-100 px-1 rounded">project.config.json</code> 中配置 AppID</p>
-        </div>
-      </div>
-    
-
-      {/* 预览二维码 */}
-      {qrcodeUrl && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">预览二维码</h2>
-          <div className="flex flex-col items-center">
-            <img 
-              src={qrcodeUrl} 
-              alt="小程序预览二维码" 
-              className="w-64 h-64 border rounded-lg"
-            />
-            <p className="mt-4 text-sm text-gray-500">请使用微信扫描二维码预览小程序</p>
-          </div>
-        </div>
-      )}
-</div>
-  )
-}
+export default PublishDemandPage;

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
 import { ActivityService } from './activity.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('activities')
 export class ActivityController {
@@ -7,7 +8,9 @@ export class ActivityController {
 
   /**
    * 获取活动列表
+   * 标记为公开接口，允许小程序体验版未登录用户访问
    */
+  @Public()
   @Get('list')
   async getActivityList(
     @Query('role') role?: string,
@@ -27,7 +30,9 @@ export class ActivityController {
 
   /**
    * 获取活动详情
+   * 标记为公开接口，允许小程序体验版未登录用户访问
    */
+  @Public()
   @Get(':id')
   async getActivityDetail(@Param('id') id: string) {
     return this.activityService.getActivityDetail(parseInt(id));
