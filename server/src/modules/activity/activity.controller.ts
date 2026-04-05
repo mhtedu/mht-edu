@@ -7,6 +7,18 @@ export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
 
   /**
+   * 获取推荐活动列表（首页展示）
+   * 标记为公开接口，允许小程序体验版未登录用户访问
+   */
+  @Public()
+  @Get('recommended')
+  async getRecommendedActivities(
+    @Query('limit') limit: string = '4',
+  ) {
+    return this.activityService.getRecommendedActivities(parseInt(limit));
+  }
+
+  /**
    * 获取活动列表
    * 标记为公开接口，允许小程序体验版未登录用户访问
    */

@@ -173,27 +173,26 @@ const HomePage: FC = () => {
     }
   }
 
-  // 加载最新活动
+  // 加载推荐活动（首页展示）
   const loadActivities = async () => {
     try {
-      console.log('加载活动请求:', { url: '/api/activities/list', params: { pageSize: 4 } })
+      console.log('加载推荐活动请求:', { url: '/api/activities/recommended', params: { limit: 4 } })
       const res = await Network.request({
-        url: '/api/activities/list',
-        data: { pageSize: 4 }
+        url: '/api/activities/recommended',
+        data: { limit: 4 }
       })
-      console.log('加载活动响应:', res.data)
-      if (res.data) {
-        const list = Array.isArray(res.data) ? res.data : res.data.list || []
-        setActivities(list)
+      console.log('加载推荐活动响应:', res.data)
+      if (res.data && Array.isArray(res.data)) {
+        setActivities(res.data)
       }
     } catch (error) {
-      console.error('加载活动失败:', error)
+      console.error('加载推荐活动失败:', error)
       // 模拟数据
       setActivities([
-        { id: 1, title: '新人专属礼包', cover_image: '', start_time: '', end_time: '', address: '线上', current_participants: 128, max_participants: 500, status: 1 },
-        { id: 2, title: '会员日特惠', cover_image: '', start_time: '', end_time: '', address: '线上', current_participants: 256, max_participants: 300, status: 1 },
-        { id: 3, title: '名师公开课', cover_image: '', start_time: '', end_time: '', address: '海淀区中关村', current_participants: 45, max_participants: 100, status: 1 },
-        { id: 4, title: '暑期特训营', cover_image: '', start_time: '', end_time: '', address: '朝阳区望京', current_participants: 89, max_participants: 150, status: 1 },
+        { id: 1, title: '新春特惠活动', cover_image: 'https://picsum.photos/seed/activity1/400/200', start_time: '', end_time: '', address: '线上', current_participants: 128, max_participants: 500, status: 1 },
+        { id: 2, title: '邀请有礼', cover_image: 'https://picsum.photos/seed/activity6/400/200', start_time: '', end_time: '', address: '线上', current_participants: 256, max_participants: 300, status: 1 },
+        { id: 3, title: '名师公开课', cover_image: 'https://picsum.photos/seed/activity7/400/200', start_time: '', end_time: '', address: '海淀区中关村', current_participants: 45, max_participants: 100, status: 1 },
+        { id: 4, title: '编程体验课', cover_image: 'https://picsum.photos/seed/activity8/400/200', start_time: '', end_time: '', address: '朝阳区望京', current_participants: 89, max_participants: 150, status: 1 },
       ])
     }
   }
@@ -808,36 +807,41 @@ const HomePage: FC = () => {
           </View>
         )}
 
-        {/* 最新活动通知 */}
+        {/* 推荐活动 */}
         <View className="bg-white pb-4">
           <View className="flex flex-row items-center justify-between px-4 py-3" onClick={goToActivityList}>
-            <Text className="block text-base font-semibold text-gray-900">最新活动</Text>
+            <Text className="block text-base font-semibold text-gray-900">推荐活动</Text>
             <View className="flex flex-row items-center">
               <Text className="block text-sm text-gray-400">更多</Text>
               <ChevronRight size={16} color="#9CA3AF" />
             </View>
           </View>
           {activities.length > 0 ? (
-            <View className="px-4">
+            <View className="flex flex-row flex-wrap px-3 gap-3">
               {activities.map((activity) => (
                 <View 
                   key={activity.id} 
-                  className="flex flex-row items-center py-3 border-b border-gray-100 last:border-b-0"
+                  className="w-[calc(50%-6px)] rounded-xl overflow-hidden bg-gray-50 shadow-sm"
                   onClick={() => goToActivityDetail(activity.id)}
                 >
-                  <View className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center mr-3 shrink-0">
-                    <Calendar size={20} color="#fff" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="block text-sm font-semibold text-gray-900 mb-1">{activity.title}</Text>
-                    <View className="flex flex-row items-center">
-                      <MapPin size={12} color="#9CA3AF" />
-                      <Text className="block text-xs text-gray-500 ml-1 mr-3">{activity.address || '线上活动'}</Text>
-                      <Users size={12} color="#9CA3AF" />
-                      <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants}/{activity.max_participants || '不限'}人</Text>
+                  <Image 
+                    src={activity.cover_image || 'https://picsum.photos/seed/default/400/300'}
+                    mode="aspectFill"
+                    className="w-full h-28"
+                  />
+                  <View className="p-2">
+                    <Text className="block text-sm font-medium text-gray-900 line-clamp-2">{activity.title}</Text>
+                    <View className="flex flex-row items-center mt-1">
+                      <MapPin size={10} color="#9CA3AF" />
+                      <Text className="block text-xs text-gray-500 ml-1 line-clamp-1">{activity.address || '线上活动'}</Text>
+                    </View>
+                    <View className="flex flex-row items-center justify-between mt-1">
+                      <View className="flex flex-row items-center">
+                        <Users size={10} color="#9CA3AF" />
+                        <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants}人参与</Text>
+                      </View>
                     </View>
                   </View>
-                  <ChevronRight size={16} color="#9CA3AF" />
                 </View>
               ))}
             </View>

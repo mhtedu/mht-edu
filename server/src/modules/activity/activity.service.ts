@@ -64,6 +64,47 @@ export class ActivityService {
   }
 
   /**
+   * 获取推荐活动列表（首页展示）
+   */
+  async getRecommendedActivities(limit: number = 4) {
+    // 先获取推荐的活动
+    const [recommendedActivities] = await db.query(`
+      SELECT 
+        id, title, type, cover_image, start_time, end_time,
+        address, online_price, offline_price, max_participants,
+        current_participants, status, is_online, is_recommended,
+        sort_order
+      FROM activities
+      WHERE is_active = 1 AND is_recommended = 1 AND status = 1
+      ORDER BY sort_order DESC, created_at DESC
+      LIMIT ?
+    `, [limit]);
+
+    // 如果推荐活动不足，补充最新的活动
+    if (recommendedActivities.length < limit) {
+      const remainingLimit = limit - recommendedActivities.length;
+      const excludeIds = recommendedActivities.map((a: any) => a.id);
+      
+      const [latestActivities] = await db.query(`
+        SELECT 
+          id, title, type, cover_image, start_time, end_time,
+          address, online_price, offline_price, max_participants,
+          current_participants, status, is_online, is_recommended,
+          sort_order
+        FROM activities
+        WHERE is_active = 1 AND status = 1
+          ${excludeIds.length > 0 ? `AND id NOT IN (${excludeIds.join(',')})` : ''}
+        ORDER BY created_at DESC
+        LIMIT ?
+      `, [remainingLimit]);
+
+      return [...recommendedActivities, ...latestActivities];
+    }
+
+    return recommendedActivities;
+  }
+
+  /**
    * 获取活动详情
    */
   async getActivityDetail(activityId: number) {
