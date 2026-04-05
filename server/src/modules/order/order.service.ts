@@ -20,15 +20,17 @@ export class OrderService {
 
     const [result] = await db.query(`
       INSERT INTO orders (
-        order_no, user_id, parent_id, subject, hourly_rate, student_grade, student_gender,
+        order_no, user_id, parent_id, subject, hourly_rate, price_min, price_max, student_grade, student_gender,
         address, latitude, longitude, description, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `, [
       orderNo,
       userId,
       userId, // parent_id 也使用 userId
       data.subject || '',
       data.budget || data.hourly_rate || 0,
+      data.price_min || null,
+      data.price_max || null,
       data.grade || data.student_grade || '',
       data.student_gender ?? 0,
       data.address || null,

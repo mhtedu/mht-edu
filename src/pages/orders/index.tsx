@@ -12,6 +12,8 @@ interface Order {
   id: number;
   subject: string;
   hourly_rate: number;
+  price_min?: number | null;
+  price_max?: number | null;
   student_grade: string;
   address: string;
   description: string;
@@ -154,6 +156,18 @@ const OrdersPage = () => {
     return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
+  // 格式化价格范围显示
+  const formatPrice = (order: Order) => {
+    if (order.price_min && order.price_max) {
+      return `¥${order.price_min}-${order.price_max}/小时`;
+    } else if (order.price_min) {
+      return `¥${order.price_min}起/小时`;
+    } else if (order.hourly_rate) {
+      return `¥${order.hourly_rate}/小时`;
+    }
+    return '面议';
+  };
+
   // 获取当前视角的标签文本
   const getTabLabel = (tabKey: string) => {
     if (tabKey === 'pending') {
@@ -233,7 +247,7 @@ const OrdersPage = () => {
                     
                     <View className="flex flex-col gap-2">
                       <View className="flex flex-row items-center justify-between">
-                        <Text className="text-orange-500 font-semibold">¥{order.hourly_rate}/小时</Text>
+                        <Text className="text-orange-500 font-semibold">{formatPrice(order)}</Text>
                         <Text className="text-xs text-gray-400">{formatTime(order.created_at)}</Text>
                       </View>
                       
