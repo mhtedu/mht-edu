@@ -1613,6 +1613,12 @@ export class AdminController {
   @Public()
   async createActivity(@Body() body: any) {
     try {
+      // 设置默认时间：开始时间为当前时间，结束时间为一个月后
+      const now = new Date();
+      const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const defaultStartTime = now.toISOString().slice(0, 19).replace('T', ' ');
+      const defaultEndTime = oneMonthLater.toISOString().slice(0, 19).replace('T', ' ');
+
       const [result] = await db.query(
         `INSERT INTO activities (
           title, description, cover_image, type, start_time, end_time,
@@ -1624,8 +1630,8 @@ export class AdminController {
           body.description || '',
           body.cover_image || '',
           body.type || 'activity',
-          body.start_time || null,
-          body.end_time || null,
+          body.start_time || defaultStartTime,
+          body.end_time || defaultEndTime,
           body.location || body.address || '',
           body.is_online || 0,
           body.online_price || 0,
