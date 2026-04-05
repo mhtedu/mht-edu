@@ -9,6 +9,20 @@ import { getLocation } from '@/utils'
 import { MapPin, ChevronDown, ChevronRight, Briefcase, GraduationCap, Wallet, Search, Building2, Star, Phone, Heart, Calendar, Share2, BookOpen, Users, UsersRound } from 'lucide-react-taro'
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 
+// 图片URL处理 - 将相对路径转为完整URL
+const getImageUrl = (url: string | undefined): string => {
+  if (!url) return 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/activity-default.png'
+  // 已经是完整URL
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  // 相对路径，拼接域名
+  if (url.startsWith('/')) {
+    return `https://wx.dajiaopei.com${url}`
+  }
+  return url
+}
+
 // 广告数据类型
 interface AdItem {
   id: number
@@ -189,10 +203,10 @@ const HomePage: FC = () => {
       console.error('加载推荐活动失败:', error)
       // 模拟数据
       setActivities([
-        { id: 1, title: '新春特惠活动', cover_image: 'https://picsum.photos/seed/activity1/400/200', start_time: '', end_time: '', address: '线上', current_participants: 128, max_participants: 500, status: 1 },
-        { id: 2, title: '邀请有礼', cover_image: 'https://picsum.photos/seed/activity6/400/200', start_time: '', end_time: '', address: '线上', current_participants: 256, max_participants: 300, status: 1 },
-        { id: 3, title: '名师公开课', cover_image: 'https://picsum.photos/seed/activity7/400/200', start_time: '', end_time: '', address: '海淀区中关村', current_participants: 45, max_participants: 100, status: 1 },
-        { id: 4, title: '编程体验课', cover_image: 'https://picsum.photos/seed/activity8/400/200', start_time: '', end_time: '', address: '朝阳区望京', current_participants: 89, max_participants: 150, status: 1 },
+        { id: 1, title: '新春特惠活动', cover_image: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/activity1.png', start_time: '', end_time: '', address: '线上', current_participants: 128, max_participants: 500, status: 1 },
+        { id: 2, title: '邀请有礼', cover_image: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/activity2.png', start_time: '', end_time: '', address: '线上', current_participants: 256, max_participants: 300, status: 1 },
+        { id: 3, title: '名师公开课', cover_image: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/activity3.png', start_time: '', end_time: '', address: '海淀区中关村', current_participants: 45, max_participants: 100, status: 1 },
+        { id: 4, title: '编程体验课', cover_image: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/activity4.png', start_time: '', end_time: '', address: '朝阳区望京', current_participants: 89, max_participants: 150, status: 1 },
       ])
     }
   }
@@ -825,7 +839,7 @@ const HomePage: FC = () => {
                   onClick={() => goToActivityDetail(activity.id)}
                 >
                   <Image 
-                    src={activity.cover_image || 'https://picsum.photos/seed/default/400/200'}
+                    src={getImageUrl(activity.cover_image)}
                     mode="aspectFill"
                     className="w-full h-36"
                   />
