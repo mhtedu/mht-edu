@@ -831,35 +831,32 @@ const HomePage: FC = () => {
             </View>
           </View>
           {activities.length > 0 ? (
-            <ScrollView scrollX className="px-4 whitespace-nowrap">
-              {activities.map((activity) => (
+            <View className="px-4 grid grid-cols-2 gap-3">
+              {activities.slice(0, 4).map((activity) => (
                 <View 
                   key={activity.id} 
-                  className="inline-block w-72 mr-3 rounded-xl overflow-hidden bg-gray-50 shadow-sm last:mr-0"
+                  className="rounded-xl overflow-hidden bg-gray-50 shadow-sm"
                   onClick={() => goToActivityDetail(activity.id)}
                 >
                   <Image 
                     src={getImageUrl(activity.cover_image)}
                     mode="aspectFill"
-                    className="w-full h-36"
+                    className="w-full h-28"
                   />
-                  <View className="p-3">
-                    <Text className="block text-base font-semibold text-gray-900 line-clamp-1">{activity.title}</Text>
-                    <View className="flex flex-row items-center mt-2">
-                      <MapPin size={12} color="#9CA3AF" />
+                  <View className="p-2">
+                    <Text className="block text-sm font-semibold text-gray-900 line-clamp-1">{activity.title}</Text>
+                    <View className="flex flex-row items-center mt-1">
+                      <MapPin size={10} color="#9CA3AF" />
                       <Text className="block text-xs text-gray-500 ml-1 line-clamp-1">{activity.address || '线上活动'}</Text>
                     </View>
-                    <View className="flex flex-row items-center justify-between mt-2">
-                      <View className="flex flex-row items-center">
-                        <Users size={12} color="#9CA3AF" />
-                        <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants || 0}人参与</Text>
-                      </View>
-                      <Text className="text-xs text-orange-500 font-medium">查看详情</Text>
+                    <View className="flex flex-row items-center mt-1">
+                      <Users size={10} color="#9CA3AF" />
+                      <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants || 0}人参与</Text>
                     </View>
                   </View>
                 </View>
               ))}
-            </ScrollView>
+            </View>
           ) : (
             <View className="py-6 text-center">
               <Text className="block text-sm text-gray-400">暂无活动</Text>
