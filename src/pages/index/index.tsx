@@ -817,34 +817,35 @@ const HomePage: FC = () => {
             </View>
           </View>
           {activities.length > 0 ? (
-            <View className="flex flex-row flex-wrap px-3 gap-3">
+            <ScrollView scrollX className="px-4 whitespace-nowrap">
               {activities.map((activity) => (
                 <View 
                   key={activity.id} 
-                  className="w-[calc(50%-6px)] rounded-xl overflow-hidden bg-gray-50 shadow-sm"
+                  className="inline-block w-72 mr-3 rounded-xl overflow-hidden bg-gray-50 shadow-sm last:mr-0"
                   onClick={() => goToActivityDetail(activity.id)}
                 >
                   <Image 
-                    src={activity.cover_image || 'https://picsum.photos/seed/default/400/300'}
+                    src={activity.cover_image || 'https://picsum.photos/seed/default/400/200'}
                     mode="aspectFill"
-                    className="w-full h-28"
+                    className="w-full h-36"
                   />
-                  <View className="p-2">
-                    <Text className="block text-sm font-medium text-gray-900 line-clamp-2">{activity.title}</Text>
-                    <View className="flex flex-row items-center mt-1">
-                      <MapPin size={10} color="#9CA3AF" />
+                  <View className="p-3">
+                    <Text className="block text-base font-semibold text-gray-900 line-clamp-1">{activity.title}</Text>
+                    <View className="flex flex-row items-center mt-2">
+                      <MapPin size={12} color="#9CA3AF" />
                       <Text className="block text-xs text-gray-500 ml-1 line-clamp-1">{activity.address || '线上活动'}</Text>
                     </View>
-                    <View className="flex flex-row items-center justify-between mt-1">
+                    <View className="flex flex-row items-center justify-between mt-2">
                       <View className="flex flex-row items-center">
-                        <Users size={10} color="#9CA3AF" />
-                        <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants}人参与</Text>
+                        <Users size={12} color="#9CA3AF" />
+                        <Text className="block text-xs text-gray-500 ml-1">{activity.current_participants || 0}人参与</Text>
                       </View>
+                      <Text className="text-xs text-orange-500 font-medium">查看详情</Text>
                     </View>
                   </View>
                 </View>
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <View className="py-6 text-center">
               <Text className="block text-sm text-gray-400">暂无活动</Text>

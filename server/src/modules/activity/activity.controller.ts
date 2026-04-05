@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Query, Param, Request } from '@nestjs/common';
 import { ActivityService } from './activity.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -38,6 +38,49 @@ export class ActivityController {
       page: parseInt(page),
       pageSize: parseInt(pageSize),
     });
+  }
+
+  /**
+   * 获取活动列表（管理后台用）
+   */
+  @Get()
+  async getActivityListForAdmin(
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+    @Query('keyword') keyword?: string,
+  ) {
+    return this.activityService.getActivityListForAdmin({
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      keyword,
+    });
+  }
+
+  /**
+   * 创建活动
+   */
+  @Post()
+  async createActivity(@Body() body: any) {
+    return this.activityService.createActivity(body);
+  }
+
+  /**
+   * 更新活动
+   */
+  @Put(':id')
+  async updateActivity(
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.activityService.updateActivity(parseInt(id), body);
+  }
+
+  /**
+   * 删除活动
+   */
+  @Delete(':id')
+  async deleteActivity(@Param('id') id: string) {
+    return this.activityService.deleteActivity(parseInt(id));
   }
 
   /**

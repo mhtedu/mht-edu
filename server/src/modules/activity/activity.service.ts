@@ -43,10 +43,10 @@ export class ActivityService {
         id, title, type, cover_image, start_time, end_time,
         address, online_price, offline_price, max_participants,
         current_participants, target_roles, status, is_online,
-        created_at
+        is_recommended, sort_order, created_at
       FROM activities
       WHERE ${whereClause}
-      ORDER BY start_time ASC, created_at DESC
+      ORDER BY is_recommended DESC, sort_order DESC, created_at DESC
       LIMIT ? OFFSET ?
     `, [...sqlParams, params.pageSize, offset]);
 
@@ -313,5 +313,170 @@ export class ActivityService {
       page,
       pageSize,
     };
+  }
+
+  /**
+   * 获取活动列表（管理后台用）
+   */
+  async getActivityListForAdmin(params: {
+    page: number;
+    pageSize: number;
+    keyword?: string;
+  }) {
+    const offset = (params.page - 1) * params.pageSize;
+    const conditions: string[] = ['1=1'];
+    const sqlParams: any[] = [];
+
+    if (params.keyword) {
+      conditions.push('title LIKE ?');
+      sqlParams.push(`%${params.keyword}%`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const [list] = await db.query(`
+      SELECT 
+        id, title, type, cover_image, start_time, end_time,
+        address, online_price, offline_price, max_participants,
+        current_participants, status, is_online, is_recommended,
+        sort_order, created_at
+      FROM activities
+      WHERE ${whereClause}
+      ORDER BY is_recommended DESC, sort_order DESC, created_at DESC
+      LIMIT ? OFFSET ?
+    `, [...sqlParams, params.pageSize, offset]);
+
+    const [countResult] = await db.query(`
+      SELECT COUNT(*) as total FROM activities WHERE ${whereClause}
+    `, sqlParams);
+
+    return {
+      list,
+      total: countResult[0]?.total || 0,
+      page: params.page,
+      pageSize: params.pageSize,
+    };
+  }
+
+  /**
+   * 创建活动
+   */
+  async createActivity(data: any) {
+    const [result] = await db.query(`
+      INSERT INTO activities (
+        title, description, cover_image, type, start_time, end_time,
+        address, latitude, longitude, is_online, online_price, offline_price,
+        max_participants, current_participants, target_roles, status,
+        is_recommended, sort_order, is_active, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, ?, 1, NOW())
+    `, [
+      data.title || '',
+      data.description || '',
+      data.cover_image || '',
+      data.type || 'activity',
+      data.start_time || null,
+      data.end_time || null,
+      data.location || data.address || '',
+      data.latitude || null,
+      data.longitude || null,
+      data.is_online || 0,
+      data.online_price || 0,
+      data.offline_price || 0,
+      data.max_participants || 0,
+      JSON.stringify(data.target_roles || []),
+      data.is_recommended || 0,
+      data.sort_order || 0,
+    ]);
+
+    return { id: (result as any).insertId, success: true };
+  }
+
+  /**
+   * 更新活动
+   */
+  async updateActivity(activityId: number, data: any) {
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    if (data.title !== undefined) {
+      updateFields.push('title = ?');
+      updateValues.push(data.title);
+    }
+    if (data.description !== undefined) {
+      updateFields.push('description = ?');
+      updateValues.push(data.description);
+    }
+    if (data.cover_image !== undefined) {
+      updateFields.push('cover_image = ?');
+      updateValues.push(data.cover_image);
+    }
+    if (data.type !== undefined) {
+      updateFields.push('type = ?');
+      updateValues.push(data.type);
+    }
+    if (data.start_time !== undefined) {
+      updateFields.push('start_time = ?');
+      updateValues.push(data.start_time);
+    }
+    if (data.end_time !== undefined) {
+      updateFields.push('end_time = ?');
+      updateValues.push(data.end_time);
+    }
+    if (data.location !== undefined || data.address !== undefined) {
+      updateFields.push('address = ?');
+      updateValues.push(data.location || data.address);
+    }
+    if (data.is_online !== undefined) {
+      updateFields.push('is_online = ?');
+      updateValues.push(data.is_online);
+    }
+    if (data.online_price !== undefined) {
+      updateFields.push('online_price = ?');
+      updateValues.push(data.online_price);
+    }
+    if (data.offline_price !== undefined) {
+      updateFields.push('offline_price = ?');
+      updateValues.push(data.offline_price);
+    }
+    if (data.max_participants !== undefined) {
+      updateFields.push('max_participants = ?');
+      updateValues.push(data.max_participants);
+    }
+    if (data.is_recommended !== undefined) {
+      updateFields.push('is_recommended = ?');
+      updateValues.push(data.is_recommended);
+    }
+    if (data.sort_order !== undefined) {
+      updateFields.push('sort_order = ?');
+      updateValues.push(data.sort_order);
+    }
+    if (data.status !== undefined) {
+      updateFields.push('status = ?');
+      updateValues.push(data.status);
+    }
+
+    if (updateFields.length === 0) {
+      return { success: false, message: '没有要更新的字段' };
+    }
+
+    updateFields.push('updated_at = NOW()');
+    updateValues.push(activityId);
+
+    await db.query(`
+      UPDATE activities SET ${updateFields.join(', ')} WHERE id = ?
+    `, updateValues);
+
+    return { success: true };
+  }
+
+  /**
+   * 删除活动
+   */
+  async deleteActivity(activityId: number) {
+    await db.query(`
+      UPDATE activities SET is_active = 0, updated_at = NOW() WHERE id = ?
+    `, [activityId]);
+
+    return { success: true };
   }
 }

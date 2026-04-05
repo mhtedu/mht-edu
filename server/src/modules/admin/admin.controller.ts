@@ -1568,20 +1568,128 @@ export class AdminController {
 
   @Get('activities')
   @Public()
-  async getActivities(@Query('page') page = '1', @Query('pageSize') pageSize = '20', @Query('status') status = '') {
+  async getActivities(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('status') status = '',
+    @Query('keyword') keyword = '',
+  ) {
     const pageNum = parseInt(page);
     const pageSizeNum = parseInt(pageSize);
     const offset = (pageNum - 1) * pageSizeNum;
-    let whereClause = 'WHERE 1=1';
+    const conditions: string[] = ['1=1'];
     const params: any[] = [];
-    if (status) { whereClause += ' AND status = ?'; params.push(status); }
+    
+    if (status) {
+      conditions.push('status = ?');
+      params.push(status);
+    }
+    if (keyword) {
+      conditions.push('title LIKE ?');
+      params.push(`%${keyword}%`);
+    }
+    
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    
     try {
-      const [list] = await db.query(`SELECT * FROM activities ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [...params, pageSizeNum, offset]);
+      const [list] = await db.query(
+        `SELECT id, title, type, cover_image, start_time, end_time, address, 
+          online_price, offline_price, max_participants, current_participants, 
+          status, is_online, is_recommended, sort_order, created_at 
+        FROM activities ${whereClause} 
+        ORDER BY is_recommended DESC, sort_order DESC, created_at DESC 
+        LIMIT ? OFFSET ?`,
+        [...params, pageSizeNum, offset]
+      );
       const [countResult] = await db.query(`SELECT COUNT(*) as total FROM activities ${whereClause}`, params);
       return { list, total: countResult[0]?.total || 0, page: pageNum, pageSize: pageSizeNum };
     } catch (error) {
       console.error('[Admin] Get activities error:', error);
       return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
+    }
+  }
+
+  @Post('activities')
+  @Public()
+  async createActivity(@Body() body: any) {
+    try {
+      const [result] = await db.query(
+        `INSERT INTO activities (
+          title, description, cover_image, type, start_time, end_time,
+          address, is_online, online_price, offline_price,
+          max_participants, target_roles, status, is_recommended, sort_order, is_active, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 1, NOW())`,
+        [
+          body.title || '',
+          body.description || '',
+          body.cover_image || '',
+          body.type || 'activity',
+          body.start_time || null,
+          body.end_time || null,
+          body.location || body.address || '',
+          body.is_online || 0,
+          body.online_price || 0,
+          body.offline_price || 0,
+          body.max_participants || 0,
+          JSON.stringify(body.target_roles || []),
+          body.is_recommended || 0,
+          body.sort_order || 0,
+        ]
+      );
+      return { success: true, id: (result as any).insertId };
+    } catch (error) {
+      console.error('[Admin] Create activity error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  @Put('activities/:id')
+  @Public()
+  async updateActivity(@Param('id') id: string, @Body() body: any) {
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (body.title !== undefined) { updates.push('title = ?'); params.push(body.title); }
+    if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description); }
+    if (body.cover_image !== undefined) { updates.push('cover_image = ?'); params.push(body.cover_image); }
+    if (body.type !== undefined) { updates.push('type = ?'); params.push(body.type); }
+    if (body.start_time !== undefined) { updates.push('start_time = ?'); params.push(body.start_time); }
+    if (body.end_time !== undefined) { updates.push('end_time = ?'); params.push(body.end_time); }
+    if (body.location !== undefined || body.address !== undefined) { 
+      updates.push('address = ?'); 
+      params.push(body.location || body.address); 
+    }
+    if (body.is_online !== undefined) { updates.push('is_online = ?'); params.push(body.is_online); }
+    if (body.online_price !== undefined) { updates.push('online_price = ?'); params.push(body.online_price); }
+    if (body.offline_price !== undefined) { updates.push('offline_price = ?'); params.push(body.offline_price); }
+    if (body.max_participants !== undefined) { updates.push('max_participants = ?'); params.push(body.max_participants); }
+    if (body.is_recommended !== undefined) { updates.push('is_recommended = ?'); params.push(body.is_recommended); }
+    if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order); }
+    if (body.status !== undefined) { updates.push('status = ?'); params.push(body.status); }
+    
+    if (updates.length === 0) return { success: true };
+    
+    updates.push('updated_at = NOW()');
+    params.push(parseInt(id));
+    
+    try {
+      await db.query(`UPDATE activities SET ${updates.join(', ')} WHERE id = ?`, params);
+      return { success: true };
+    } catch (error) {
+      console.error('[Admin] Update activity error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  @Delete('activities/:id')
+  @Public()
+  async deleteActivity(@Param('id') id: string) {
+    try {
+      await db.query('UPDATE activities SET is_active = 0, updated_at = NOW() WHERE id = ?', [parseInt(id)]);
+      return { success: true };
+    } catch (error) {
+      console.error('[Admin] Delete activity error:', error);
+      return { success: false, error: error.message };
     }
   }
 
