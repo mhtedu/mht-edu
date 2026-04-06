@@ -50,6 +50,18 @@ export class MiniprogramController {
 
       console.log(`[小程序] 开始上传，版本: ${version}`);
       
+      // 清理dist-weapp中的非小程序文件（admin.js等PC后台文件）
+      const fs = require('fs');
+      const distPath = path.join(this.projectPath, 'dist-weapp');
+      const filesToRemove = ['admin.js', 'admin.css', 'admin.html', 'login.html'];
+      for (const file of filesToRemove) {
+        const filePath = path.join(distPath, file);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`[小程序] 已清理: ${file}`);
+        }
+      }
+      
       // 执行上传脚本
       const { stdout, stderr } = await execAsync(
         `node scripts/upload.js -v "${version}" -d "${desc}"`,
