@@ -1669,23 +1669,26 @@ export class AdminController {
     const updates: string[] = [];
     const params: any[] = [];
     
-    if (body.title !== undefined) { updates.push('title = ?'); params.push(body.title); }
-    if (body.description !== undefined) { updates.push('description = ?'); params.push(body.description); }
-    if (body.cover_image !== undefined) { updates.push('cover_image = ?'); params.push(body.cover_image); }
-    if (body.type !== undefined) { updates.push('type = ?'); params.push(body.type); }
-    if (body.start_time !== undefined) { updates.push('start_time = ?'); params.push(body.start_time); }
-    if (body.end_time !== undefined) { updates.push('end_time = ?'); params.push(body.end_time); }
+    // 辅助函数：处理 undefined 和 null
+    const safeValue = (value: any) => value === undefined ? null : value;
+    
+    if (body.title !== undefined) { updates.push('title = ?'); params.push(safeValue(body.title)); }
+    if (body.description !== undefined) { updates.push('description = ?'); params.push(safeValue(body.description)); }
+    if (body.cover_image !== undefined) { updates.push('cover_image = ?'); params.push(safeValue(body.cover_image)); }
+    if (body.type !== undefined) { updates.push('type = ?'); params.push(safeValue(body.type)); }
+    if (body.start_time !== undefined) { updates.push('start_time = ?'); params.push(safeValue(body.start_time)); }
+    if (body.end_time !== undefined) { updates.push('end_time = ?'); params.push(safeValue(body.end_time)); }
     if (body.location !== undefined || body.address !== undefined) { 
       updates.push('address = ?'); 
-      params.push(body.location || body.address); 
+      params.push(safeValue(body.location || body.address)); 
     }
-    if (body.is_online !== undefined) { updates.push('is_online = ?'); params.push(body.is_online); }
-    if (body.online_price !== undefined) { updates.push('online_price = ?'); params.push(body.online_price); }
-    if (body.offline_price !== undefined) { updates.push('offline_price = ?'); params.push(body.offline_price); }
-    if (body.max_participants !== undefined) { updates.push('max_participants = ?'); params.push(body.max_participants); }
-    if (body.is_recommended !== undefined) { updates.push('is_recommended = ?'); params.push(body.is_recommended); }
-    if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(body.sort_order); }
-    if (body.status !== undefined) { updates.push('status = ?'); params.push(body.status); }
+    if (body.is_online !== undefined) { updates.push('is_online = ?'); params.push(safeValue(body.is_online)); }
+    if (body.online_price !== undefined) { updates.push('online_price = ?'); params.push(safeValue(body.online_price)); }
+    if (body.offline_price !== undefined) { updates.push('offline_price = ?'); params.push(safeValue(body.offline_price)); }
+    if (body.max_participants !== undefined) { updates.push('max_participants = ?'); params.push(safeValue(body.max_participants)); }
+    if (body.is_recommended !== undefined) { updates.push('is_recommended = ?'); params.push(safeValue(body.is_recommended)); }
+    if (body.sort_order !== undefined) { updates.push('sort_order = ?'); params.push(safeValue(body.sort_order)); }
+    if (body.status !== undefined) { updates.push('status = ?'); params.push(safeValue(body.status)); }
     
     if (updates.length === 0) return { success: true };
     
@@ -4129,6 +4132,273 @@ export class AdminController {
     } catch (error) {
       console.error('上传图片失败:', error);
       throw new BadRequestException('上传失败: ' + error.message);
+    }
+  }
+
+  // ==================== 家长管理 ====================
+
+  /**
+   * 获取家长列表
+   */
+  @Get('parents')
+  @Public()
+  async getParents(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('keyword') keyword = '',
+    @Query('start_date') startDate = '',
+    @Query('end_date') endDate = ''
+  ) {
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+    let whereClause = 'WHERE u.role = 0 AND u.status = 1';
+    const params: any[] = [];
+
+    if (keyword) {
+      whereClause += ' AND (u.nickname LIKE ? OR u.mobile LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (startDate) {
+      whereClause += ' AND u.created_at >= ?';
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClause += ' AND u.created_at <= ?';
+      params.push(endDate + ' 23:59:59');
+    }
+
+    try {
+      const [list] = await db.query(`
+        SELECT 
+          u.id, u.nickname, u.mobile, u.avatar, u.city_name,
+          u.membership_type, u.membership_expire_at, u.created_at,
+          u.inviter_id, u.inviter_2nd_id,
+          inv1.nickname as inviter_name, inv1.mobile as inviter_mobile,
+          inv2.nickname as inviter_2nd_name, inv2.mobile as inviter_2nd_mobile,
+          (SELECT COUNT(*) FROM children WHERE user_id = u.id) as children_count
+        FROM users u
+        LEFT JOIN users inv1 ON u.inviter_id = inv1.id
+        LEFT JOIN users inv2 ON u.inviter_2nd_id = inv2.id
+        ${whereClause}
+        ORDER BY u.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, limitNum, offset]);
+
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM users u ${whereClause}
+      `, params);
+
+      // 获取孩子的信息
+      const userIds = list.map((p: any) => p.id);
+      let children: any[] = [];
+      if (userIds.length > 0) {
+        [children] = await db.query(`
+          SELECT user_id, name, age, grade, birth_date
+          FROM children
+          WHERE user_id IN (?)
+        `, [userIds]);
+      }
+
+      // 组装数据
+      const childrenMap = new Map();
+      children.forEach((c: any) => {
+        if (!childrenMap.has(c.user_id)) {
+          childrenMap.set(c.user_id, []);
+        }
+        childrenMap.get(c.user_id).push(c);
+      });
+
+      const listWithChildren = list.map((p: any) => ({
+        ...p,
+        children: childrenMap.get(p.id) || [],
+        children_ages: (childrenMap.get(p.id) || []).map((c: any) => c.age).filter(Boolean).join('、') || '-'
+      }));
+
+      return {
+        list: listWithChildren,
+        total: countResult[0]?.total || 0,
+        page: pageNum
+      };
+    } catch (error) {
+      console.error('获取家长列表失败:', error);
+      return { list: [], total: 0, page: pageNum };
+    }
+  }
+
+  // ==================== 牛师管理（新版）====================
+
+  /**
+   * 获取牛师列表（新版）
+   */
+  @Get('teachers-new')
+  @Public()
+  async getTeachersNew(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('keyword') keyword = '',
+    @Query('status') status = '',
+    @Query('start_date') startDate = '',
+    @Query('end_date') endDate = ''
+  ) {
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (keyword) {
+      whereClause += ' AND (tp.real_name LIKE ? OR u.nickname LIKE ? OR u.mobile LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (status) {
+      whereClause += ' AND tp.verify_status = ?';
+      params.push(parseInt(status));
+    }
+
+    if (startDate) {
+      whereClause += ' AND tp.created_at >= ?';
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClause += ' AND tp.created_at <= ?';
+      params.push(endDate + ' 23:59:59');
+    }
+
+    try {
+      const [list] = await db.query(`
+        SELECT 
+          tp.user_id as id, tp.user_id, tp.real_name, u.nickname, u.mobile, u.avatar, u.city_name,
+          tp.education, tp.school, tp.major, tp.subjects,
+          tp.teaching_years, tp.hourly_rate_min, tp.hourly_rate_max,
+          tp.rating, tp.rating_count, tp.verify_status,
+          tp.student_count, tp.order_count, tp.created_at,
+          u.inviter_id, u.inviter_2nd_id,
+          inv1.nickname as inviter_name, inv1.mobile as inviter_mobile,
+          inv2.nickname as inviter_2nd_name, inv2.mobile as inviter_2nd_mobile
+        FROM teacher_profiles tp
+        LEFT JOIN users u ON tp.user_id = u.id
+        LEFT JOIN users inv1 ON u.inviter_id = inv1.id
+        LEFT JOIN users inv2 ON u.inviter_2nd_id = inv2.id
+        ${whereClause}
+        ORDER BY tp.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, limitNum, offset]);
+
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM teacher_profiles tp
+        LEFT JOIN users u ON tp.user_id = u.id
+        ${whereClause}
+      `, params);
+
+      const verifyStatusMap: Record<number, string> = {
+        0: '待审核',
+        1: '已认证',
+        2: '已拒绝'
+      };
+
+      const listWithExtras = list.map((t: any) => ({
+        ...t,
+        subjects_text: Array.isArray(t.subjects) ? t.subjects.join('、') : (t.subjects || '-'),
+        verify_status_text: verifyStatusMap[t.verify_status] || '未知'
+      }));
+
+      return {
+        list: listWithExtras,
+        total: countResult[0]?.total || 0,
+        page: pageNum
+      };
+    } catch (error) {
+      console.error('获取牛师列表失败:', error);
+      return { list: [], total: 0, page: pageNum };
+    }
+  }
+
+  // ==================== 机构管理（新版）====================
+
+  /**
+   * 获取机构列表（新版）
+   */
+  @Get('orgs-new')
+  @Public()
+  async getOrgsNew(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('keyword') keyword = '',
+    @Query('status') status = '',
+    @Query('start_date') startDate = '',
+    @Query('end_date') endDate = ''
+  ) {
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (keyword) {
+      whereClause += ' AND (o.name LIKE ? OR u.nickname LIKE ? OR o.contact_phone LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (status) {
+      whereClause += ' AND o.verify_status = ?';
+      params.push(parseInt(status));
+    }
+
+    if (startDate) {
+      whereClause += ' AND o.created_at >= ?';
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      whereClause += ' AND o.created_at <= ?';
+      params.push(endDate + ' 23:59:59');
+    }
+
+    try {
+      const [list] = await db.query(`
+        SELECT 
+          o.id, o.user_id, o.name, o.logo, o.description, o.address,
+          o.contact_name, o.contact_phone, o.verify_status,
+          o.teacher_count, o.student_count, o.created_at,
+          u.nickname, u.mobile, u.city_name,
+          (SELECT COUNT(*) FROM teacher_profiles WHERE org_id = o.id AND verify_status = 1) as actual_teacher_count
+        FROM organizations o
+        LEFT JOIN users u ON o.user_id = u.id
+        ${whereClause}
+        ORDER BY o.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, limitNum, offset]);
+
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM organizations o
+        LEFT JOIN users u ON o.user_id = u.id
+        ${whereClause}
+      `, params);
+
+      const verifyStatusMap: Record<number, string> = {
+        0: '待审核',
+        1: '已认证',
+        2: '已拒绝'
+      };
+
+      const listWithExtras = list.map((o: any) => ({
+        ...o,
+        verify_status_text: verifyStatusMap[o.verify_status] || '未知'
+      }));
+
+      return {
+        list: listWithExtras,
+        total: countResult[0]?.total || 0,
+        page: pageNum
+      };
+    } catch (error) {
+      console.error('获取机构列表失败:', error);
+      return { list: [], total: 0, page: pageNum };
     }
   }
 }
