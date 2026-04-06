@@ -81,6 +81,7 @@ export class UserController {
   /**
    * 获取教师列表（支持LBS）
    */
+  @Public()
   @Get('teachers/list')
   async getTeachersList(
     @Query('latitude') latitude?: string,

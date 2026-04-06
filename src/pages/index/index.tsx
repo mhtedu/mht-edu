@@ -163,11 +163,30 @@ const HomePage: FC = () => {
         url: '/api/config/ads/home_top'
       })
       console.log('加载广告响应:', res.data)
-      if (res.data && Array.isArray(res.data)) {
+
+      // 检查HTTP状态码，如果是错误状态码则抛出异常
+      if (res.statusCode && res.statusCode >= 400) {
+        throw new Error(`HTTP Error: ${res.statusCode}`)
+      }
+
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setAds(res.data)
+      } else {
+        // 使用默认广告数据
+        setAds([
+          { id: 1, position_key: 'home_top', title: '新人专享福利', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner1.png', link_url: '/pages/member/index', sort_order: 1 },
+          { id: 2, position_key: 'home_top', title: '会员日特惠', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner2.png', link_url: '/pages/membership/index', sort_order: 2 },
+          { id: 3, position_key: 'home_top', title: '名师一对一定制课程', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner3.png', link_url: '/pages/teacher/list', sort_order: 3 },
+        ])
       }
     } catch (error) {
       console.error('加载广告失败:', error)
+      // 使用默认广告数据
+      setAds([
+        { id: 1, position_key: 'home_top', title: '新人专享福利', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner1.png', link_url: '/pages/member/index', sort_order: 1 },
+        { id: 2, position_key: 'home_top', title: '会员日特惠', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner2.png', link_url: '/pages/membership/index', sort_order: 2 },
+        { id: 3, position_key: 'home_top', title: '名师一对一定制课程', image_url: 'https://mht-edu.oss-cn-beijing.aliyuncs.com/default/banner3.png', link_url: '/pages/teacher/list', sort_order: 3 },
+      ])
     }
   }
 
@@ -294,8 +313,18 @@ const HomePage: FC = () => {
         url: `/api/teacher-profile/nearby?${params.join('&')}`
       })
       console.log('加载附近牛师响应:', res.data)
+
+      // 检查HTTP状态码，如果是错误状态码则抛出异常
+      if (res.statusCode && res.statusCode >= 400) {
+        throw new Error(`HTTP Error: ${res.statusCode}`)
+      }
+
       if (res.data) {
         const list = Array.isArray(res.data) ? res.data : res.data.list || []
+        // 如果返回空列表，使用模拟数据
+        if (list.length === 0) {
+          throw new Error('Empty result, using mock data')
+        }
         setTeachers(list.map((item: any) => ({
           ...item,
           distance_text: item.distance_text || (item.distance ? 
@@ -464,14 +493,14 @@ const HomePage: FC = () => {
   const teacherEntries = [
     { icon: <Briefcase size={22} color="#10B981" />, text: '工作台', bgColor: 'bg-green-100', action: () => Taro.navigateTo({ url: '/pages/teacher-workbench/index' }) },
     { icon: <GraduationCap size={22} color="#8B5CF6" />, text: '创建牛师班', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/create-elite-class/index' }) },
-    { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
+    { icon: <Calendar size={22} color="#F59E0B" />, text: '牛师班', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/elite-class-list/index' }) },
     { icon: <Wallet size={22} color="#2563EB" />, text: '收益中心', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/earnings/index' }) },
   ]
 
   const parentEntries = [
     { icon: <Search size={22} color="#2563EB" />, text: '找牛师', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/teacher/list' }) },
     { icon: <Building2 size={22} color="#10B981" />, text: '找机构', bgColor: 'bg-green-100', action: goToOrgList },
-    { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
+    { icon: <Calendar size={22} color="#F59E0B" />, text: '牛师班', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/elite-class-list/index' }) },
     { icon: <Star size={22} color="#8B5CF6" />, text: '发布需求', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/publish-demand/index' }) },
   ]
 
@@ -479,7 +508,7 @@ const HomePage: FC = () => {
   const orgEntries = [
     { icon: <Building2 size={22} color="#8B5CF6" />, text: '机构管理', bgColor: 'bg-purple-100', action: () => Taro.navigateTo({ url: '/pages/org-dashboard/index' }) },
     { icon: <BookOpen size={22} color="#10B981" />, text: '课程管理', bgColor: 'bg-green-100', action: () => Taro.navigateTo({ url: '/pages/course-manage/index' }) },
-    { icon: <Calendar size={22} color="#F59E0B" />, text: '活动', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/activities/index' }) },
+    { icon: <Calendar size={22} color="#F59E0B" />, text: '牛师班', bgColor: 'bg-amber-100', action: () => Taro.navigateTo({ url: '/pages/elite-class-list/index' }) },
     { icon: <Users size={22} color="#2563EB" />, text: '牛师管理', bgColor: 'bg-blue-100', action: () => Taro.navigateTo({ url: '/pages/org-teachers/index' }) },
   ]
 
@@ -642,7 +671,7 @@ const HomePage: FC = () => {
                 </View>
                 <View className="flex-1 overflow-hidden">
                   <View className="flex flex-row items-center justify-between mb-1">
-                    <Text className="block text-base font-semibold text-gray-900">{teacher.name}</Text>
+                    <Text className="block text-base font-semibold text-gray-900">{teacher.name ? `${teacher.name.charAt(0)}老师` : '牛师'}</Text>
                     <View className="flex flex-row items-center">
                       <Star size={12} color="#F59E0B" />
                       <Text className="block text-sm text-amber-500 font-medium ml-1">{teacher.rating}</Text>

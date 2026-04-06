@@ -89,6 +89,11 @@ const TeacherListPage: FC = () => {
       })
       console.log('加载牛师列表响应:', res.data)
 
+      // 检查HTTP状态码，如果是错误状态码则抛出异常
+      if (res.statusCode && res.statusCode >= 400) {
+        throw new Error(`HTTP Error: ${res.statusCode}`)
+      }
+
       const list = Array.isArray(res.data) ? res.data : res.data.list || []
       
       if (refresh) {
@@ -226,7 +231,7 @@ const TeacherListPage: FC = () => {
                 </View>
                 <View className="teacher-basic">
                   <View className="name-row">
-                    <Text className="teacher-name">{teacher.real_name || teacher.nickname}</Text>
+                    <Text className="teacher-name">{teacher.real_name ? `${teacher.real_name[0]}老师` : teacher.nickname}</Text>
                     <View className="rating-row">
                       <Star size={14} color="#F59E0B" />
                       <Text className="rating-text">{teacher.rating}</Text>

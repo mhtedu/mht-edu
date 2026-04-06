@@ -69,7 +69,17 @@ const OrgListPage: FC = () => {
       })
       console.log('加载机构列表响应:', res.data)
 
+      // 检查HTTP状态码，如果是错误状态码则抛出异常
+      if (res.statusCode && res.statusCode >= 400) {
+        throw new Error(`HTTP Error: ${res.statusCode}`)
+      }
+
       const list = Array.isArray(res.data) ? res.data : res.data.list || []
+
+      // 如果返回空列表，使用模拟数据
+      if (list.length === 0) {
+        throw new Error('Empty result, using mock data')
+      }
       
       if (refresh) {
         setOrgs(list)
