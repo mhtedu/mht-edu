@@ -231,7 +231,7 @@ const TeacherListPage: FC = () => {
                 </View>
                 <View className="teacher-basic">
                   <View className="name-row">
-                    <Text className="teacher-name">{teacher.real_name ? `${teacher.real_name[0]}老师` : teacher.nickname}</Text>
+                    <Text className="teacher-name">{teacher.real_name || teacher.nickname || '牛师'}</Text>
                     <View className="rating-row">
                       <Star size={14} color="#F59E0B" />
                       <Text className="rating-text">{teacher.rating}</Text>
