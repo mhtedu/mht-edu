@@ -3,6 +3,9 @@
 /**
  * 微信小程序 CI 上传脚本
  * 
+ * 重要：需要使用 Node.js v18.x 或更低版本运行！
+ * Node.js v20+ 使用 OpenSSL 3.x，miniprogram-ci 可能不兼容
+ * 
  * 使用前准备：
  * 1. 登录微信公众平台 https://mp.weixin.qq.com
  * 2. 开发 → 开发管理 → 开发设置 → 小程序代码上传
@@ -18,7 +21,18 @@
 const ci = require('miniprogram-ci')
 const path = require('path')
 const fs = require('fs')
-const readline = require('readline')
+
+// 检查 Node.js 版本
+const nodeVersion = process.versions.node.split('.').map(Number)
+if (nodeVersion[0] > 18) {
+  console.error('⚠️  警告: 当前 Node.js 版本过高，可能导致上传失败')
+  console.error(`当前版本: ${process.version}`)
+  console.error('推荐使用 Node.js v18.x 或更低版本')
+  console.error('如果上传失败，请使用 nvm 切换版本:')
+  console.error('  nvm install 18')
+  console.error('  nvm use 18')
+  console.error('')
+}
 
 // 配置
 const config = {

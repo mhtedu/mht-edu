@@ -41,6 +41,7 @@ export class MiniprogramController {
 
   /**
    * 上传小程序
+   * 注意：miniprogram-ci 需要 Node.js v18.x 或更低版本
    */
   @Post('upload')
   async upload(@Body() body: { version?: string; desc?: string }) {
@@ -62,9 +63,11 @@ export class MiniprogramController {
         }
       }
       
-      // 执行上传脚本
+      // 使用 Node.js v18 运行上传脚本（miniprogram-ci 不支持 Node.js v20+）
+      // 服务器需要安装 nvm: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+      // 然后安装 Node 18: nvm install 18
       const { stdout, stderr } = await execAsync(
-        `node scripts/upload.js -v "${version}" -d "${desc}"`,
+        `source ~/.nvm/nvm.sh && nvm use 18 && node scripts/upload.js -v "${version}" -d "${desc}"`,
         {
           cwd: this.projectPath,
           timeout: 120000,
@@ -91,6 +94,8 @@ export class MiniprogramController {
         errorMsg = 'IP白名单未配置，请在微信公众平台添加服务器IP: 119.91.193.179';
       } else if (errorMsg.includes('privateKey')) {
         errorMsg = '上传密钥未配置，请将密钥文件保存到 scripts/private.wxkey';
+      } else if (errorMsg.includes('nvm')) {
+        errorMsg = '服务器未安装 nvm 或 Node.js v18，请先安装: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash && nvm install 18';
       }
       
       return {
@@ -109,8 +114,9 @@ export class MiniprogramController {
     try {
       console.log('[小程序] 生成预览二维码...');
       
+      // 使用 Node.js v18 运行预览脚本
       const { stdout, stderr } = await execAsync(
-        'node scripts/upload.js --preview',
+        `source ~/.nvm/nvm.sh && nvm use 18 && node scripts/upload.js --preview`,
         {
           cwd: this.projectPath,
           timeout: 60000,
