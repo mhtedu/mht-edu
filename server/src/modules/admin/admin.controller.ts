@@ -314,7 +314,7 @@ export class AdminController {
    */
   @Get('teachers')
   @Public()
-  async getTeachers(@Query('status') status = '') {
+  async getTeachers(@Query('status') status = '', @Query('page') page = '1', @Query('pageSize') pageSize = '20') {
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
 
@@ -325,6 +325,10 @@ export class AdminController {
     } else if (status === 'rejected') {
       whereClause += ' AND tp.verify_status = 2';
     }
+
+    const pageNum = parseInt(page);
+    const pageSizeNum = parseInt(pageSize);
+    const offset = (pageNum - 1) * pageSizeNum;
 
     try {
       const [teachers] = await db.query(`
@@ -338,15 +342,25 @@ export class AdminController {
         LEFT JOIN users u ON tp.user_id = u.id
         ${whereClause}
         ORDER BY tp.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [...params, pageSizeNum, offset]);
+
+      const [countResult] = await db.query(`
+        SELECT COUNT(*) as total FROM teacher_profiles tp ${whereClause}
       `, params);
 
-      return teachers.map(t => ({
-        ...t,
-        subject: Array.isArray(t.subjects) ? t.subjects.join('、') : t.subjects
-      }));
+      return {
+        list: teachers.map((t: any) => ({
+          ...t,
+          subject: Array.isArray(t.subjects) ? t.subjects.join('、') : t.subjects
+        })),
+        total: countResult[0]?.total || 0,
+        page: pageNum,
+        pageSize: pageSizeNum
+      };
     } catch (error) {
       console.error('获取教师列表失败:', error);
-      return [];
+      return { list: [], total: 0, page: pageNum, pageSize: pageSizeNum };
     }
   }
 
