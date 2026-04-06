@@ -4,16 +4,19 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Network } from '@/network'
 import { 
   Phone, MessageCircle, Calendar, Clock, MapPin,
-  Send, Check, X, User
+  Send, Check, X, User, CreditCard
 } from 'lucide-react-taro'
 import './index.css'
 
 interface Message {
   id: number
   content: string
-  type: 'text' | 'contact_request' | 'contact_accept' | 'contact_reject' | 'trial_request' | 'trial_accept' | 'trial_reject' | 'trial_modify'
+  type: 'text' | 'contact_request' | 'contact_accept' | 'contact_reject' | 'trial_request' | 'trial_accept' | 'trial_reject' | 'trial_modify' | 'trial_invitation'
   sender_id: number
   created_at: string
   extra?: {
@@ -21,6 +24,10 @@ interface Message {
     trial_time?: string
     trial_address?: string
     trial_duration?: number
+    trial_fee?: number
+    trial_subject?: string
+    trial_status?: string
+    invitation_id?: number
     new_time?: string
     new_address?: string
   }
@@ -48,6 +55,9 @@ export default function ChatPage() {
   const [trialTime, setTrialTime] = useState('')
   const [trialAddress, setTrialAddress] = useState('')
   const [trialDuration, setTrialDuration] = useState(2)
+  const [trialSubject, setTrialSubject] = useState('')
+  const [trialFee, setTrialFee] = useState(100)
+  const [sending, setSending] = useState(false)
 
   useDidShow(() => {
     const savedRole = Taro.getStorageSync('userRole')
@@ -105,29 +115,6 @@ export default function ChatPage() {
       type: 'text',
       sender_id: userRole === 1 ? 0 : targetId,
       created_at: '2024-03-20 10:10'
-    },
-    {
-      id: 4,
-      content: '',
-      type: 'trial_request',
-      sender_id: userRole === 1 ? 0 : targetId,
-      created_at: '2024-03-20 10:15',
-      extra: {
-        trial_time: '2024-03-23 14:00',
-        trial_address: '朝阳区望京西园四区',
-        trial_duration: 2
-      }
-    },
-    {
-      id: 5,
-      content: '',
-      type: 'trial_accept',
-      sender_id: userRole === 1 ? targetId : 0,
-      created_at: '2024-03-20 10:20',
-      extra: {
-        trial_time: '2024-03-23 14:00',
-        trial_address: '朝阳区望京西园四区'
-      }
     }
   ]
 
@@ -168,30 +155,58 @@ export default function ChatPage() {
 
   // 发起试课邀请
   const handleRequestTrial = async () => {
-    if (!trialTime || !trialAddress) {
+    if (!trialTime || !trialAddress || !trialSubject) {
       Taro.showToast({ title: '请填写完整信息', icon: 'none' })
       return
     }
 
     try {
-      const newMsg: Message = {
-        id: messages.length + 1,
-        content: '',
-        type: 'trial_request',
-        sender_id: 0,
-        created_at: new Date().toLocaleString(),
-        extra: {
-          trial_time: trialTime,
-          trial_address: trialAddress,
-          trial_duration: trialDuration
+      setSending(true)
+
+      // 调用后端API创建试课邀约
+      const res = await Network.request({
+        url: '/api/trial-lesson/create',
+        method: 'POST',
+        data: {
+          targetUserId: targetId,
+          subject: trialSubject,
+          trialTime: trialTime,
+          trialAddress: trialAddress,
+          trialDuration: trialDuration,
+          trialFee: trialFee
         }
+      }) as any
+
+      if (res.data && res.data.code === 0) {
+        const invitation = res.data.data
+
+        const newMsg: Message = {
+          id: messages.length + 1,
+          content: '',
+          type: 'trial_invitation',
+          sender_id: 0,
+          created_at: new Date().toLocaleString(),
+          extra: {
+            invitation_id: invitation.id,
+            trial_time: trialTime,
+            trial_address: trialAddress,
+            trial_duration: trialDuration,
+            trial_fee: trialFee,
+            trial_subject: trialSubject,
+            trial_status: 'pending'
+          }
+        }
+        
+        setMessages([...messages, newMsg])
+        setShowTrialDialog(false)
+        Taro.showToast({ title: '试课邀约已发送', icon: 'success' })
+      } else {
+        Taro.showToast({ title: res.data?.msg || '发送失败', icon: 'none' })
       }
-      
-      setMessages([...messages, newMsg])
-      setShowTrialDialog(false)
-      Taro.showToast({ title: '试课邀请已发送', icon: 'success' })
     } catch (error) {
-      Taro.showToast({ title: '发送失败', icon: 'none' })
+      Taro.showToast({ title: '网络错误', icon: 'none' })
+    } finally {
+      setSending(false)
     }
   }
 
@@ -203,7 +218,7 @@ export default function ChatPage() {
     let newType: Message['type']
     if (msg.type === 'contact_request') {
       newType = action === 'accept' ? 'contact_accept' : 'contact_reject'
-    } else if (msg.type === 'trial_request') {
+    } else if (msg.type === 'trial_request' || msg.type === 'trial_invitation') {
       newType = action === 'accept' ? 'trial_accept' : action === 'reject' ? 'trial_reject' : 'trial_modify'
     } else {
       return
@@ -223,6 +238,27 @@ export default function ChatPage() {
       title: action === 'accept' ? '已同意' : action === 'reject' ? '已拒绝' : '已提出修改', 
       icon: 'success' 
     })
+  }
+
+  // 跳转到试课支付页
+  const handlePayTrial = (invitationId: number) => {
+    Taro.navigateTo({ url: `/pages/trial-pay/index?id=${invitationId}` })
+  }
+
+  // 跳转到试课详情页
+  const handleViewTrial = (invitationId: number) => {
+    Taro.navigateTo({ url: `/pages/trial-detail/index?id=${invitationId}` })
+  }
+
+  // 试课邀约状态配置
+  const trialStatusConfig: Record<string, { label: string; colorClass: string }> = {
+    pending: { label: '待支付', colorClass: 'bg-yellow-100 text-yellow-700' },
+    paid: { label: '已支付', colorClass: 'bg-blue-100 text-blue-700' },
+    confirmed: { label: '已确认', colorClass: 'bg-purple-100 text-purple-700' },
+    success: { label: '试课成功', colorClass: 'bg-green-100 text-green-700' },
+    failed: { label: '试课失败', colorClass: 'bg-red-100 text-red-700' },
+    cancelled: { label: '已取消', colorClass: 'bg-gray-100 text-gray-500' },
+    timeout: { label: '已超时', colorClass: 'bg-gray-100 text-gray-500' },
   }
 
   const renderMessage = (msg: Message) => {
@@ -275,6 +311,76 @@ export default function ChatPage() {
             {isSelf ? '您已同意，对方可查看您的联系方式' : '对方已同意，您可查看对方的联系方式'}
           </Text>
         </View>
+      )
+    }
+    
+    // 试课邀约卡片（新版）
+    if (msg.type === 'trial_invitation') {
+      const status = msg.extra?.trial_status || 'pending'
+      const statusInfo = trialStatusConfig[status] || trialStatusConfig.pending
+      
+      return (
+        <Card className={`w-72 ${isSelf ? 'bg-blue-50' : 'bg-white'}`}>
+          <CardHeader className="pb-2">
+            <View className="flex items-center justify-between">
+              <View className="flex items-center gap-2">
+                <Calendar size={16} color="#2563EB" />
+                <CardTitle className="text-base">试课邀约</CardTitle>
+              </View>
+              <Badge className={statusInfo.colorClass}>
+                <Text className="text-xs">{statusInfo.label}</Text>
+              </Badge>
+            </View>
+          </CardHeader>
+          <CardContent>
+            <View className="space-y-2">
+              <View className="flex items-center gap-2">
+                <Clock size={14} color="#6B7280" />
+                <Text className="text-sm">{msg.extra?.trial_time}</Text>
+              </View>
+              <View className="flex items-center gap-2">
+                <MapPin size={14} color="#6B7280" />
+                <Text className="text-sm">{msg.extra?.trial_address}</Text>
+              </View>
+              <View className="flex items-center gap-2">
+                <MessageCircle size={14} color="#6B7280" />
+                <Text className="text-sm">{msg.extra?.trial_subject} · {msg.extra?.trial_duration}小时</Text>
+              </View>
+              
+              <View className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <Text className="text-sm text-gray-500">试课费</Text>
+                <Text className="text-lg font-semibold text-orange-500">¥{msg.extra?.trial_fee}</Text>
+              </View>
+            </View>
+
+            {/* 操作按钮 */}
+            {status === 'pending' && !isSelf && (
+              <View className="flex gap-2 mt-3">
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-orange-500" 
+                  onClick={() => handlePayTrial(msg.extra?.invitation_id || 0)}
+                >
+                  <CreditCard size={14} color="white" />
+                  <Text className="text-white ml-1">立即支付</Text>
+                </Button>
+              </View>
+            )}
+
+            {(status === 'success' || status === 'failed' || status === 'cancelled') && (
+              <View className="mt-3">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="w-full" 
+                  onClick={() => handleViewTrial(msg.extra?.invitation_id || 0)}
+                >
+                  <Text>查看详情</Text>
+                </Button>
+              </View>
+            )}
+          </CardContent>
+        </Card>
       )
     }
     
@@ -374,10 +480,10 @@ export default function ChatPage() {
         </View>
         <View 
           className="action-item"
-          onClick={() => Taro.navigateTo({ url: `/pages/order-detail/index?id=1` })}
+          onClick={() => Taro.navigateTo({ url: `/pages/trial-detail/index?id=1` })}
         >
           <MessageCircle size={18} color="#2563EB" />
-          <Text className="text-xs text-blue-500 mt-1">查看订单</Text>
+          <Text className="text-xs text-blue-500 mt-1">试课记录</Text>
         </View>
       </View>
 
@@ -455,9 +561,20 @@ export default function ChatPage() {
         <Dialog open={showTrialDialog} onOpenChange={setShowTrialDialog}>
           <DialogContent className="w-80">
             <DialogHeader>
-              <DialogTitle>发起试课邀请</DialogTitle>
+              <DialogTitle>发起试课邀约</DialogTitle>
             </DialogHeader>
             <View className="flex flex-col gap-4 mt-4">
+              <View>
+                <Text className="text-sm text-gray-500 mb-1">试课科目</Text>
+                <View className="bg-gray-50 rounded-lg p-3">
+                  <Input
+                    className="border-0 bg-transparent"
+                    placeholder="如：数学、英语"
+                    value={trialSubject}
+                    onInput={(e) => setTrialSubject(e.detail.value)}
+                  />
+                </View>
+              </View>
               <View>
                 <Text className="text-sm text-gray-500 mb-1">试课时间</Text>
                 <View className="bg-gray-50 rounded-lg p-3">
@@ -494,12 +611,24 @@ export default function ChatPage() {
                   ))}
                 </View>
               </View>
+              <View>
+                <Text className="text-sm text-gray-500 mb-1">试课费用（元）</Text>
+                <View className="bg-gray-50 rounded-lg p-3">
+                  <Input
+                    type="number"
+                    className="border-0 bg-transparent"
+                    placeholder="请输入试课费用"
+                    value={trialFee.toString()}
+                    onInput={(e) => setTrialFee(parseInt(e.detail.value) || 0)}
+                  />
+                </View>
+              </View>
               <View className="flex gap-3 mt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowTrialDialog(false)}>
                   <Text>取消</Text>
                 </Button>
-                <Button className="flex-1" onClick={handleRequestTrial}>
-                  <Text className="text-white">发送邀请</Text>
+                <Button className="flex-1" onClick={handleRequestTrial} disabled={sending}>
+                  <Text className="text-white">{sending ? '发送中...' : '发送邀约'}</Text>
                 </Button>
               </View>
             </View>

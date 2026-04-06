@@ -266,6 +266,111 @@ export class NotificationService {
     }
   }
 
+  /**
+   * 发送模板消息（通用方法）
+   */
+  async sendTemplateMessage(params: {
+    userId: number;
+    templateId: string;
+    data: Record<string, { value: string }>;
+    page?: string;
+  }) {
+    const user = await this.getUserInfo(params.userId);
+    if (!user) return;
+
+    const message = `【棉花糖教育】您有一条新通知，请查看。`;
+
+    // 发送站内消息
+    await this.sendInAppMessage(params.userId, '系统通知', message, {
+      type: params.templateId,
+      data: params.data,
+    });
+
+    // 发送微信订阅消息
+    if (user.openid) {
+      await this.sendWxSubscribeMessage(
+        user.openid,
+        { id: params.templateId, name: params.templateId, params: Object.keys(params.data) },
+        Object.fromEntries(Object.entries(params.data).map(([k, v]) => [k, v.value])),
+      );
+    }
+  }
+
+  /**
+   * 发送试课邀约通知
+   */
+  async notifyTrialInvitation(parentId: number, invitationId: number, subject: string, teacherName: string) {
+    const parent = await this.getUserInfo(parentId);
+    if (!parent) return;
+
+    const message = `【棉花糖教育】您收到一份试课邀约！科目：${subject}，老师：${teacherName}。请登录查看详情。`;
+
+    await this.sendInAppMessage(parentId, '试课邀约', message, {
+      type: 'trial_invitation',
+      invitationId,
+    });
+
+    if (parent.mobile) {
+      await this.smsService.sendVerificationCode(parent.mobile);
+    }
+  }
+
+  /**
+   * 发送试课支付成功通知
+   */
+  async notifyTrialPaid(teacherId: number, invitationId: number, subject: string, parentName: string) {
+    const teacher = await this.getUserInfo(teacherId);
+    if (!teacher) return;
+
+    const message = `【棉花糖教育】试课邀约已支付！科目：${subject}，家长：${parentName}。请按时参加试课。`;
+
+    await this.sendInAppMessage(teacherId, '试课支付成功', message, {
+      type: 'trial_paid',
+      invitationId,
+    });
+
+    if (teacher.mobile) {
+      await this.smsService.sendVerificationCode(teacher.mobile);
+    }
+  }
+
+  /**
+   * 发送试课完成通知
+   */
+  async notifyTrialCompleted(userId: number, invitationId: number, subject: string, result: string) {
+    const user = await this.getUserInfo(userId);
+    if (!user) return;
+
+    const resultText = result === 'success' ? '成功' : '失败';
+    const message = `【棉花糖教育】试课已确认完成！科目：${subject}，结果：${resultText}。`;
+
+    await this.sendInAppMessage(userId, '试课完成', message, {
+      type: 'trial_completed',
+      invitationId,
+      result,
+    });
+  }
+
+  /**
+   * 发送试课提醒通知
+   */
+  async notifyTrialReminder(userId: number, invitationId: number, subject: string, trialTime: string) {
+    const user = await this.getUserInfo(userId);
+    if (!user) return;
+
+    const message = `【棉花糖教育】试课即将开始！科目：${subject}，时间：${trialTime}。请做好准备。`;
+
+    await this.sendInAppMessage(userId, '试课提醒', message, {
+      type: 'trial_reminder',
+      invitationId,
+      trialTime,
+    });
+
+    if (user.mobile) {
+      await this.smsService.sendVerificationCode(user.mobile);
+    }
+  }
+
   // ==================== 私有方法 ====================
 
   /**

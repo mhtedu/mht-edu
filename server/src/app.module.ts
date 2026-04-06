@@ -51,6 +51,7 @@ import { TeacherAdminModule } from '@/modules/teacher-admin/teacher-admin.module
 import { OrgAdminModule } from '@/modules/org-admin/org-admin.module';
 import { PayModule } from '@/modules/pay/pay.module';
 import { MiniprogramModule } from '@/modules/miniprogram/miniprogram.module';
+import { TrialLessonModule } from '@/modules/trial-lesson/trial-lesson.module';
 
 @Module({
   imports: [
@@ -121,6 +122,8 @@ import { MiniprogramModule } from '@/modules/miniprogram/miniprogram.module';
     PayModule,
     // 小程序发布模块
     MiniprogramModule,
+    // 试课邀约模块
+    TrialLessonModule,
     // 管理后台
     AdminModule,
   ],

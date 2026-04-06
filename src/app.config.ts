@@ -64,6 +64,9 @@ export default defineAppConfig({
     'pages/commission/index',
     'pages/team/index',
     'pages/profile-edit/index',
+    'pages/trial-pay/index',
+    'pages/trial-confirm/index',
+    'pages/trial-detail/index',
   ],
   window: {
     backgroundTextStyle: 'light',
