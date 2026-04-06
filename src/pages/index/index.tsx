@@ -351,8 +351,15 @@ const HomePage: FC = () => {
               subjects = subjects.split(',').map((s: string) => s.trim())
             }
           }
-          // 处理 name 字段
-          const name = item.name || item.nickname || item.real_name || ''
+          // 处理 name 字段：优先用 real_name，其次 nickname，最后用通用名称
+          let displayName = item.name || item.real_name || item.nickname || ''
+          // 如果没有名称，用"某老师"格式
+          if (!displayName) {
+            displayName = '某老师'
+          } else if (!displayName.includes('老师')) {
+            // 如果名称不包含"老师"，加上"老师"
+            displayName = displayName + '老师'
+          }
           // 处理 tags 字段
           let tags = item.tags || []
           if (typeof tags === 'string') {
@@ -362,24 +369,30 @@ const HomePage: FC = () => {
               tags = tags.split(',').map((t: string) => t.trim())
             }
           }
+          // 计算距离文本（按距离从近到远排序需要）
+          let distanceText = item.distance_text || ''
+          let distance = item.distance || 0
+          if (!distanceText && distance) {
+            distanceText = distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`
+          }
           return {
-            id: item.id,
-            name: name,
-            avatar: item.avatar,
+            id: item.id || 0,
+            name: displayName,
+            avatar: item.avatar || '',
             subjects: Array.isArray(subjects) ? subjects : [],
             hourly_rate: parseFloat(item.hourly_rate) || parseFloat(item.hourly_rate_min) || 100,
             rating: parseFloat(item.rating) || 5,
             order_count: item.order_count || 0,
             education: item.education || '',
             experience: item.experience || (item.teaching_years ? `${item.teaching_years}年教学经验` : ''),
-            distance_text: item.distance_text || (item.distance ? 
-              (item.distance < 1 ? `${Math.round(item.distance * 1000)}m` : `${item.distance.toFixed(1)}km`) 
-              : ''),
-            distance: item.distance || 0,
+            distance_text: distanceText,
+            distance: distance,
             tags: Array.isArray(tags) ? tags : [],
             intro: item.intro || item.one_line_intro || ''
           }
         })
+        // 按距离从近到远排序
+        mappedList.sort((a, b) => a.distance - b.distance)
         console.log('映射后的牛师数据:', mappedList)
         setTeachers(mappedList)
       }
@@ -721,12 +734,12 @@ const HomePage: FC = () => {
                   {teacher.avatar ? (
                     <Image src={getImageUrl(teacher.avatar)} className="w-full h-full" mode="aspectFill" />
                   ) : (
-                    <Text className="block text-xl font-semibold text-white">{teacher.name?.charAt(0) || '师'}</Text>
+                    <Text className="block text-lg font-semibold text-white">{teacher.name?.charAt(0) || '师'}</Text>
                   )}
                 </View>
                 <View className="flex-1 overflow-hidden">
                   <View className="flex flex-row items-center justify-between mb-1">
-                    <Text className="block text-base font-semibold text-gray-900">{teacher.name || '牛师'}</Text>
+                    <Text className="block text-base font-semibold text-gray-900">{teacher.name || '某老师'}</Text>
                     <View className="flex flex-row items-center">
                       <Star size={12} color="#F59E0B" />
                       <Text className="block text-sm text-amber-500 font-medium ml-1">{teacher.rating?.toFixed(1) || '5.0'}</Text>
