@@ -3923,6 +3923,154 @@ export class AdminController {
     }
   }
 
+  // ========== 试课管理 API ==========
+  
+  /**
+   * 获取试课列表
+   */
+  @Get('trial-lessons')
+  async getTrialLessons(
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+    @Query('status') status?: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const pageSizeNum = parseInt(pageSize, 10) || 20;
+    const offset = (pageNum - 1) * pageSizeNum;
+
+    let whereClause = '1=1';
+    const params: any[] = [];
+
+    if (status && status !== 'all') {
+      whereClause += ' AND tl.status = ?';
+      params.push(status);
+    }
+
+    if (keyword) {
+      whereClause += ' AND (tl.student_name LIKE ? OR tl.student_phone LIKE ? OR u.nickname LIKE ?)';
+      const likeKeyword = `%${keyword}%`;
+      params.push(likeKeyword, likeKeyword, likeKeyword);
+    }
+
+    // 获取总数
+    const countSql = `
+      SELECT COUNT(*) as total 
+      FROM trial_lessons tl 
+      LEFT JOIN users u ON tl.user_id = u.id 
+      WHERE ${whereClause}
+    `;
+    const [countResult] = await db.query(countSql, params);
+    const total = (countResult as any)?.total || 0;
+
+    // 获取列表
+    const listSql = `
+      SELECT 
+        tl.*,
+        u.nickname as user_nickname,
+        u.avatar as user_avatar,
+        t.nickname as teacher_nickname,
+        t.avatar as teacher_avatar
+      FROM trial_lessons tl
+      LEFT JOIN users u ON tl.user_id = u.id
+      LEFT JOIN users t ON tl.teacher_id = t.id
+      WHERE ${whereClause}
+      ORDER BY tl.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    const list = await db.query(listSql, [...params, pageSizeNum, offset]);
+
+    return {
+      list,
+      total,
+      page: pageNum,
+      pageSize: pageSizeNum,
+      totalPages: Math.ceil(total / pageSizeNum),
+    };
+  }
+
+  /**
+   * 获取试课详情
+   */
+  @Get('trial-lessons/:id')
+  async getTrialLessonDetail(@Param('id') id: string) {
+    const sql = `
+      SELECT 
+        tl.*,
+        u.nickname as user_nickname,
+        u.avatar as user_avatar,
+        u.phone as user_phone,
+        t.nickname as teacher_nickname,
+        t.avatar as teacher_avatar,
+        t.phone as teacher_phone
+      FROM trial_lessons tl
+      LEFT JOIN users u ON tl.user_id = u.id
+      LEFT JOIN users t ON tl.teacher_id = t.id
+      WHERE tl.id = ?
+    `;
+    const [trialLesson] = await db.query(sql, [id]);
+
+    if (!trialLesson) {
+      throw new BadRequestException('试课记录不存在');
+    }
+
+    return trialLesson;
+  }
+
+  /**
+   * 更新试课状态
+   */
+  @Put('trial-lessons/:id/status')
+  async updateTrialLessonStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string; remark?: string },
+  ) {
+    const { status, remark } = body;
+
+    // 验证状态
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException('无效的状态');
+    }
+
+    const sql = `
+      UPDATE trial_lessons 
+      SET status = ?, remark = ?, updated_at = NOW()
+      WHERE id = ?
+    `;
+    await db.query(sql, [status, remark || '', id]);
+
+    return { success: true, message: '状态更新成功' };
+  }
+
+  /**
+   * 删除试课记录
+   */
+  @Delete('trial-lessons/:id')
+  async deleteTrialLesson(@Param('id') id: string) {
+    const sql = 'DELETE FROM trial_lessons WHERE id = ?';
+    await db.query(sql, [id]);
+    return { success: true, message: '删除成功' };
+  }
+
+  /**
+   * 获取试课统计
+   */
+  @Get('trial-lessons/stats')
+  async getTrialLessonStats() {
+    const sql = `
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+      FROM trial_lessons
+    `;
+    const [stats] = await db.query(sql);
+    return stats;
+  }
+
   /**
    * 上传图片（管理后台专用）
    */

@@ -142,7 +142,9 @@ export class TrialLessonService {
       return;
     }
 
-    const trialFee = invitation.trial_fee;
+    // 此时invitation一定不为null
+    const inv = invitation;
+    const trialFee = inv.trial_fee;
 
     let platformAmount = 0;
     let teacherAmount = 0;
@@ -169,12 +171,12 @@ export class TrialLessonService {
     if (teacherAmount > 0) {
       await db.update(
         `UPDATE users SET balance = balance + ? WHERE id = ?`,
-        [teacherAmount, invitation.teacher_id]
+        [teacherAmount, inv.teacher_id]
       );
     }
 
     // 计算并发放分销佣金
-    await this.distributeCommission(invitation, platformAmount);
+    await this.distributeCommission(inv, platformAmount);
 
     this.logger.log(`试课结算完成: 邀约ID=${invitationId}, 平台=${platformAmount}, 教师=${teacherAmount}`);
   }
