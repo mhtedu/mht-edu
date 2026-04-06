@@ -192,12 +192,15 @@ export default defineConfig<'vite'>(async (merge, _env) => {
         open: false,
         proxy: {
           '/api': {
-            target: 'http://localhost:3000',
+            // 沙箱环境代理到线上服务器，因为本地没有MySQL数据库
+            target: process.env.PROXY_TARGET || 'https://wx.dajiaopei.com',
             changeOrigin: true,
+            secure: false,
           },
           '/uploads': {
-            target: 'http://localhost:3000',
+            target: process.env.PROXY_TARGET || 'https://wx.dajiaopei.com',
             changeOrigin: true,
+            secure: false,
           },
         },
       },
