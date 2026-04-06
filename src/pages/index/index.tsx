@@ -246,7 +246,22 @@ const HomePage: FC = () => {
       console.log('加载牛师班响应:', res.data)
       if (res.data) {
         const list = Array.isArray(res.data) ? res.data : res.data.list || []
-        setEliteClasses(list)
+        // 映射字段名：API返回的class_name -> title, teacher_real_name -> teacher_name, hourly_rate -> price_per_lesson
+        const mappedList = list.map((item: any) => ({
+          id: item.id,
+          title: item.class_name || item.title || '',
+          subject: item.subject,
+          teacher_name: item.teacher_real_name || item.teacher_nickname || item.teacher_name || '',
+          teacher_avatar: item.teacher_avatar,
+          total_lessons: item.total_lessons,
+          current_students: item.current_students,
+          max_students: item.max_students,
+          price_per_lesson: parseFloat(item.hourly_rate) || item.price_per_lesson || 0,
+          distance_text: item.distance_text || '',
+          status: item.status
+        }))
+        console.log('映射后的牛师班数据:', mappedList)
+        setEliteClasses(mappedList)
       }
     } catch (error) {
       console.error('加载牛师班失败:', error)
