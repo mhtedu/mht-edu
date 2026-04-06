@@ -340,12 +340,48 @@ const HomePage: FC = () => {
         if (list.length === 0) {
           throw new Error('Empty result, using mock data')
         }
-        setTeachers(list.map((item: any) => ({
-          ...item,
-          distance_text: item.distance_text || (item.distance ? 
-            (item.distance < 1 ? `${Math.round(item.distance * 1000)}m` : `${item.distance.toFixed(1)}km`) 
-            : '')
-        })))
+        // 映射字段名：API返回的nickname/real_name -> name, subjects可能是JSON字符串
+        const mappedList = list.map((item: any) => {
+          // 处理 subjects 字段：可能是 JSON 字符串或数组
+          let subjects = item.subjects || []
+          if (typeof subjects === 'string') {
+            try {
+              subjects = JSON.parse(subjects)
+            } catch (e) {
+              subjects = subjects.split(',').map((s: string) => s.trim())
+            }
+          }
+          // 处理 name 字段
+          const name = item.name || item.nickname || item.real_name || ''
+          // 处理 tags 字段
+          let tags = item.tags || []
+          if (typeof tags === 'string') {
+            try {
+              tags = JSON.parse(tags)
+            } catch (e) {
+              tags = tags.split(',').map((t: string) => t.trim())
+            }
+          }
+          return {
+            id: item.id,
+            name: name,
+            avatar: item.avatar,
+            subjects: Array.isArray(subjects) ? subjects : [],
+            hourly_rate: parseFloat(item.hourly_rate) || parseFloat(item.hourly_rate_min) || 100,
+            rating: parseFloat(item.rating) || 5,
+            order_count: item.order_count || 0,
+            education: item.education || '',
+            experience: item.experience || (item.teaching_years ? `${item.teaching_years}年教学经验` : ''),
+            distance_text: item.distance_text || (item.distance ? 
+              (item.distance < 1 ? `${Math.round(item.distance * 1000)}m` : `${item.distance.toFixed(1)}km`) 
+              : ''),
+            distance: item.distance || 0,
+            tags: Array.isArray(tags) ? tags : [],
+            intro: item.intro || item.one_line_intro || ''
+          }
+        })
+        console.log('映射后的牛师数据:', mappedList)
+        setTeachers(mappedList)
       }
     } catch (error) {
       console.error('加载附近牛师失败:', error)
@@ -681,15 +717,19 @@ const HomePage: FC = () => {
           ) : teachers.length > 0 ? teachers.map((teacher) => (
             <View key={teacher.id} className="mx-4 mb-3 p-3 bg-gray-50 rounded-xl" onClick={() => goToTeacherDetail(teacher.id)}>
               <View className="flex flex-row mb-3">
-                <View className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mr-3 shrink-0">
-                  <Text className="block text-xl font-semibold text-white">{teacher.name?.charAt(0) || '师'}</Text>
+                <View className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mr-3 shrink-0 overflow-hidden">
+                  {teacher.avatar ? (
+                    <Image src={getImageUrl(teacher.avatar)} className="w-full h-full" mode="aspectFill" />
+                  ) : (
+                    <Text className="block text-xl font-semibold text-white">{teacher.name?.charAt(0) || '师'}</Text>
+                  )}
                 </View>
                 <View className="flex-1 overflow-hidden">
                   <View className="flex flex-row items-center justify-between mb-1">
-                    <Text className="block text-base font-semibold text-gray-900">{teacher.name ? `${teacher.name.charAt(0)}老师` : '牛师'}</Text>
+                    <Text className="block text-base font-semibold text-gray-900">{teacher.name || '牛师'}</Text>
                     <View className="flex flex-row items-center">
                       <Star size={12} color="#F59E0B" />
-                      <Text className="block text-sm text-amber-500 font-medium ml-1">{teacher.rating}</Text>
+                      <Text className="block text-sm text-amber-500 font-medium ml-1">{teacher.rating?.toFixed(1) || '5.0'}</Text>
                     </View>
                   </View>
                   <Text className="block text-sm text-gray-500 mb-1">{teacher.subjects.join(' · ')}</Text>

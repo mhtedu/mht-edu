@@ -12,6 +12,13 @@ import {
   Calendar, Clock, MapPin, Users, Phone, CircleCheck, Share2
 } from 'lucide-react-taro'
 
+// 处理富文本中的图片，添加样式以限制大小并显示全图
+const processRichText = (html: string): string => {
+  if (!html) return ''
+  // 给所有 img 标签添加 max-width:100%;height:auto;style 属性，使其自适应宽度
+  return html.replace(/<img/gi, '<img style="max-width:100%;height:auto;display:block;"')
+}
+
 // 格式化日期
 const formatDate = (dateStr: string): string => {
   if (!dateStr) return ''
@@ -143,7 +150,7 @@ export default function ActivityDetailPage() {
           max_participants: data.max_participants || 100,
           current_participants: data.current_participants || 0,
           target_roles: data.target_roles || [],
-          description: data.description || '暂无活动详情',
+          description: processRichText(data.description) || '暂无活动详情',
           status: activityStatus,
           contact_phone: data.contact_phone || '400-888-8888',
           organizer: data.organizer || siteName,
