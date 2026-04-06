@@ -4401,4 +4401,151 @@ export class AdminController {
       return { list: [], total: 0, page: pageNum };
     }
   }
+
+  // ==================== 微信支付配置 ====================
+
+  /**
+   * 获取微信支付配置
+   */
+  @Get('payment/wechat')
+  @Public()
+  async getWechatPaymentConfig() {
+    try {
+      const [rows] = await db.query(`
+        SELECT config_key, config_value 
+        FROM site_config 
+        WHERE config_key IN (
+          'wechat_appid', 
+          'wechat_mch_id', 
+          'wechat_pay_key_v2', 
+          'wechat_pay_key_v3', 
+          'wechat_pay_serial_no', 
+          'wechat_pay_key_pem',
+          'wechat_pay_notify_url'
+        )
+      `);
+
+      const config: Record<string, string> = {};
+      (rows as any[]).forEach((row: any) => {
+        config[row.config_key] = row.config_value || '';
+      });
+
+      return {
+        appId: config.wechat_appid || '',
+        mchId: config.wechat_mch_id || '',
+        apiV2Key: config.wechat_pay_key_v2 || '',
+        apiV3Key: config.wechat_pay_key_v3 || '',
+        serialNo: config.wechat_pay_serial_no || '',
+        privateKey: config.wechat_pay_key_pem || '',
+        notifyUrl: config.wechat_pay_notify_url || '',
+      };
+    } catch (error) {
+      console.error('获取微信支付配置失败:', error);
+      return {
+        appId: '',
+        mchId: '',
+        apiV2Key: '',
+        apiV3Key: '',
+        serialNo: '',
+        privateKey: '',
+        notifyUrl: '',
+      };
+    }
+  }
+
+  /**
+   * 保存微信支付配置
+   */
+  @Post('payment/wechat')
+  @Public()
+  async saveWechatPaymentConfig(@Body() body: {
+    appId?: string;
+    mchId?: string;
+    apiV2Key?: string;
+    apiV3Key?: string;
+    serialNo?: string;
+    privateKey?: string;
+    notifyUrl?: string;
+  }) {
+    try {
+      const configMapping: Record<string, string> = {
+        appId: 'wechat_appid',
+        mchId: 'wechat_mch_id',
+        apiV2Key: 'wechat_pay_key_v2',
+        apiV3Key: 'wechat_pay_key_v3',
+        serialNo: 'wechat_pay_serial_no',
+        privateKey: 'wechat_pay_key_pem',
+        notifyUrl: 'wechat_pay_notify_url',
+      };
+
+      for (const [key, configKey] of Object.entries(configMapping)) {
+        const value = body[key as keyof typeof body];
+        if (value !== undefined) {
+          await db.query(`
+            INSERT INTO site_config (config_key, config_value, config_type, config_group, description, status, created_at, updated_at)
+            VALUES (?, ?, 'text', 'payment', ?, 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()
+          `, [configKey, value, this.getConfigDescription(configKey), value]);
+        }
+      }
+
+      return { success: true, message: '微信支付配置保存成功' };
+    } catch (error) {
+      console.error('保存微信支付配置失败:', error);
+      return { success: false, message: '保存失败: ' + (error as any).message };
+    }
+  }
+
+  /**
+   * 上传微信支付私钥文件
+   */
+  @Post('payment/wechat/upload-key')
+  @Public()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadWechatPayKey(@UploadedFile() file: Express.Multer.File) {
+    try {
+      if (!file) {
+        throw new BadRequestException('请上传私钥文件');
+      }
+
+      // 读取文件内容
+      const keyContent = file.buffer ? file.buffer.toString('utf-8') : '';
+      
+      if (!keyContent.includes('-----BEGIN PRIVATE KEY-----')) {
+        throw new BadRequestException('文件格式错误，请上传正确的私钥文件（.pem格式）');
+      }
+
+      // 保存到数据库
+      await db.query(`
+        INSERT INTO site_config (config_key, config_value, config_type, config_group, description, status, created_at, updated_at)
+        VALUES ('wechat_pay_key_pem', ?, 'textarea', 'payment', '微信支付商户私钥', 1, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()
+      `, [keyContent, keyContent]);
+
+      return { 
+        success: true, 
+        message: '私钥文件上传成功',
+        preview: keyContent.substring(0, 50) + '...'
+      };
+    } catch (error) {
+      console.error('上传私钥文件失败:', error);
+      return { success: false, message: '上传失败: ' + (error as any).message };
+    }
+  }
+
+  /**
+   * 获取配置描述
+   */
+  private getConfigDescription(configKey: string): string {
+    const descriptions: Record<string, string> = {
+      wechat_appid: '微信小程序AppID',
+      wechat_mch_id: '微信支付商户号',
+      wechat_pay_key_v2: '微信支付APIv2密钥',
+      wechat_pay_key_v3: '微信支付APIv3密钥',
+      wechat_pay_serial_no: '微信支付商户证书序列号',
+      wechat_pay_key_pem: '微信支付商户私钥',
+      wechat_pay_notify_url: '微信支付回调地址',
+    };
+    return descriptions[configKey] || configKey;
+  }
 }

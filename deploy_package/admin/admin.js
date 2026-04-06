@@ -1077,53 +1077,324 @@ async function saveSiteConfig(event) {
 async function renderPayment() {
     const content = document.getElementById('mainContent');
     
-    content.innerHTML = `
-        <div class="card">
-            <div class="card-header">
-                <h3>微信支付配置</h3>
+    try {
+        // 从后端获取配置
+        const config = await apiRequest('/payment/wechat');
+        
+        content.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔐 微信支付配置</h3>
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">
+                        请填写微信支付商户信息，用于小程序支付功能
+                    </p>
+                </div>
+                <div class="card-body">
+                    <form id="paymentConfigForm" onsubmit="savePaymentConfig(event)">
+                        <!-- 基本信息 -->
+                        <div class="config-section">
+                            <h4 class="section-title">基本信息</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">小程序AppID</label>
+                                    <input type="text" class="form-input" name="appId" 
+                                           value="${config?.appId || ''}" 
+                                           placeholder="请输入微信小程序AppID">
+                                    <span class="form-hint">在微信公众平台 → 开发 → 开发设置中获取</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">微信支付商户号</label>
+                                    <input type="text" class="form-input" name="mchId" 
+                                           value="${config?.mchId || ''}" 
+                                           placeholder="请输入微信支付商户号">
+                                    <span class="form-hint">在微信支付商户平台获取</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- API密钥 -->
+                        <div class="config-section">
+                            <h4 class="section-title">API密钥</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">APIv2密钥</label>
+                                    <div class="input-with-toggle">
+                                        <input type="password" class="form-input" name="apiV2Key" 
+                                               id="apiV2KeyInput"
+                                               value="${config?.apiV2Key || ''}" 
+                                               placeholder="请输入APIv2密钥（32位）">
+                                        <button type="button" class="toggle-btn" onclick="togglePassword('apiV2KeyInput')">
+                                            👁️
+                                        </button>
+                                    </div>
+                                    <span class="form-hint">在商户平台 → 账户中心 → API安全中设置</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">APIv3密钥</label>
+                                    <div class="input-with-toggle">
+                                        <input type="password" class="form-input" name="apiV3Key" 
+                                               id="apiV3KeyInput"
+                                               value="${config?.apiV3Key || ''}" 
+                                               placeholder="请输入APIv3密钥（32位）">
+                                        <button type="button" class="toggle-btn" onclick="togglePassword('apiV3KeyInput')">
+                                            👁️
+                                        </button>
+                                    </div>
+                                    <span class="form-hint">用于新版API接口签名</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 证书配置 -->
+                        <div class="config-section">
+                            <h4 class="section-title">证书配置</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">商户证书序列号</label>
+                                    <input type="text" class="form-input" name="serialNo" 
+                                           value="${config?.serialNo || ''}" 
+                                           placeholder="请输入商户证书序列号">
+                                    <span class="form-hint">在商户平台 → 账户中心 → API证书中查看</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">商户私钥</label>
+                                    <div class="file-upload-area" id="keyUploadArea">
+                                        <input type="file" id="keyFileInput" accept=".pem" 
+                                               style="display: none" 
+                                               onchange="handleKeyFileUpload(event)">
+                                        <button type="button" class="btn btn-outline" onclick="document.getElementById('keyFileInput').click()">
+                                            📁 选择私钥文件
+                                        </button>
+                                        <span class="file-status" id="keyFileStatus">
+                                            ${config?.privateKey ? '✅ 已上传私钥文件' : '未上传'}
+                                        </span>
+                                    </div>
+                                    <span class="form-hint">上传 apiclient_key.pem 文件（从商户平台下载）</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 回调配置 -->
+                        <div class="config-section">
+                            <h4 class="section-title">回调配置</h4>
+                            <div class="form-group">
+                                <label class="form-label">支付回调地址</label>
+                                <input type="text" class="form-input" name="notifyUrl" 
+                                       value="${config?.notifyUrl || 'https://wx.dajiaopei.com/api/payment/notify'}" 
+                                       placeholder="https://your-domain.com/api/payment/notify">
+                                <span class="form-hint">支付成功后微信会向此地址发送通知</span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-lg">💾 保存配置</button>
+                            <button type="button" class="btn btn-outline" onclick="testPaymentConfig()">🧪 测试配置</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <form id="paymentConfigForm" onsubmit="savePaymentConfig(event)">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">商户号 (MchID)</label>
-                            <input type="text" class="form-input" name="mchId" placeholder="请输入微信支付商户号">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">API密钥</label>
-                            <input type="password" class="form-input" name="apiKey" placeholder="请输入API密钥">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">API证书</label>
-                            <input type="file" class="form-input" name="certFile" accept=".pem">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">API证书密钥</label>
-                            <input type="file" class="form-input" name="keyFile" accept=".pem">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">支付回调地址</label>
-                        <input type="text" class="form-input" name="notifyUrl" 
-                               value="https://mt.dajiaopei.com/api/payment/notify" readonly>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">保存配置</button>
-                    </div>
-                </form>
+            
+            <!-- 安全提示 -->
+            <div class="card" style="margin-top: 20px; background: #fef3c7; border: 1px solid #f59e0b;">
+                <div class="card-body">
+                    <h4 style="color: #92400e; margin-bottom: 10px;">⚠️ 安全提示</h4>
+                    <ul style="color: #78350f; font-size: 14px; margin: 0; padding-left: 20px;">
+                        <li>API密钥和私钥文件请妥善保管，不要泄露给他人</li>
+                        <li>建议定期更换API密钥，提高账户安全性</li>
+                        <li>如需更换证书，请先在商户平台下载新证书</li>
+                    </ul>
+                </div>
             </div>
-        </div>
-    `;
+            
+            <style>
+                .config-section {
+                    margin-bottom: 30px;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                .config-section:last-of-type {
+                    border-bottom: none;
+                }
+                .section-title {
+                    color: #374151;
+                    font-size: 16px;
+                    margin-bottom: 15px;
+                    padding-left: 10px;
+                    border-left: 3px solid #3b82f6;
+                }
+                .form-hint {
+                    display: block;
+                    font-size: 12px;
+                    color: #9ca3af;
+                    margin-top: 4px;
+                }
+                .input-with-toggle {
+                    display: flex;
+                    gap: 8px;
+                }
+                .input-with-toggle .form-input {
+                    flex: 1;
+                }
+                .toggle-btn {
+                    padding: 8px 12px;
+                    background: #f3f4f6;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                    cursor: pointer;
+                }
+                .toggle-btn:hover {
+                    background: #e5e7eb;
+                }
+                .file-upload-area {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 12px;
+                    background: #f9fafb;
+                    border: 2px dashed #d1d5db;
+                    border-radius: 8px;
+                }
+                .file-status {
+                    font-size: 14px;
+                    color: #6b7280;
+                }
+                .btn-lg {
+                    padding: 12px 32px;
+                    font-size: 16px;
+                }
+            </style>
+        `;
+    } catch (error) {
+        content.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔐 微信支付配置</h3>
+                </div>
+                <div class="card-body">
+                    <form id="paymentConfigForm" onsubmit="savePaymentConfig(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">小程序AppID</label>
+                                <input type="text" class="form-input" name="appId" placeholder="请输入微信小程序AppID">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">微信支付商户号</label>
+                                <input type="text" class="form-input" name="mchId" placeholder="请输入微信支付商户号">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">APIv2密钥</label>
+                                <input type="password" class="form-input" name="apiV2Key" placeholder="请输入APIv2密钥">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">APIv3密钥</label>
+                                <input type="password" class="form-input" name="apiV3Key" placeholder="请输入APIv3密钥">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">商户证书序列号</label>
+                                <input type="text" class="form-input" name="serialNo" placeholder="请输入商户证书序列号">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">商户私钥文件</label>
+                                <input type="file" class="form-input" name="keyFile" accept=".pem">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">支付回调地址</label>
+                            <input type="text" class="form-input" name="notifyUrl" 
+                                   value="https://wx.dajiaopei.com/api/payment/notify">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存配置</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
 }
 
+// 切换密码显示
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+}
+
+// 处理私钥文件上传
+async function handleKeyFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById('keyFileStatus');
+    statusEl.textContent = '⏳ 上传中...';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/admin/payment/wechat/upload-key', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            statusEl.textContent = '✅ 上传成功';
+            showMessage('私钥文件上传成功', 'success');
+        } else {
+            statusEl.textContent = '❌ 上传失败';
+            showMessage('上传失败: ' + result.message, 'error');
+        }
+    } catch (error) {
+        statusEl.textContent = '❌ 上传失败';
+        showMessage('上传失败: ' + error.message, 'error');
+    }
+}
+
+// 保存支付配置
 async function savePaymentConfig(event) {
     event.preventDefault();
-    showMessage('支付配置保存成功', 'success');
+    const formData = new FormData(event.target);
+    const data = {
+        appId: formData.get('appId'),
+        mchId: formData.get('mchId'),
+        apiV2Key: formData.get('apiV2Key'),
+        apiV3Key: formData.get('apiV3Key'),
+        serialNo: formData.get('serialNo'),
+        notifyUrl: formData.get('notifyUrl'),
+    };
+    
+    try {
+        await apiRequest('/payment/wechat', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        showMessage('支付配置保存成功', 'success');
+    } catch (error) {
+        showMessage('保存失败: ' + error.message, 'error');
+    }
+}
+
+// 测试支付配置
+async function testPaymentConfig() {
+    showMessage('正在测试支付配置...', 'info');
+    // TODO: 实现支付配置测试逻辑
+    setTimeout(() => {
+        showMessage('支付配置测试功能开发中', 'info');
+    }, 1000);
 }
 
 // ========== 管理员管理页面 ==========
