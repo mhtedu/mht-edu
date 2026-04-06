@@ -67,6 +67,7 @@ export default defineAppConfig({
     'pages/trial-pay/index',
     'pages/trial-confirm/index',
     'pages/trial-detail/index',
+    'pages/trial-lesson/my',
   ],
   window: {
     backgroundTextStyle: 'light',

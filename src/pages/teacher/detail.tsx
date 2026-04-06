@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useUserStore } from '@/stores/user'
 import { Network } from '@/network'
 import { formatPrice } from '@/utils'
-import { Star, MessageCircle, Phone, Award, BookOpen, Users, Heart, MessageSquare, Eye, Play, Plus, Camera, Film, Pencil } from 'lucide-react-taro'
+import { Star, MessageCircle, Phone, Award, BookOpen, Users, Heart, MessageSquare, Eye, Play, Plus, Camera, Film, Pencil, Calendar } from 'lucide-react-taro'
 import './detail.css'
 
 interface TeacherDetail {
@@ -228,6 +228,15 @@ const TeacherDetailPage: FC = () => {
       return
     }
     Taro.switchTab({ url: '/pages/message/index' })
+  }
+
+  const handleInviteTrial = () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index' })
+      return
+    }
+    // 跳转到聊天页面，带上教师ID，可以发起试课邀约
+    Taro.navigateTo({ url: `/pages/chat/index?id=${teacher?.id}` })
   }
 
   const handleLikeMoment = (momentId: number) => {
@@ -554,14 +563,18 @@ const TeacherDetailPage: FC = () => {
           <Text className="text-xs text-gray-500">课时费</Text>
           <Text className="text-lg font-semibold text-red-500">{formatPrice(teacher.hourly_rate_min, teacher.hourly_rate_max)}</Text>
         </View>
-        <View className="flex flex-row gap-3">
-          <Button variant="outline" className="flex flex-row items-center py-2 px-4 rounded-full border border-blue-600" onClick={handleSendMessage}>
-            <MessageCircle size={18} color="#2563EB" />
-            <Text className="text-sm text-blue-600 ml-2">咨询</Text>
+        <View className="flex flex-row gap-2">
+          <Button variant="outline" className="flex flex-row items-center py-2 px-3 rounded-full border border-blue-600" onClick={handleSendMessage}>
+            <MessageCircle size={16} color="#2563EB" />
+            <Text className="text-xs text-blue-600 ml-1">咨询</Text>
           </Button>
-          <Button className="flex flex-row items-center py-2 px-4 rounded-full bg-blue-600" onClick={handleContact}>
-            <Phone size={18} color="#fff" />
-            <Text className="text-sm text-white ml-2">联系老师</Text>
+          <Button className="flex flex-row items-center py-2 px-3 rounded-full bg-orange-500" onClick={handleInviteTrial}>
+            <Calendar size={16} color="#fff" />
+            <Text className="text-xs text-white ml-1">试课</Text>
+          </Button>
+          <Button className="flex flex-row items-center py-2 px-3 rounded-full bg-blue-600" onClick={handleContact}>
+            <Phone size={16} color="#fff" />
+            <Text className="text-xs text-white ml-1">联系</Text>
           </Button>
         </View>
       </View>
