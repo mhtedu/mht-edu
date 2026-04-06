@@ -771,11 +771,11 @@ const HomePage: FC = () => {
           )}
         </View>
 
-        {/* 家长端 - 最近牛师班 */}
+        {/* 家长端 - 附近牛师班 */}
         {currentView === 'parent' && eliteClasses.length > 0 && (
           <View className="bg-white mb-2">
             <View className="flex flex-row items-center justify-between px-4 py-3" onClick={goToEliteClassList}>
-              <Text className="block text-base font-semibold text-gray-900">最近牛师班</Text>
+              <Text className="block text-base font-semibold text-gray-900">附近牛师班</Text>
               <View className="flex flex-row items-center">
                 <Text className="block text-sm text-gray-400">点击更多</Text>
                 <ChevronRight size={16} color="#9CA3AF" />
